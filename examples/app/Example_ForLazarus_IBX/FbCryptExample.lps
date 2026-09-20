@@ -69,6 +69,17 @@
         <Loaded Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="EncryptionMonitorThread"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="143"/>
+        <CursorPos X="70" Y="154"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\dynlibs.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="17"/>
@@ -153,17 +164,6 @@
         <TopLine Value="672"/>
         <CursorPos X="3" Y="675"/>
         <UsageCount Value="10"/>
-      </Unit>
-      <Unit>
-        <Filename Value="encryptionmonitorthread.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="EncryptionMonitorThread"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="147"/>
-        <CursorPos X="70" Y="154"/>
-        <UsageCount Value="22"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\classesh.inc"/>
