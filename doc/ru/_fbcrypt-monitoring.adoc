@@ -1,0 +1,57 @@
+= Как отслеживать ход шифрования
+
+Firebird шифрует базу данных только тогда, когда у неё есть активные соединения. Процесс шифрования выполняется в отдельном параллельном потоке, и для больших баз данных полное шифрование может занять значительное время.
+
+Чтобы отслеживать процесс шифрования, выполните любой из SQL-запросов из `MON$`:
+
+[source,sql]
+----
+select mon$crypt_page * 100.0 / mon$pages as Percent from mon$database;
+commit;
+----
+
+или запустите инструмент `gstat` со специальным ключом:
+
+[listing]
+----
+gstat -e dbname
+
+Database "D:\ENCDB\TESTENCRYPT.FDB"
+Gstat execution time Tue Mar 16 11:45:11 2021
+
+Database header page information:
+        Flags                   0
+        Generation              10697
+        System Change Number    3
+        Page size               8192
+        ODS version             12.0
+        Oldest transaction      7053
+        Oldest active           7054
+        Oldest snapshot         7054
+        Next transaction        7054
+        Sequence number         0
+        Next attachment ID      17834
+        Implementation          HW=Intel/i386 little-endian OS=Windows CC=MSVC
+        Shadow count            0
+        Page buffers            0
+        Next header page        0
+        Database dialect        3
+        Creation date           Oct 9, 2019 6:42:31
+        Attributes              encrypted, plugin DBCRYPT
+
+    Variable header data:
+        Database backup GUID:   {866B4967-ED58-427E-A481-DB9206CEA2ED}
+        Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+        Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+        Encryption key name:    RED
+        Database GUID:  {323FE494-1771-4608-E99D-C1B69C84578B}
+        *END*
+
+Data pages: total 105, encrypted 105, non-crypted 0
+Index pages: total 95, encrypted 95, non-crypted 0
+Blob pages: total 0, encrypted 0, non-crypted 0
+Generator pages: total 1, encrypted 1, non-crypted 0
+Gstat completion time Tue Mar 16 11:45:11 2021
+----
+
+Обратите внимание, что выполнение команды `gstat` может занять много времени.

@@ -1,0 +1,48 @@
+[[hqbird]]
+= Firebird Encryption plugin
+1.0.0, от 17.08.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 3
+:outlinelevels: 6:0
+:icons: font
+:experimental:
+:imagesdir: images
+include::../../attributes-ru.adoc[]
+
+toc::[]
+
+include::_fbcrypt-preface.adoc[leveloffset=1]
+
+include::_fbcrypt-server.adoc[leveloffset=1]
+
+include::_fbcrypt-client-app.adoc[leveloffset=1]
+
+include::_fbcrypt-keygen.adoc[leveloffset=1]
+
+include::_fbcrypt-install.adoc[leveloffset=1]
+
+include::_fbcrypt-utils.adoc[leveloffset=1]
+
+include::_fbcrypt-monitoring.adoc[leveloffset=1]
+
+== Краткое содержание
+
+. Шифрование баз данных Firebird — это мощная функция для защиты информации в базах данных от несанкционированного доступа.
+. Процесс шифрования требует наличия серверной динамической библиотеки — плагина шифрования (обычно называемого `DbCrypt`) и, в подавляющем большинстве случаев, плагина управления ключами (обычно называемого `KeyHolder`).
+. Безопасная и надежная реализация плагинов `DbCrypt` и `KeyHolder` должна осуществляться с учетом наиболее распространенных типов атак.
+. Для работы с зашифрованной базой данных клиентские приложения должны передавать ключ шифрования.
+. Установка и настройка плагина шифрования на стороне сервера тривиальна, требует 1 параметра в `firebird.conf`/`databases.conf` и нескольких файлов.
+. Процесс шифрования может быть длительным, он выполняется в отдельном фоновом потоке, ход выполнения можно отслеживать с помощью вызова `MON$` или `gstat`.
+
+[discrete]
+=== Что дальше?
+
+Мы работаем над подробным тестированием производительности шифрования баз данных Firebird. В целом, производительность снижается на 4-8%, но это зависит от оборудования и настроек Firebird. Следите за обновлениями!
+
+[appendix]
+== Контакты
+
+Пожалуйста, присылайте свои предложения, исправления опечаток, ошибок и т.д., а также любые вопросы по электронной почте: mailto:support@ib-aid.com[support@ib-aid.com]

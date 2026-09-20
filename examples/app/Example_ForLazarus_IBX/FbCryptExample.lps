@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Release"/>
+    <Units>
+      <Unit>
+        <Filename Value="FbCryptExample.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="48" Y="16"/>
+        <UsageCount Value="47"/>
+      </Unit>
+      <Unit>
+        <Filename Value="main.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Main"/>
+        <CursorPos X="5" Y="226"/>
+        <UsageCount Value="47"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="connectionsettingsform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmConnectionSetting"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ConnectionSettingsForm"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="87"/>
+        <CursorPos X="86" Y="103"/>
+        <UsageCount Value="45"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="databasekeys.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="DatabaseKeys"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="32"/>
+        <CursorPos X="62" Y="44"/>
+        <UsageCount Value="40"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="dbcrypthelper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="DBCryptHelper"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="164"/>
+        <CursorPos Y="180"/>
+        <UsageCount Value="39"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ibxcrypthelper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="IBXCryptHelper"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="5"/>
+        <CursorPos X="5" Y="32"/>
+        <UsageCount Value="38"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\dynlibs.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="17"/>
+        <CursorPos X="25" Y="30"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\IBX4Lazarus\runtime\nongui\IBDatabase.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1073"/>
+        <CursorPos X="73" Y="1086"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\FBIntf\client\IB.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="90"/>
+        <CursorPos X="12" Y="142"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\IBX4Lazarus\runtime\nongui\IBInternals.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="80"/>
+        <CursorPos X="86" Y="89"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\FBIntf\client\3.0\FB30ClientAPI.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="465"/>
+        <CursorPos Y="481"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\IBX4Lazarus\runtime\nongui\IBXServices.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="3263"/>
+        <CursorPos X="35" Y="3269"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Developer\AppData\Local\lazarus\onlinepackagemanager\packages\FBIntf\client\3.0\FB30Services.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="75"/>
+        <CursorPos Y="96"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\systemh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="424"/>
+        <CursorPos X="3" Y="432"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Denis\AppData\Local\lazarus\onlinepackagemanager\packages\FBIntf\client\3.0\firebird\FirebirdOOAPI.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="8793"/>
+        <CursorPos Y="8809"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\Users\Denis\AppData\Local\lazarus\onlinepackagemanager\packages\IBX4Lazarus\runtime\nongui\IBDatabase.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="180"/>
+        <CursorPos X="14" Y="196"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
+        <UnitName Value="DB"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="2010"/>
+        <CursorPos X="15" Y="2025"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\database.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="672"/>
+        <CursorPos X="3" Y="675"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="EncryptionMonitorThread"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="147"/>
+        <CursorPos X="70" Y="154"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\classesh.inc"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="1802"/>
+        <CursorPos X="24" Y="1824"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="ibxcrypthelper.pas"/>
+        <Caret Line="32" Column="5" TopLine="5"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="117" TopLine="96"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="5" Column="57"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="60" Column="35" TopLine="36"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="218" Column="46" TopLine="209"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="260" Column="48" TopLine="235"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="396" Column="68" TopLine="368"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="62" Column="26" TopLine="47"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="398" Column="4" TopLine="376"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="31" Column="5" TopLine="8"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="52" Column="64" TopLine="26"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="46" Column="92" TopLine="34"/>
+      </Position>
+      <Position>
+        <Filename Value="C:\Users\Denis\AppData\Local\lazarus\onlinepackagemanager\packages\IBX4Lazarus\runtime\nongui\IBDatabase.pas"/>
+        <Caret Line="196" Column="14" TopLine="180"/>
+      </Position>
+      <Position>
+        <Filename Value="dbcrypthelper.pas"/>
+        <Caret Line="180" TopLine="164"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="50" Column="49" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="390" Column="23" TopLine="376"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="52" Column="70" TopLine="36"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="149" Column="86" TopLine="125"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="172" Column="30" TopLine="148"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="404" Column="14" TopLine="378"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="388" Column="36" TopLine="103"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="257" Column="67" TopLine="241"/>
+      </Position>
+      <Position>
+        <Filename Value="encryptionmonitorthread.pas"/>
+        <Caret Line="18" Column="22"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="63" Column="21" TopLine="52"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="248" Column="20" TopLine="236"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="63" Column="32" TopLine="47"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="413" Column="59" TopLine="183"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="127" Column="59" TopLine="118"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="413" Column="34" TopLine="398"/>
+      </Position>
+      <Position>
+        <Filename Value="main.pas"/>
+        <Caret Line="441" Column="34" TopLine="414"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <Watches>
+      <Item>
+        <Expression Value="vTable^"/>
+      </Item>
+    </Watches>
+  </Debugging>
+</CONFIG>

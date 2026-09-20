@@ -1,0 +1,81 @@
+cmake_minimum_required (VERSION 3.16)
+
+project (KeySource
+    VERSION 1.0.0 DESCRIPTION
+	"KeySource"
+	LANGUAGES CXX
+	HOMEPAGE_URL "https://www.ibsurgeon.com")
+
+message(STATUS "${PROJECT_NAME} C++ standard: C++${CMAKE_CXX_STANDARD}")
+message(STATUS "${PROJECT_NAME} C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
+
+# set variable for the C preprocessor to detect the operation system
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build/KeySource/linux-x64)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	if (CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "x64")
+	    set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build/KeySource/windows-x64)
+	endif()
+	if (CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "X86")
+	    set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build/KeySource/windows-x86)
+	endif()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_COMPILER_IS_GNUCXX)
+    set(COMMON_WARNINGS "-Wall -Wextra -Werror")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(COMMON_WARNINGS "${COMMON_WARNINGS} -Wno-unused-parameter")
+    endif()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_WARNINGS}")
+
+	include(CheckCXXCompilerFlag)
+	check_cxx_compiler_flag("-stdlib=libc++" CXX_SUPPORTS_STDLIB)
+	if(CXX_SUPPORTS_STDLIB)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -stdlib=libc++")
+		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -stdlib=libc++")
+	endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+	string(REGEX REPLACE "[/-]W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	if (NOT (CMAKE_VERSION VERSION_LESS 3.6.0)) # Compiler features for Intel in CMake 3.6+
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Qstd=c++17")
+	endif()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /QaxCORE-AVX2")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:precise")
+	set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   /Od")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O3")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Qipo")
+elseif(MSVC)
+	string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	if(MSVC_VERSION LESS 1900)
+		message(FATAL_ERROR "${PROJECT_NAME} build: Build requires C++17-compliant compiler")
+	endif()
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+	message(STATUS "${PROJECT_NAME} Compiler flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+	message(STATUS "${PROJECT_NAME} Compiler flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
+endif()
+
+message(STATUS "${PROJECT_NAME} Binary directory: ${CMAKE_BINARY_DIR}")
+
+####################################
+# src
+####################################
+file(GLOB_RECURSE PROJECT_SOURCES
+    "./src/*.cpp")
+
+add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_CONFIG_H)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE LINUX)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _WINDOWS)
+endif()
+
+
