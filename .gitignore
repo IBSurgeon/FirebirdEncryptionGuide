@@ -388,6 +388,7 @@ FodyWeavers.xsd
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+lib/x86_64-win64
 
 # Local History for Visual Studio Code
 .history/
@@ -401,6 +402,10 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Lazarus binary files
+*.ppu
+*.compiled
 
 # Binary files
 *.dll
