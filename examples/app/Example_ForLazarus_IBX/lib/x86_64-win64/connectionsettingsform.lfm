@@ -6,6 +6,7 @@ object frmConnectionSetting: TfrmConnectionSetting
   Caption = 'Connection Settings'
   ClientHeight = 515
   ClientWidth = 590
+  Position = poMainFormCenter
   LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
   OnShow = FormShow
@@ -250,7 +251,6 @@ object frmConnectionSetting: TfrmConnectionSetting
       Height = 32
       Top = 16
       Width = 104
-      Default = True
       DefaultCaption = True
       Kind = bkOK
       ModalResult = 1
@@ -261,7 +261,6 @@ object frmConnectionSetting: TfrmConnectionSetting
       Height = 32
       Top = 16
       Width = 104
-      Cancel = True
       DefaultCaption = True
       Kind = bkCancel
       ModalResult = 2

@@ -154,6 +154,13 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="EncryptionMonitorThread"/>
       </Unit>
+      <Unit>
+        <Filename Value="setupcustomkeyform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmSetupCustomKey"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="SetupCustomKeyForm"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

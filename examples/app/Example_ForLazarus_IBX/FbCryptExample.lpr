@@ -11,7 +11,7 @@ uses
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, Main, ConnectionSettingsForm, DatabaseKeys, DBCryptHelper, 
-IBXCryptHelper, EncryptionMonitorThread
+IBXCryptHelper, EncryptionMonitorThread, SetupCustomKeyForm
   { you can add units after this };
 
 {$R *.res}

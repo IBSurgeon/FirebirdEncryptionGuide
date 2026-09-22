@@ -1,0 +1,69 @@
+object frmSetupCustomKey: TfrmSetupCustomKey
+  Left = 350
+  Height = 238
+  Top = 250
+  Width = 464
+  BorderStyle = bsDialog
+  Caption = 'Setup Custom Key'
+  ClientHeight = 238
+  ClientWidth = 464
+  Position = poMainFormCenter
+  LCLVersion = '4.8.0.0'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  object edtCustomKeyName: TLabeledEdit
+    Left = 16
+    Height = 23
+    Top = 40
+    Width = 424
+    EditLabel.Height = 15
+    EditLabel.Width = 424
+    EditLabel.Caption = 'Key name'
+    TabOrder = 0
+    Text = 'CustomKey'
+  end
+  object btnGenerateKey: TButton
+    Left = 16
+    Height = 30
+    Top = 168
+    Width = 88
+    Caption = 'Generate Key'
+    TabOrder = 1
+    OnClick = btnGenerateKeyClick
+  end
+  object btnOK: TBitBtn
+    Left = 240
+    Height = 30
+    Top = 168
+    Width = 88
+    Default = True
+    DefaultCaption = True
+    Kind = bkOK
+    ModalResult = 1
+    TabOrder = 2
+  end
+  object btnCancel: TBitBtn
+    Left = 349
+    Height = 30
+    Top = 168
+    Width = 91
+    DefaultCaption = True
+    Kind = bkCancel
+    ModalResult = 2
+    TabOrder = 3
+  end
+  object Label1: TLabel
+    Left = 16
+    Height = 15
+    Top = 80
+    Width = 19
+    Caption = 'Key'
+  end
+  object mmKey: TMemo
+    Left = 16
+    Height = 42
+    Top = 96
+    Width = 424
+    TabOrder = 4
+  end
+end

@@ -61,7 +61,96 @@ type
     property LibraryPath: TFileName read FLibraryPath write SetLibraryPath;
   end;
 
+  // Checks a string of the format "$F9,$81,$0B,...,$90" (exactly 32 elements)
+  // and populates Key upon success. Allows spaces around the elements.
+  function ParseKeyHex(const S: string; out Key: TDBKey): Boolean;
+
+  function IsValidKeyHex(const S: string): Boolean;
+
 implementation
+
+function IsHexDigit(C: Char): Boolean;
+begin
+  Result := C in ['0'..'9', 'A'..'F', 'a'..'f'];
+end;
+
+function HexValue(C: Char): Byte;
+begin
+  case C of
+    '0'..'9': Result := Ord(C) - Ord('0');
+    'A'..'F': Result := Ord(C) - Ord('A') + 10;
+    'a'..'f': Result := Ord(C) - Ord('a') + 10;
+  else
+    Result := 0;
+  end;
+end;
+
+// Checks a string of the format "$F9,$81,$0B,...,$90" (exactly 32 elements)
+// and populates Key upon success. Allows spaces around the elements.
+function ParseKeyHex(const S: string; out Key: TDBKey): Boolean;
+var
+  I, P, L: Integer;
+  Hi, Lo: Byte;
+begin
+  Result := False;
+  FillChar(Key, SizeOf(Key), 0);
+
+  L := Length(S);
+  P := 1;
+
+  for I := 0 to High(Key) do
+  begin
+    // skip whitespace before the element
+    while (P <= L) and (S[P] = ' ') do
+      Inc(P);
+
+    // expected '$'
+    if (P > L) or (S[P] <> '$') then
+      Exit;
+    Inc(P);
+
+    // first hex digit
+    if (P > L) or (not IsHexDigit(S[P])) then
+      Exit;
+    Hi := HexValue(S[P]);
+    Inc(P);
+
+    // second hex digit
+    if (P > L) or (not IsHexDigit(S[P])) then
+      Exit;
+    Lo := HexValue(S[P]);
+    Inc(P);
+
+    Key[I] := (Hi shl 4) or Lo;
+
+    // skip spaces after the element
+    while (P <= L) and (S[P] = ' ') do
+      Inc(P);
+
+    // comma between the elements is mandatory
+    if I < High(Key) then
+    begin
+      if (P > L) or (S[P] <> ',') then
+        Exit;
+      Inc(P);
+    end;
+  end;
+
+  // after the last element — only spaces (nothing extra)
+  while (P <= L) and (S[P] = ' ') do
+    Inc(P);
+  if P <= L then
+    Exit;
+
+  Result := True;
+end;
+
+function IsValidKeyHex(const S: string): Boolean;
+var
+  Key: TDBKey;
+begin
+  Result := ParseKeyHex(S, Key);
+end;
 
 { TDBCryptHelper }
 

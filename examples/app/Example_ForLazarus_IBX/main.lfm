@@ -15,9 +15,9 @@ object MainForm: TMainForm
     Height = 524
     Top = 0
     Width = 1078
-    ActivePage = tsCrypt
+    ActivePage = tsMain
     Align = alClient
-    TabIndex = 1
+    TabIndex = 0
     TabOrder = 0
     object tsMain: TTabSheet
       Caption = 'Main'
@@ -70,6 +70,15 @@ object MainForm: TMainForm
           Caption = 'Connection Settings'
           TabOrder = 2
           OnClick = btnConnectionSettingsClick
+        end
+        object btnSetupCustomKey: TButton
+          Left = 32
+          Height = 40
+          Top = 248
+          Width = 138
+          Caption = 'Setup Custom Key'
+          TabOrder = 3
+          OnClick = btnSetupCustomKeyClick
         end
       end
     end
@@ -124,7 +133,7 @@ object MainForm: TMainForm
           Left = 30
           Height = 19
           Top = 248
-          Width = 110
+          Width = 109
           Caption = 'Track the process'
           Checked = True
           State = cbChecked

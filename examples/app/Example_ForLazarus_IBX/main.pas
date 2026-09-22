@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, DB, Forms, Controls, Graphics, Dialogs, DBGrids, ComCtrls,
   ExtCtrls, StdCtrls, IB, IBDatabase, IBQuery, IBXServices, IBXCryptHelper,
-  DatabaseKeys;
+  DatabaseKeys, DBCryptHelper;
 
 type
 
@@ -20,6 +20,7 @@ type
     btnCrypt: TButton;
     btnDecrypt: TButton;
     btnGstat: TButton;
+    btnSetupCustomKey: TButton;
     cbCryptKeyName: TComboBox;
     cbxTraceCrypt: TCheckBox;
     Database: TIBDatabase;
@@ -42,6 +43,7 @@ type
     procedure btnDecryptClick(Sender: TObject);
     procedure btnGstatClick(Sender: TObject);
     procedure btnOpenClick(Sender: TObject);
+    procedure btnSetupCustomKeyClick(Sender: TObject);
     procedure DatabaseBeforeConnect(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
@@ -50,6 +52,9 @@ type
     FBCryptHelper: TIBDatabaseCryptHelper;
     DBCryptKeyName: string;
     DBCryptKeyIndex: TDBKeyIndex;
+    DBCryptCustomKeyName: string;
+    DBCryptCustomKey: string;
+    DBCryptCustomKeyBin: TDBKey;
   private
     function GetConfigFileName: TFileName;
     procedure ActiveConnectionControls;
@@ -72,11 +77,13 @@ var
 
 implementation
 
-uses ConnectionSettingsForm, IniFiles, DBCryptHelper, EncryptionMonitorThread;
+uses ConnectionSettingsForm, SetupCustomKeyForm, IniFiles, EncryptionMonitorThread;
 
 const
   CONNECTION_INI_SECTION = 'CONNECTION';
   FBCRYPT_INI_SECTION = 'FB_CRYPT';
+  CUSTOM_KEY_INI_SECTION = 'CUSTOM_KEY';
+  DEFAULT_CUSTOM_KEY_NAME = 'Custom';
   {$IFDEF WINDOWS}
   DEFAULT_FB_CLIENT = 'fbclient.dll';
   DEFAULT_LIB_FBCRYPT = 'fbcrypt.dll';
@@ -111,11 +118,40 @@ begin
   end;
 end;
 
+procedure TMainForm.btnSetupCustomKeyClick(Sender: TObject);
+var
+  CustomKeyDlg: TfrmSetupCustomKey;
+begin
+  CustomKeyDlg := TfrmSetupCustomKey.Create(Self);
+  try
+    CustomKeyDlg.CustomKeyName := DBCryptCustomKeyName;
+    CustomKeyDlg.CustomKey := DBCryptCustomKey;
+    if CustomKeyDlg.ShowModal = mrOK then
+    begin
+      DBCryptCustomKeyName := CustomKeyDlg.CustomKeyName;
+      DBCryptCustomKey := CustomKeyDlg.CustomKey;
+      SaveConnectionSettings;
+      FillDbKeyNames;
+    end;
+  finally
+    CustomKeyDlg.Free;
+  end;
+end;
+
 procedure TMainForm.DatabaseBeforeConnect(Sender: TObject);
 var
   xPKey: PDBKey;
 begin
-  xPKey := GetDBKey(DBCryptKeyIndex);
+  if DBCryptKeyIndex <> keyCustom then
+    xPKey := GetDBKey(DBCryptKeyIndex)
+  else
+  begin
+    xPKey := nil;
+    // Parsing the custom key
+    if ParseKeyHex(DBCryptCustomKey, DBCryptCustomKeyBin) then
+      xPKey := @DBCryptCustomKeyBin;
+  end;
+
   FBCryptHelper.SetDatabaseCryptKey(TIBDatabase(Sender), DBCryptKeyName, xPKey);
 end;
 
@@ -135,6 +171,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   FBCryptHelper := TIBDatabaseCryptHelper.Create(Self);
   DBCryptKeyIndex := keyNone;
+  DBCryptCustomKeyBin := ZeroKey;
   LoadConnectionSettings;
   FillDbKeyNames;
 end;
@@ -142,6 +179,7 @@ end;
 procedure TMainForm.FormShow(Sender: TObject);
 begin
   pcMain.ActivePageIndex := 0;
+  MainForm.Caption := 'Firebird crypt example: ' + Database.DatabaseName;
 end;
 
 function TMainForm.GetConfigFileName: TFileName;
@@ -174,6 +212,7 @@ begin
     ConnectionSettingDialog.DBRole := Database.Params.Values['sql_role_name'];
     ConnectionSettingDialog.DBCharset := Database.Params.Values['lc_ctype'];
 
+    ConnectionSettingDialog.CustomKeyName := DBCryptCustomKeyName;
     ConnectionSettingDialog.FbCryptLibrary := FBCryptHelper.LibraryPath;
     ConnectionSettingDialog.DbKeyName := DBCryptKeyName;
 
@@ -195,6 +234,8 @@ begin
       DBCryptKeyIndex := ConnectionSettingDialog.DbKeyIndex;
 
       SaveConnectionSettings;
+
+      MainForm.Caption := 'Firebird crypt example: ' + Database.DatabaseName;
     end;
   finally
     ConnectionSettingDialog.Free;
@@ -217,7 +258,7 @@ begin
   mmLog.Lines.Clear;
 
   DBCryptKeyName := cbCryptKeyName.Text;
-  DBCryptKeyIndex := GetDBKeyIndexByName(DBCryptKeyName);
+  DBCryptKeyIndex := TDBKeyIndex(cbCryptKeyName.ItemIndex + 1);
   xCryptSql := 'ALTER DATABASE ENCRYPT WITH "dbcrypt" KEY "' + DBCryptKeyName + '"';
 
   mmLog.Lines.Add('Initiating database encryption with key: ' + DBCryptKeyName);
@@ -349,6 +390,7 @@ begin
   btnOpen.Enabled := False;
   btnClose.Enabled := True;
   btnConnectionSettings.Enabled := False;
+  btnSetupCustomKey.Enabled := False;
 end;
 
 procedure TMainForm.InactiveConnectionControls;
@@ -356,6 +398,7 @@ begin
   btnOpen.Enabled := True;
   btnClose.Enabled := False;
   btnConnectionSettings.Enabled := True;
+  btnSetupCustomKey.Enabled := True;
 end;
 
 procedure TMainForm.LoadConnectionSettings;
@@ -377,6 +420,10 @@ begin
     FBCryptHelper.LibraryPath := xIniFile.ReadString(FBCRYPT_INI_SECTION, 'LIB_FBCRYPT', DEFAULT_LIB_FBCRYPT);
     DBCryptKeyName := xIniFile.ReadString(FBCRYPT_INI_SECTION, 'KEY_NAME', 'None');
     DBCryptKeyIndex := GetDBKeyIndexByName(DBCryptKeyName);
+
+    // Load Custom Key
+    DBCryptCustomKeyName := xIniFile.ReadString(CUSTOM_KEY_INI_SECTION, 'KEY_NAME', DEFAULT_CUSTOM_KEY_NAME);
+    DBCryptCustomKey := xIniFile.ReadString(CUSTOM_KEY_INI_SECTION, 'KEY', '');
   finally
     xIniFile.Free;
   end;
@@ -399,6 +446,10 @@ begin
     // Save FbCrypt settings
     xIniFile.WriteString(FBCRYPT_INI_SECTION, 'LIB_FBCRYPT', FBCryptHelper.LibraryPath);
     xIniFile.WriteString(FBCRYPT_INI_SECTION, 'KEY_NAME', DBCryptKeyName);
+
+    // Save Custom Key
+    xIniFile.WriteString(CUSTOM_KEY_INI_SECTION, 'KEY_NAME', DBCryptCustomKeyName);
+    xIniFile.WriteString(CUSTOM_KEY_INI_SECTION, 'KEY', DBCryptCustomKey);
   finally
     xIniFile.Free;
   end;
@@ -410,7 +461,12 @@ var
 begin
   cbCryptKeyName.Items.Clear;
   for xKeyIndex := Succ(Low(TDBKeyIndex)) to High(TDBKeyIndex) do
-    cbCryptKeyName.Items.Add(DBKeyNames[xKeyIndex]);
+  begin
+    if xKeyIndex <> keyCustom then
+      cbCryptKeyName.Items.Add(DBKeyNames[xKeyIndex])
+    else
+      cbCryptKeyName.Items.Add(DBCryptCustomKeyName);
+  end;
   cbCryptKeyName.ItemIndex := 0;
 end;
 

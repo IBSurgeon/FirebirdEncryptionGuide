@@ -32,11 +32,6 @@ type
 
 implementation
 
-uses
-  {$IFDEF WINDOWS}
-  Windows;
-  {$ENDIF}
-
 { TEncryptionMonitorThread }
 
 constructor TEncryptionMonitorThread.Create(AMainDatabase: TIBDatabase);

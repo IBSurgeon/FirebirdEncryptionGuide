@@ -43,6 +43,7 @@ type
     procedure FormShow(Sender: TObject);
   private
     FBCryptHelper: TIBDatabaseCryptHelper;
+    FCustomKeyName: string;
   private
     function GetDatabase: string;
     function GetDBCharset: string;
@@ -53,6 +54,7 @@ type
     function GetFbCryptLibrary: string;
     function GetDbKeyName: string;
     function GetDbKeyIndex: TDBKeyIndex;
+    procedure SetCustomKeyName(AValue: string);
 
     procedure SetDatabase(const AValue: string);
     procedure SetDBCharset(const AValue: string);
@@ -73,6 +75,7 @@ type
     property FbCryptLibrary: string read GetFbCryptLibrary write SetFbCryptLibrary;
     property DbKeyName: string read GetDbKeyName write SetDbKeyName;
     property DbKeyIndex: TDBKeyIndex read GetDbKeyIndex write SetDbKeyIndex;
+    property CustomKeyName: string read FCustomKeyName write SetCustomKeyName;
   end;
 
 var
@@ -233,6 +236,27 @@ end;
 function TfrmConnectionSetting.GetDbKeyIndex: TDBKeyIndex;
 begin
   Result := TDBKeyIndex(cbDBKeyName.ItemIndex);
+end;
+
+procedure TfrmConnectionSetting.SetCustomKeyName(AValue: string);
+var
+  xKeyIndex: TDBKeyIndex;
+  xOldIndex: Integer;
+begin
+  if FCustomKeyName=AValue then Exit;
+  FCustomKeyName := AValue;
+
+  xOldIndex := cbDBKeyName.ItemIndex;
+
+  cbDBKeyName.Items.Clear;
+  for xKeyIndex := Low(TDBKeyIndex) to High(TDBKeyIndex) do
+  begin
+    if xKeyIndex <> keyCustom then
+      cbDBKeyName.Items.Add(DBKeyNames[xKeyIndex])
+    else
+      cbDBKeyName.Items.Add(FCustomKeyName);
+  end;
+  cbDBKeyName.ItemIndex := xOldIndex;
 end;
 
 procedure TfrmConnectionSetting.SetDBPassword(const AValue: string);
