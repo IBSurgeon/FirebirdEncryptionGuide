@@ -32,11 +32,13 @@
 | [php/gbak-stdin](php/gbak-stdin) | PHP | резервная копия и восстановление из скрипта | — |
 | [dotnet/ado-basic](dotnet/ado-basic) | C#, ADO.NET | подключение, ошибки ключа | D |
 | [dotnet/gbak-stdin](dotnet/gbak-stdin) | C# | резервная копия и восстановление из программы | — |
+| [lazarus/console-sqldb](lazarus/console-sqldb) | Free Pascal, SQLdb | подключение, ошибки ключа, несколько ключей | A |
+| [lazarus/gbak-stdin](lazarus/gbak-stdin) | Free Pascal | резервная копия и восстановление из программы | — |
 | [keysource](keysource) | C++, Delphi, Lazarus | библиотека `KeySource` | C |
 | [app/Example_ForLazarus_IBX](app/Example_ForLazarus_IBX) | Lazarus, IBX | подключение, шифрование, мониторинг | A |
 
-Примеры Python, Java, PHP и .NET проверены на Firebird 4.0 (Windows x64). У каждого есть скрипт `run-test.ps1`.
-Способы B, C и E проверены и при `UnsafeClient = false`.
+Примеры Python, Java, PHP, .NET и Free Pascal проверены на Firebird 4.0 и 5.0 (Windows x64). У каждого есть скрипт `run-test.ps1`.
+Способы B, C и E проверены и при `UnsafeClient = false` (Firebird 4.0).
 
 ## Как запустить
 

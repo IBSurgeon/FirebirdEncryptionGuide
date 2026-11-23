@@ -1,6 +1,6 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 24.11.2026. Редакция 5 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
+Дата: 24.11.2026. Редакция 6 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
 
 ## 1. Цель
 
@@ -25,7 +25,7 @@
 
 | Способ | Защищённый обмен | Где работает | Состояние |
 |---|---|---|---|
-| A. `fbcrypt` + `fbcrypt_callback(nil)` | да | Драйверы на ISC API: FireDAC, IBX, SQLdb, ZeosLib | работает в существующем примере (Lazarus + IBX) |
+| A. `fbcrypt` + `fbcrypt_callback(nil)` | да | Драйверы на ISC API: FireDAC, IBX, SQLdb, ZeosLib | работает (Free Pascal SQLdb, Firebird 4.0 и 5.0) |
 | B. `fbcrypt` + `fbcrypt_callback(provider)` | да | Код на объектно-ориентированном API: `Firebird.pas`, `fbintf`, Python `firebird-driver` | работает (Python, Firebird 4.0) |
 | C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | работает (Python, Java native, PHP; Firebird 4.0) |
 | D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | работает (Java, .NET, Python; Firebird 4.0) |
@@ -244,14 +244,14 @@ README должен описать, где хранить ключ на веб-�
 2. Практические проверки этапа 1: способ E для Jaybird native, .NET embedded, PHP FFI; сценарий S11 через `fbcrypt` и через Jaybird `FBBackupManager`; драйвер `firebirdsql`.
 3. Предложение разработчикам плагина: добавить в `fbcrypt` функцию, которая возвращает указатель на `ICryptKeyCallback`. Тогда Python `firebird-driver` (`crypt_callback`) и другие драйверы на объектно-ориентированном API получат защищённый обмен ключом без способа D.
 4. Нужны ли английские README раньше этапа 8.
-5. Лицензия плагина для Firebird 5.0 для тестов (сейчас есть только для 3.0 и 4.0, до 07.12.2026).
-6. Delphi и Lazarus: компиляторов нет. JDK 17, Maven и PHP 8.4 распакованы в `D:\FirebirdCrypt\tools`. Установщик Lazarus лежит в `D:\FirebirdCrypt\tools\downloads`, ему нужны права администратора.
+5. Тестовые лицензии: для 3.0 и 4.0 до 07.12.2026, для 5.0 до 01.02.2027. Для CI нужна постоянная.
+6. Delphi: компилятора нет. JDK 17, Maven, PHP 8.4 и Lazarus 4.8 находятся в `D:\FirebirdCrypt\tools`.
 7. .NET: способа с защищённым обменом ключом нет. Возможное решение — поддержка обратного вызова в провайдере или функция из вопроса 3.
 
 ## 17. Состояние работ
 
-Проверено 24.11.2026 на Windows x64, локальная сборка HQbird 4.0 с плагином шифрования, порт 3070.
-Скрипт `run-all-tests.ps1`: 13 тестов проходят.
+Проверено 24.11.2026 на Windows x64: локальная сборка HQbird 4.0 (порт 3070) и HQbird 5.0.5 (порт 3071).
+Скрипт `run-all-tests.ps1`: 15 тестов проходят на обеих версиях.
 
 | Работа | Состояние |
 |---|---|
@@ -260,8 +260,8 @@ README должен описать, где хранить ключ на веб-�
 | .NET: `ado-basic`, `gbak-stdin` | готово, тесты проходят |
 | Java: `jdbc-basic`, `jdbc-native-fbcrypt`, `jdbc-native-keysource`, `gbak-stdin` | готово, тесты проходят |
 | PHP: `pdo-ffi-fbcrypt`, `pdo-keysource`, `gbak-stdin` | готово, тесты проходят |
-| Free Pascal: `console-sqldb`, `gbak-stdin`, модули `fbcryptapi.pas`, `examplecommon.pas` | написано, не собрано, в репозиторий не добавлено |
-| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено, не собрано |
+| Free Pascal: `console-sqldb`, `gbak-stdin`, модули `fbcryptapi.pas`, `examplecommon.pas` | готово, тесты проходят |
+| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено; модуль `dbcrypthelper.pas` компилируется, весь проект не собирался (нужен пакет IBX) |
 | Этап 1: способы B, C, D, E (Java, PHP), .NET embedded | проверено (раздел 3) |
 | Этап 1: S11, `fdb`, `firebirdsql`, ZTS и постоянные подключения PHP | не сделано |
 | Delphi | не начато: нет компилятора |
@@ -269,10 +269,10 @@ README должен описать, где хранить ключ на веб-�
 
 Что не проверено:
 
-- **Firebird 5.0.** Тестовая лицензия не подходит плагину для 5.0 (`License is incorrect`). Нужна лицензия для 5.0.
 - **Firebird 3.0.** Вариант `gbak -KEYFILE` написан по исходным кодам. Локальная сборка 3.0 не содержит `firebird.exe`.
 - **Linux.** Скриптов `setup.sh` нет.
-- **Free Pascal и Lazarus.** Установщики Lazarus 4.8 и FPC 3.2.2 из автоматической сессии не работают: нужен запрос UAC. Установку должен выполнить пользователь.
+- **Способы при `UnsafeClient = false`** проверены только на Firebird 4.0.
+- **Индивидуальные ключи клиентов (S9)** на Firebird 5.0 не проверялись.
 
 Найдено при проверке:
 
@@ -289,3 +289,4 @@ README должен описать, где хранить ключ на веб-�
 - Редакция 3 (ревью): таблица способов A–E; вариант S6 для Firebird 3.0; сценарий S11; приоритеты; проверки перенесены на этап 1; сохранены существующие пути; `run-test`; сокращённая матрица; риски; факты о `CheckKey` и драйверах проверены по исходникам.
 - Редакция 4: начато исполнение. Готовы `examples/common`, примеры Python и .NET. Добавлен пример `driver-fbcrypt` (способ B для Python). Пример .NET `embedded-fbcrypt` исключён. Состояние в разделе 17.
 - Редакция 5: готовы примеры Java (4) и PHP (3). Способ E подтверждён для Jaybird native и PHP. Примеры Free Pascal написаны, но не собраны.
+- Редакция 6: примеры Free Pascal собраны и проверены. Все 15 тестов проходят на Firebird 4.0 и 5.0.

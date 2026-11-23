@@ -74,4 +74,6 @@
 Файл `plugins\KeyHolder.conf` тестового сервера содержит одну строку: `UnsafeClient = true`.
 Она нужна только примерам со способом D. См. [server-unsafe-client.md](server-unsafe-client.md).
 
+Для второго сервера (другая версия Firebird) задайте другие `-WorkDir` и `-Port`.
+
 Скрипта для Linux пока нет.
