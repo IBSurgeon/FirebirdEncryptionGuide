@@ -1,0 +1,7 @@
+# build and test output of the examples
+bin/
+obj/
+__pycache__/
+actual-output.txt
+actual-errors.txt
+build-output.txt
