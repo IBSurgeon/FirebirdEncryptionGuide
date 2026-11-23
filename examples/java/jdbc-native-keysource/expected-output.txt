@@ -1,0 +1,3 @@
+S7 connect to crypt_red: Hello from crypt_red
+S7 connect to crypt_green: Hello from crypt_green
+S7 connect to plain: Hello from plain

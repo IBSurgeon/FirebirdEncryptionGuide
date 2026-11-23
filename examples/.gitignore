@@ -5,3 +5,8 @@ __pycache__/
 actual-output.txt
 actual-errors.txt
 build-output.txt
+target/
+lib/
+*.exe
+*.o
+*.ppu

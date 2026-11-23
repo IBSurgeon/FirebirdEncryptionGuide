@@ -1,0 +1,7 @@
+S1 key Red, text property: Hello from crypt_red
+S1 key Green, base64 property: Hello from crypt_green
+S1 key Red, base64url in the URL: Hello from crypt_red
+S2 no key: error, as expected
+S2 wrong key value: error, as expected
+S2 wrong key name: error, as expected
+Plain database without a key: Hello from plain
