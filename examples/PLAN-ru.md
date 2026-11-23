@@ -1,196 +1,249 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 23.11.2026. Статус: вопросы 1, 3, 4, 5 решены (раздел 14). Лицензия для CI отложена.
+Дата: 23.11.2026. Редакция 3 (после ревью). Лицензия для CI отложена.
 
 ## 1. Цель
 
 Дать разработчику готовый код для каждого способа передачи ключа.
 Каждый пример должен собираться и запускаться за 10 минут по файлу README.
 
+Минимальный выпуск (приоритет P1): этапы 0–3. Он закрывает самые частые вопросы поддержки.
+
 ## 2. Что уже есть
 
 | Пример | Путь | Состояние |
 |---|---|---|
 | Lazarus + IBX (GUI) | `examples/app/Example_ForLazarus_IBX` | Работает на Windows. В `dbcrypthelper.pas` опечатка `cdelc` (ветка не-Windows не компилируется). Ключ только 32 байта. |
-| KeySource: C++, Delphi, Lazarus | `examples/keysource` | Работает. Нет README и сборки для Linux. |
+| KeySource: C++, Delphi, Lazarus | `examples/keysource/<язык>` | Работает. Нет README и сборки для Linux. |
 | gbak + KeyHolderStdin на Delphi и C | в исходниках HQbird (`src/plugins/crypt/db/stdin/sample`) | В репозитории руководства нет. |
 
-## 3. Общие правила для всех примеров
+Двоичных файлов в репозитории нет. Файл `README.md` в корне ссылается на архив примера в Releases 1.0.
 
-- Один набор сценариев для всех языков (раздел 4). Одинаковые имена и одинаковый вывод.
-- Общий каталог `examples/common`: тестовая база, тестовые ключи `Red` и `Green`, скрипты `setup` и `cleanup`.
-- Общий файл `examples/common/server-unsafe-client.md`: настройка сервера для драйверов, которые отправляют ключ статическим значением (Java, .NET, Python с обратным вызовом).
-- В коде нет рабочих ключей. Ключ читается из файла или переменной окружения. В README есть предупреждение о ключе-константе.
+## 3. Способы передачи ключа
+
+Таблица показывает, какой способ подходит драйверу. Она определяет состав примеров.
+
+| Способ | Защищённый обмен | Где работает | Состояние |
+|---|---|---|---|
+| A. `fbcrypt` + `fbcrypt_callback(nil)` | да | Драйверы на ISC API: FireDAC, IBX, SQLdb, ZeosLib | работает в существующем примере (Lazarus + IBX) |
+| B. `fbcrypt` + `fbcrypt_callback(provider)` | да | Код на объектно-ориентированном API: `Firebird.pas`, `fbintf` | проверено по исходникам |
+| C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | проверено по исходникам |
+| D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | проверено по исходникам драйверов |
+| E. `fbcrypt` из управляемого или скриптового кода | да | Jaybird native (JNA), .NET embedded (P/Invoke), PHP (FFI), Python `fdb` (`ctypes`) | не проверено на практике |
+
+Пояснения к способу E:
+
+- Все четыре драйвера вызывают `isc_attach_database`. Библиотека `fbclient` берёт обратный вызов из переменной потока только в функциях ISC API. Поэтому `fbcrypt_callback(nil)` должен работать.
+- Условия: вызов в том же потоке ОС, что и подключение; тот же экземпляр `fbclient`, путь к которому передан в `fbcrypt_init`.
+- Python `firebird-driver` использует объектно-ориентированный API и создаёт `IProvider` внутри `connect`. Для него `fbcrypt_callback(nil)` не работает. Остаются способы C и D.
+
+## 4. Общие правила для всех примеров
+
+- Один набор сценариев для всех языков (раздел 5). Одинаковые имена и одинаковый вывод.
+- Существующие пути не меняются: `examples/app/Example_ForLazarus_IBX`, `examples/keysource/<язык>`. На них есть ссылки из руководства и из Releases.
+- Новые примеры: `examples/<язык>/<пример>`. Библиотеки для нескольких языков: `examples/keysource/<язык>`, `examples/keychecker/<язык>`.
+- Общий каталог `examples/common`: тестовая база, тестовые ключи `Red` и `Green`, скрипты `setup` и `cleanup` для Windows и Linux.
+- Общий файл `examples/common/server-unsafe-client.md`: настройка сервера для способа D.
+- Двоичные файлы плагина (`fbcrypt`, `fbclient`, OpenSSL) в репозиторий не добавляются. README говорит, из какого пакета их взять.
+- В коде нет рабочих ключей. Ключ читается из файла или переменной окружения. Ключ не передаётся в командной строке.
 - Каждый пример проверяет коды возврата `fbcrypt_*` и показывает текст ошибки.
-- README в каждом каталоге: что нужно установить, как собрать, как запустить, ожидаемый вывод.
-- Языки README: русский и английский.
+- Каждый пример имеет файл `expected-output.txt` и скрипт `run-test`. Скрипт запускает пример и сравнивает вывод с файлом.
+- README в каждом каталоге: что нужно установить, как собрать, как запустить, ожидаемый вывод, способ передачи ключа (A–E).
+- README пишется на русском языке. Английский перевод делается на этапе 8.
 
-## 4. Сценарии
+## 5. Сценарии
 
-| № | Сценарий | Что показывает |
-|---|---|---|
-| S1 | Подключение с ключом | `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback`, обычный запрос |
-| S2 | Ошибки ключа | нет ключа, неверное значение, неверное имя; разбор текста ошибки |
-| S3 | Несколько ключей и баз | два ключа в списке, две базы; замена ключей через `fbcrypt_init(nil)` |
-| S4 | Потоки и пул | `fbcrypt_callback(nil)` в каждом потоке; пул подключений |
-| S5 | Шифрование и мониторинг | `ALTER DATABASE ENCRYPT/DECRYPT`, процент из `MON$DATABASE` |
-| S6 | Резервная копия из программы | запуск `gbak` с `-KeyHolder KeyHolderStdin`, ключ в stdin процесса |
-| S7 | KeySource | библиотека с `MakeKeys` для приложения без исходного кода |
-| S8 | Хранение ключа | ключ из файла с правами доступа, из DPAPI (Windows), ввод пользователем |
-| S9 | Индивидуальные ключи клиентов | `ClientKeygen`, параметр `Logger`, запись в `firebird.log`. Только Firebird 5.0 |
-| S10 | KeyChecker | библиотека с функцией `CheckKey` |
+| № | Сценарий | Что показывает | Версии Firebird |
+|---|---|---|---|
+| S1 | Подключение с ключом | `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback`, обычный запрос | 3.0, 4.0, 5.0 |
+| S2 | Ошибки ключа | нет ключа, неверное значение, неверное имя; разбор текста ошибки | 3.0, 4.0, 5.0 |
+| S3 | Несколько ключей и баз | два ключа в списке, две базы; замена ключей через `fbcrypt_init(nil)` | 3.0, 4.0, 5.0 |
+| S4 | Потоки и пул | `fbcrypt_callback(nil)` в каждом потоке; пул подключений | 3.0, 4.0, 5.0 |
+| S5 | Шифрование и мониторинг | `ALTER DATABASE ENCRYPT/DECRYPT`, смена ключа, процент из `MON$DATABASE` | 3.0, 4.0, 5.0 |
+| S6 | Резервная копия из программы | запуск `gbak`, ключ передаётся процессу | 4.0, 5.0 и отдельный вариант для 3.0 |
+| S7 | KeySource | библиотека с `MakeKeys` для приложения без исходного кода | 3.0, 4.0, 5.0 |
+| S8 | Хранение ключа | ключ из файла с правами доступа, из DPAPI (Windows), ввод пользователем, `Prompt` в embedded-режиме | 3.0, 4.0, 5.0 |
+| S9 | Индивидуальные ключи клиентов | `ClientKeygen`, параметр `Logger`, запись в `firebird.log` | только 5.0 |
+| S10 | KeyChecker | библиотека с функцией `CheckKey` | 3.0, 4.0, 5.0 |
+| S11 | Резервная копия через Services API | параметры `isc_spb_bkp_keyholder`, `isc_spb_bkp_keyname`, `isc_spb_bkp_crypt` | 4.0, 5.0 |
 
-## 5. Delphi
+Сценарий S6 зависит от версии:
+
+- **Firebird 4.0 и 5.0:** `gbak -KeyHolder KeyHolderStdin`, ключ записывается в stdin процесса.
+- **Firebird 3.0:** переключателя `-KeyHolder` нет. Программа создаёт временный файл ключа с правами только для текущего пользователя, запускает `gbak -KEYFILE <файл> -KEYNAME <имя>` и удаляет файл. Переключатель `-KEY` не используется: значение видно в списке процессов.
+
+## 6. Delphi
 
 Каталог `examples/delphi`. Минимальная версия: Delphi 10.4 Sydney. Проекты сохраняются в формате 10.4. Платформы: Win32 и Win64.
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| `FbCryptApi.pas` | — | Общий модуль: объявления `fbcrypt_*`, класс-обёртка, разбор hex-ключа. Позднее связывание (`LoadLibrary`). |
-| `console-firedac` | S1, S2, S3 | FireDAC использует ISC API: `fbcrypt_callback(nil)`. Путь к `fbclient.dll` берётся из `TFDPhysFBDriverLink.VendorLib` и передаётся в `fbcrypt_init`. |
-| `threads-firedac` | S4 | Рабочие потоки и пул FireDAC (`Pooled=True`). Показать ошибку без вызова в потоке и исправление. |
-| `vcl-firedac` | S1, S5, S8 | Форма: параметры подключения, шифрование, полоса прогресса. Аналог примера Lazarus. |
-| `console-ooapi` | S1, S3 | `Firebird.pas`, `IProvider`, `fbcrypt_callback(provider)`. |
-| `console-ibx` | S1 | IBX для Delphi (ISC API). Короткий пример. |
-| `gbak-stdin` | S6 | `CreateProcess` с каналом для stdin. За основу взять `gbakrun.pas` из исходников HQbird. Backup, restore, nbackup. |
-| `keysource` | S7 | Уже есть. Добавить README, проект для Win64, вариант со сборкой ключа во время работы. |
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| `FbCryptApi.pas` | — | A, B | P1 | Общий модуль: объявления `fbcrypt_*`, класс-обёртка, разбор hex-ключа. Позднее связывание (`LoadLibrary`). |
+| `console-firedac` | S1, S2, S3 | A | P1 | Путь к `fbclient.dll` берётся из `TFDPhysFBDriverLink.VendorLib` и передаётся в `fbcrypt_init`. |
+| `gbak-stdin` | S6 | — | P1 | `CreateProcess` с каналом для stdin. За основу взять `gbakrun.pas` из исходников HQbird. Backup, restore, nbackup. Вариант для 3.0. |
+| `threads-firedac` | S4 | A | P2 | Рабочие потоки и пул FireDAC (`Pooled=True`). Показать ошибку без вызова в потоке и исправление. |
+| `vcl-firedac` | S1, S5, S8 | A | P2 | Форма: параметры подключения, шифрование, смена ключа, полоса прогресса. Аналог примера Lazarus. |
+| `console-ooapi` | S1, S3, S11 | B | P2 | `Firebird.pas`, `IProvider`, `fbcrypt_callback(provider)`. Резервная копия через `IService`. |
+| `console-ibx` | S1 | A | P3 | IBX для Delphi. Короткий пример. |
 
-## 6. Pascal (Lazarus / Free Pascal)
+## 7. Pascal (Lazarus / Free Pascal)
 
 Каталог `examples/lazarus`. Версии: Lazarus 3.x, FPC 3.2.2. Платформы: Windows и Linux.
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| Исправить существующий IBX-пример | S1, S5 | Исправить `cdelc` на `cdecl`. Ключи 16, 24 и 32 байта. Собрать и проверить на Linux (`libfbcrypt.so`). Вынести `dbcrypthelper.pas` в общий каталог. |
-| `console-sqldb` | S1, S2, S3 | SQLdb (`TIBConnection`) использует ISC API: `fbcrypt_callback(nil)`. Без сторонних пакетов. |
-| `console-fbintf` | S1, S3 | Пакет `fbintf` (объектно-ориентированный API), `fbcrypt_callback(provider)`. |
-| `threads-sqldb` | S4 | `TThread`, отдельное подключение в каждом потоке. |
-| `console-zeos` | S1 | ZeosLib. Короткий пример. По запросу пользователей. |
-| `gbak-stdin` | S6 | `TProcess` с каналом `Input`. Windows и Linux. |
-| `keysource` | S7 | Уже есть. Добавить сборку `libKeySource.so` и README с каталогом установки на Linux. |
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| Исправить существующий IBX-пример | S1, S5 | A | P1 | Исправить `cdelc` на `cdecl`. Ключи 16, 24 и 32 байта. Собрать и проверить на Linux (`libfbcrypt.so`). Путь примера не менять. |
+| `console-sqldb` | S1, S2, S3 | A | P1 | SQLdb (`TIBConnection`). Без сторонних пакетов. |
+| `gbak-stdin` | S6 | — | P1 | `TProcess` с каналом `Input`. Windows и Linux. Вариант для 3.0. |
+| `threads-sqldb` | S4 | A | P2 | `TThread`, отдельное подключение в каждом потоке. |
+| `console-fbintf` | S1, S3 | B | P2 | Пакет `fbintf`, `fbcrypt_callback(provider)`. |
+| `console-zeos` | S1 | A | P3 | ZeosLib. Короткий пример. По запросу пользователей. |
 
-## 7. Java
+## 8. Java
 
 Каталог `examples/java`. Версии: Java 17, Maven, Jaybird 5 и 6.
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| `jdbc-basic` | S1, S2 | `dbCryptConfig` через `Properties` и через URL. Форма `base64:`. Экранирование `+` как `%2B` в URL. |
-| `jdbc-datasource` | S1, S4 | `FBSimpleDataSource` и пул HikariCP: ключ в свойствах источника данных. |
-| `spring-boot` | S1, S8 | Ключ из переменной окружения или хранилища секретов, а не из `application.properties`. |
-| `encrypt-monitor` | S5 | `ALTER DATABASE ENCRYPT`, опрос `MON$DATABASE`. |
-| `gbak-stdin` | S6 | `ProcessBuilder`, запись ключа в `OutputStream` процесса. |
-| `jdbc-native-keysource` | S1, S7 | Jaybird native (JNA) без кода для ключа: клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource`. См. решение 1. |
-| `jdbc-native-fbcrypt` | S1, S4 | Jaybird native (JNA) и `fbcrypt` через собственный интерфейс JNA. Сначала практическая проверка. См. решение 1. |
-| `server-setup` | — | README: `UnsafeClient = true`, `WireCrypt = Required`, аутентификация `Srp256`. Проверка, что без `WireCrypt` ключ виден в трафике. |
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| `server-setup` | — | D | P1 | README: `UnsafeClient = true`, `WireCrypt = Required`, аутентификация `Srp256`. Проверка, что без `WireCrypt` ключ виден в трафике. |
+| `jdbc-basic` | S1, S2 | D | P1 | `dbCryptConfig` через `Properties` и через URL. Формы `base64:` и `base64url:`. В URL использовать `base64url:` или заменять `+` на `%2B`. |
+| `gbak-stdin` | S6 | — | P1 | `ProcessBuilder`, запись ключа в `OutputStream` процесса. Вариант для 3.0. |
+| `jdbc-datasource` | S1, S4 | D | P2 | `FBSimpleDataSource` и пул HikariCP: ключ в свойствах источника данных. |
+| `spring-boot` | S1, S5, S8 | D | P2 | Ключ из переменной окружения или хранилища секретов, а не из `application.properties`. Шифрование и опрос `MON$DATABASE`. |
+| `services-backup` | S11 | D | P2 | `FBBackupManager` со свойством `dbCryptConfig`. Сначала проверка на этапе 1. |
+| `jdbc-native-keysource` | S1, S7 | C | P2 | Jaybird native (JNA). Java-код не меняется. |
+| `jdbc-native-fbcrypt` | S1, S4 | E | P3 | Собственный интерфейс JNA для `fbcrypt`. Для пула нужна обёртка `DataSource`, которая вызывает `fbcrypt_callback(null)` перед `getConnection`. Виртуальные потоки использовать нельзя. |
 
-Особенность Java: чистый Java-драйвер не выполняет защищённый обмен ключом.
-Каждый README должен начинаться с требований к серверу из `server-setup`.
+Каждый README начинается с требований к серверу из `server-setup`.
 
-## 8. .NET
+## 9. .NET
 
 Каталог `examples/dotnet`. Версии: .NET 8, `FirebirdSql.Data.FirebirdClient` (актуальная версия). Платформы: Windows и Linux.
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| `ado-basic` | S1, S2 | Параметр `cryptkey` в строке подключения. Значение: base64 от строки `<имя>:0x..,0x..,`. Показать код, который строит это значение. |
-| `ado-pool` | S1, S4 | Пул провайдера (`Pooling=true`). Ключ входит в строку подключения, отдельных вызовов в потоках нет. |
-| `efcore` | S1, S8 | EF Core. Ключ из переменной окружения, `user-secrets` или DPAPI, а не из `appsettings.json`. |
-| `encrypt-monitor` | S5 | `ALTER DATABASE ENCRYPT`, опрос `MON$DATABASE`. |
-| `gbak-stdin` | S6 | `Process` с `RedirectStandardInput`. |
-| `embedded-fbcrypt` | S1 | Исследование: режим `ServerType=Embedded` загружает нативную библиотеку. Проверить, работает ли `fbcrypt` через P/Invoke. |
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| `ado-basic` | S1, S2 | D | P1 | Параметр `crypt key` (синоним `cryptkey`) в строке подключения: base64 от строки `<имя>:0x..,0x..,`. Свойство `FbConnectionStringBuilder.CryptKey` типа `byte[]`. Показать код, который строит значение. |
+| `gbak-stdin` | S6 | — | P2 | `Process` с `RedirectStandardInput`. Вариант для 3.0. |
+| `ado-pool` | S1, S4 | D | P2 | Пул провайдера (`Pooling=true`). Ключ входит в строку подключения, отдельных вызовов в потоках нет. |
+| `efcore` | S1, S5, S8 | D | P2 | EF Core. Ключ из переменной окружения, `user-secrets` или DPAPI, а не из `appsettings.json`. |
+| `embedded-fbcrypt` | S1 | E | P3 | Режим `ServerType=Embedded`, `fbcrypt` через P/Invoke. Только синхронный `Open()`: `await` может сменить поток. |
 
-Особенность .NET: провайдер отправляет ключ статическим значением, как Jaybird.
-Требования к серверу те же: `UnsafeClient = true` и `WireCrypt = Required`.
+Требования к серверу такие же, как для Java: `UnsafeClient = true` и `WireCrypt = Required`.
 
-## 9. Python
+## 10. Python
 
 Каталог `examples/python`. Версии: Python 3.11 и новее, пакет `firebird-driver` (актуальная версия). Платформы: Windows и Linux.
 
-Драйвер `firebird-driver` работает через `fbclient` и объектно-ориентированный API.
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| `driver-keysource` | S1, S7 | C | P1 | Клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource`. Основной способ. |
+| `driver-callback` | S1, S2, S5 | D | P2 | Параметр `crypt_callback` функции `connect`. Класс на основе `iCryptKeyCallbackImpl` возвращает строку `<имя>:0x..,0x..,`. |
+| `gbak-stdin` | S6 | — | P2 | `subprocess.run(..., input=...)`. Вариант для 3.0. |
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| `driver-keysource` | S1, S7 | Без кода для ключа: клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource`. Защищённый обмен ключом сохраняется. Основной способ. |
-| `driver-callback` | S1, S2 | Параметр `crypt_callback` функции `connect` (проверено по исходникам драйвера). Класс на основе `iCryptKeyCallbackImpl` возвращает строку `<имя>:0x..,0x..,`. Нужен `UnsafeClient = true` на сервере. |
-| `driver-fbcrypt` | S1, S4 | Исследование: `fbcrypt` через `ctypes`. Драйвер создаёт `IProvider` внутри `connect`, поэтому `fbcrypt_callback(nil)` может не подойти. Найти способ передать обратный вызов `fbcrypt` в `crypt_callback`. |
-| `encrypt-monitor` | S5 | `ALTER DATABASE ENCRYPT`, опрос `MON$DATABASE`. |
-| `gbak-stdin` | S6 | `subprocess.run(..., input=...)`. |
+Другие драйверы (только абзац в README, без примеров):
 
-Другие драйверы: `fdb` (устарел) и `firebirdsql` (чистый Python). Проверить поддержку ключа и записать результат в README. Отдельных примеров для них нет.
+- `fdb` (устарел): параметра для ключа нет. Драйвер использует ISC API, поэтому возможен способ E через `ctypes`.
+- `firebirdsql` (чистый Python): в `wireprotocol.py` операция `op_crypt_key_callback` только объявлена. Считаем, что ключ не поддержан; подтвердить на этапе 1.
 
-## 10. PHP
+## 11. PHP
 
 Каталог `examples/php`. Версии: PHP 8.2 и новее, расширения `pdo_firebird` и `php-firebird` (`ibase_*`). Платформы: Windows и Linux.
 
-Оба расширения работают через `fbclient` (ISC API). В PHP нет параметра подключения для ключа.
+Оба расширения вызывают `isc_attach_database`. Параметра подключения для ключа в них нет (проверено по исходникам).
 
-| Пример | Сценарии | Замечания |
-|---|---|---|
-| `pdo-keysource` | S1, S7 | Без кода для ключа: клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource` на веб-сервере. Основной способ. |
-| `pdo-ffi-fbcrypt` | S1, S2 | Исследование: расширение FFI загружает `fbcrypt`. Вызовы `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback(NULL)` перед `new PDO`. Проверить: тот же экземпляр `fbclient`, тот же поток, постоянные подключения. |
-| `ibase-keysource` | S1 | Тот же способ для `ibase_connect`. Короткий пример. |
-| `gbak-stdin` | S6 | `proc_open` с каналом для stdin. |
+| Пример | Сценарии | Способ | Приоритет | Замечания |
+|---|---|---|---|---|
+| `pdo-keysource` | S1, S7 | C | P1 | `KeyHolderPlugin = KeyHolder` и библиотека `KeySource` на веб-сервере. Основной способ. Тот же способ для `ibase_connect` описать в README. |
+| `pdo-ffi-fbcrypt` | S1, S2 | E | P3 | Расширение FFI загружает `fbcrypt`. Вызовы `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback(NULL)` перед `new PDO`. Проверить постоянные подключения и сборки ZTS. |
+| `gbak-stdin` | S6 | — | P3 | `proc_open` с каналом для stdin. |
 
 README должен описать, где хранить ключ на веб-сервере и какие права доступа нужны для `php-fpm` и Apache.
 
-## 11. ClientKeygen и KeyChecker
+## 12. ClientKeygen и KeyChecker
 
-Решение 3: обе возможности публикуются в руководстве и получают примеры.
+Обе возможности публикуются в руководстве и получают примеры (решение 3).
 
-| Задача | Сценарии | Замечания |
-|---|---|---|
-| Расширить раздел «Индивидуальные ключи клиентов» в `doc/ru/_fbcrypt-keygen.adoc` | S9 | Полный порядок действий: создание ключей, выдача клиентам, включение `Logger`, пример строки в `firebird.log`, замена ключа клиента. Только Firebird 5.0. |
-| Расширить раздел `KeyChecker` в `doc/ru/_fbcrypt-config.adoc` | S10 | Когда вызывается `CheckKey` (ключи из `KeyHolder.conf`, из `KeySource`, от клиента, в `KeyHolderStdin`). Что функция может делать с ключом: уточнить по исходникам. |
-| `examples/clientkeygen` | S9 | Скрипты для Windows и Linux: создать 3 клиентских ключа, подключиться с каждым, показать записи журнала. |
-| `examples/keychecker` | S10 | Библиотека на C++, Delphi и Lazarus. Пример: запись имени ключа и имени программы в журнал. Сборка для Windows и Linux. |
+| Задача | Сценарии | Приоритет | Замечания |
+|---|---|---|---|
+| Расширить раздел «Индивидуальные ключи клиентов» в `doc/ru/_fbcrypt-keygen.adoc` | S9 | P2 | Полный порядок действий: создание ключей, выдача клиентам, включение `Logger`, пример строки в `firebird.log`, замена ключа клиента. |
+| Расширить раздел `KeyChecker` в `doc/ru/_fbcrypt-config.adoc` | S10 | P2 | См. факты ниже. |
+| `examples/clientkeygen` | S9 | P2 | Скрипты для Windows и Linux: создать 3 клиентских ключа, подключиться с каждым, показать записи журнала. |
+| `examples/keychecker/<язык>` | S10 | P3 | Библиотека на C++, Delphi и Lazarus. Пример: запись имени ключа и имени программы в журнал. Сборка для Windows и Linux. |
+
+Факты о `CheckKey` из исходников плагина:
+
+- Функция ничего не возвращает. Отклонить ключ она не может.
+- Она получает указатель на значение ключа, доступный для записи. Она может изменить значение на месте. Длину изменить нельзя.
+- Плагин вызывает её для ключей из `KeyHolder.conf`, из `KeySource`, от клиента и в `KeyHolderStdin`.
 
 Перед публикацией проверить, что утилита `ClientKeygen` входит в пакет плагина для Firebird 5.0.
 
-## 12. Этапы
+## 13. Этапы
 
-| Этап | Содержание | Оценка |
-|---|---|---|
-| 0 | `examples/common`, исправление IBX-примера, README для существующих примеров | 2 дня |
-| 1 | Консольные примеры S1–S3: Delphi FireDAC, Lazarus SQLdb, Java `jdbc-basic` | 4 дня |
-| 2 | S6 (gbak из программы) для Delphi, Lazarus, Java; `keysource` для Linux | 3 дня |
-| 3 | S4 (потоки и пул) для Delphi, Lazarus, Java | 3 дня |
-| 4 | GUI Delphi (VCL), `spring-boot`, S5 и S8 | 4 дня |
-| 5 | Объектно-ориентированный API (Delphi, fbintf), `jdbc-native-*`, ZeosLib, IBX Delphi | 4 дня |
-| 6 | .NET: `ado-basic`, `ado-pool`, `efcore`, `encrypt-monitor`, `gbak-stdin` | 3 дня |
-| 7 | Python и PHP: способ с `KeySource`, `driver-callback`, `gbak-stdin`; исследования `ctypes` и FFI | 4 дня |
-| 8 | `ClientKeygen` и `KeyChecker`: разделы руководства, примеры S9 и S10 | 3 дня |
-| 9 | Сборка в CI, архивы в Releases, ссылки из руководства | 2 дня |
+| Этап | Содержание | Приоритет | Оценка |
+|---|---|---|---|
+| 0 | `examples/common`, формат `run-test`, исправление IBX-примера, README для существующих примеров | P1 | 3 дня |
+| 1 | Практические проверки способа E и сценария S11 (раздел 16, вопрос 2). Результат: строка «работает / не работает» в разделе 3 | P1 | 3 дня |
+| 2 | S1–S3: Delphi `console-firedac`, Lazarus `console-sqldb`, Java `jdbc-basic` и `server-setup`, .NET `ado-basic` | P1 | 5 дней |
+| 3 | S6 для Delphi, Lazarus, Java (с вариантом для 3.0); `keysource` для Linux; Python `driver-keysource`, PHP `pdo-keysource` | P1 | 4 дня |
+| 4 | S4 (потоки и пул): Delphi, Lazarus, Java, .NET | P2 | 3 дня |
+| 5 | Delphi `vcl-firedac`, Java `spring-boot`, .NET `efcore`, Python `driver-callback`; S6 для .NET и Python | P2 | 5 дней |
+| 6 | Объектно-ориентированный API (Delphi, `fbintf`), S11, `jdbc-native-keysource` | P2 | 4 дня |
+| 7 | `ClientKeygen` и `KeyChecker`: разделы руководства, примеры S9 и S10 | P2 | 3 дня |
+| 8 | Глава «Примеры» в руководстве, обновление `README.md`, английские README | P2 | 3 дня |
+| 9 | Примеры P3, которые подтвердил этап 1 | P3 | 4 дня |
+| 10 | Сборка в CI, архивы в Releases | P2 | 2 дня |
 
-Этапы 0–2 закрывают самые частые вопросы поддержки. Их стоит выпустить первыми.
-Этап 9 зависит от тестовой лицензии (раздел 14). До её появления CI только собирает примеры, запуск выполняется вручную.
+Оценки грубые: один разработчик, без ожидания ответов. Всего 39 дней, из них P1 — 15 дней.
 
-## 13. Проверка
+Этап 1 идёт до написания кода: его результат меняет состав примеров.
+Этап 10 зависит от тестовой лицензии. До её появления CI только собирает примеры, а скрипты `run-test` запускаются вручную.
 
-Матрица: Firebird 3.0, 4.0, 5.0 и HQbird; Windows x86 и x64; Linux x64 (Lazarus, Java, .NET, Python, PHP).
+## 14. Проверка
+
+Полная матрица (сценарии S1, S2 и S6): Firebird 3.0, 4.0, 5.0 и HQbird 5; Windows x64 и Linux x64.
+
+Сокращённая матрица (остальные сценарии): Firebird 5.0, Windows x64 и Linux x64. Win32 проверяется только для Delphi `console-firedac`.
 
 Критерии готовности примера:
 
 1. Собирается по README на чистой машине.
-2. Сценарий проходит на всех версиях Firebird из матрицы (S9 — только на 5.0).
+2. Скрипт `run-test` проходит на своей матрице.
 3. Без ключа подключение завершается ожидаемой ошибкой.
 4. В коде и в истории git нет рабочих ключей.
-5. На пример есть ссылка из руководства (`doc/ru`).
+5. README называет способ передачи ключа (A–E) и требования к серверу.
+6. На пример есть ссылка из руководства (`doc/ru`).
 
-## 14. Решения и открытые вопросы
+## 15. Риски
+
+| Риск | Что делать |
+|---|---|
+| Клиентская библиотека `fbcrypt` и серверные плагины из разных пакетов не работают вместе | README называет пакет и версию. Скрипт `setup` проверяет наличие файлов. |
+| Разная разрядность приложения и `fbclient` / `fbcrypt` | Отдельная строка в README и понятный текст ошибки при `fbcrypt_init = -1`. |
+| Срок пробной лицензии заканчивается | Решить вопрос тестовой лицензии до этапа 10. |
+| Способ D читают как безопасный | Каждый README для способа D начинается с предупреждения и требований `WireCrypt = Required`. |
+| Способ E не работает в каком-то драйвере | Пример заменяется абзацем в README со способом C. |
+| OpenSSL на Linux: плагины 3.0 и 4.0 требуют `libcrypto.so.1.1` | Скрипт `setup` проверяет библиотеку и показывает имя пакета. |
+
+## 16. Решения и открытые вопросы
 
 Решения от 23.11.2026:
 
-1. **Jaybird native.** Свойство `dbCryptConfig` в режимах native и embedded не работает. Руководство Jaybird 6 (раздел 9.4) говорит, что обратный вызов поддержан только в чистом Java-протоколе. В исходниках Jaybird нет вызова `fb_database_crypt_callback`. Остаются два способа:
-   - A. Клиентский плагин `KeyHolder` и библиотека `KeySource`. Java-код не меняется.
-   - B. Библиотека `fbcrypt` через собственный интерфейс JNA: `fbcrypt_init` с путём к тому же `fbclient`, `fbcrypt_key`, затем `fbcrypt_callback(null)` в потоке, который открывает подключение. Для пула нужна обёртка `DataSource`, которая делает этот вызов перед `getConnection`. Виртуальные потоки использовать нельзя. Способ B на практике не проверен.
+1. **Jaybird native.** Свойство `dbCryptConfig` в режимах native и embedded не работает (руководство Jaybird 6, раздел 9.4). Используются способы C и E.
 2. **Лицензия для CI.** Отложено. Постоянную тестовую лицензию добавим позже.
-3. **`ClientKeygen` и `KeyChecker`.** Публикуем. Работы описаны в разделе 11.
+3. **`ClientKeygen` и `KeyChecker`.** Публикуем (раздел 12).
 4. **Минимальная версия Delphi.** Delphi 10.4.
-5. **.NET, Python, PHP.** Примеры нужны. Они описаны в разделах 8–10.
+5. **.NET, Python, PHP.** Примеры нужны (разделы 9–11).
 
 Открытые вопросы:
 
-1. Тестовая лицензия для CI (отложено, см. решение 2).
-2. Практические проверки до начала кода: `jdbc-native-fbcrypt` (Java), `embedded-fbcrypt` (.NET), `driver-fbcrypt` (Python), `pdo-ffi-fbcrypt` (PHP). Если способ не работает, пример заменяется абзацем в README.
-3. Поддержка ключа шифрования в драйверах `fdb` и `firebirdsql` (Python).
+1. Тестовая лицензия для CI.
+2. Практические проверки этапа 1: способ E для Jaybird native, .NET embedded, PHP FFI; сценарий S11 через `fbcrypt` и через Jaybird `FBBackupManager`; драйвер `firebirdsql`.
+3. Предложение разработчикам плагина: добавить в `fbcrypt` функцию, которая возвращает указатель на `ICryptKeyCallback`. Тогда Python `firebird-driver` (`crypt_callback`) и другие драйверы на объектно-ориентированном API получат защищённый обмен ключом без способа D.
+4. Нужны ли английские README раньше этапа 8.
+
+## 17. История изменений
+
+- Редакция 1: первый план (Delphi, Lazarus, Java).
+- Редакция 2: решения по вопросам, добавлены .NET, Python, PHP, `ClientKeygen`, `KeyChecker`.
+- Редакция 3 (ревью): таблица способов A–E; вариант S6 для Firebird 3.0; сценарий S11; приоритеты; проверки перенесены на этап 1; сохранены существующие пути; `run-test`; сокращённая матрица; риски; факты о `CheckKey` и драйверах проверены по исходникам.
