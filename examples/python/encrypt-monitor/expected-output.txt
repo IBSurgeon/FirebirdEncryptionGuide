@@ -1,0 +1,5 @@
+State at start: not encrypted
+Encrypt with key Red: encrypted
+Read data: Hello from work
+Change key to Green: encrypted
+Decrypt: not encrypted

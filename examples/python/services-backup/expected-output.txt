@@ -1,0 +1,6 @@
+Backup without keyholder: error, as expected
+Backup with keyholder: OK
+Backup file is encrypted: yes
+Restore with keyholder: OK
+Restored database: Hello from crypt_red
+Restored database is encrypted: yes
