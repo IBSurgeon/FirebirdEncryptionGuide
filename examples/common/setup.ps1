@@ -9,7 +9,8 @@
 
     crypt_red    encrypted with the key Red
     crypt_green  encrypted with the key Green
-    plain        not encrypted (for the encrypt / decrypt examples)
+    plain        not encrypted
+    work         not encrypted; the examples encrypt and decrypt it
 
   After the setup the server has NO keys. Each connection must send the key.
 
@@ -87,7 +88,8 @@ $aliases = @(
     "",
     "crypt_red = $dbDir\crypt_red.fdb",
     "crypt_green = $dbDir\crypt_green.fdb",
-    "plain = $dbDir\plain.fdb"
+    "plain = $dbDir\plain.fdb",
+    "work = $dbDir\work.fdb"
 )
 Add-Content -Path (Join-Path $server "databases.conf") -Value $aliases -Encoding ASCII
 
@@ -172,6 +174,7 @@ Step "Create the databases"
 New-TestDb "crypt_red" "Red"
 New-TestDb "crypt_green" "Green"
 New-TestDb "plain" ""
+New-TestDb "work" ""
 
 # The server keeps no keys. UnsafeClient lets Java, .NET and Python send the key as a static value.
 Set-Content -Path (Join-Path $server "plugins\KeyHolder.conf") -Value @("UnsafeClient = true") -Encoding ASCII
@@ -219,5 +222,5 @@ Set-Content -Path $envFile -Value $envLines -Encoding ASCII
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host ""
-Write-Host "Done. Databases: localhost/$Port`:crypt_red, crypt_green, plain"
+Write-Host "Done. Databases: localhost/$Port`:crypt_red, crypt_green, plain, work"
 Write-Host "Next step:  . `"$envFile`""
