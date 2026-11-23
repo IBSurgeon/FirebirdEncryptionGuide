@@ -1,0 +1,136 @@
+[[fbcrypt-config]]
+= Справочник параметров
+
+В этой главе собраны все параметры и файлы, которые использует плагин шифрования IBSurgeon.
+
+== Файлы плагина
+
+[cols="2,2,3", options="header"]
+|===
+| Файл (Windows / Linux) | Где находится | Назначение
+| `dbcrypt.dll` / `libDbCrypt.so` | `plugins` | Плагин шифрования страниц (`DbCrypt`).
+| `DbCrypt.conf` | `plugins` | Лицензия и параметры плагина `DbCrypt`.
+| `keyholder.dll` / `libKeyHolder.so` | `plugins` | Плагин управления ключами (`KeyHolder`).
+| `KeyHolder.conf` | `plugins` | Параметры плагина `KeyHolder`. Может содержать ключи (только для тестов).
+| `keyholderstdin.dll` / `libKeyHolderStdin.so` | `plugins` клиента | Плагин, который читает ключ из входного потока утилиты.
+| `fbcrypt.dll` / `libfbcrypt.so` | рядом с приложением / `lib` | Библиотека для передачи ключа из приложения.
+| `KeySource.dll` / `libKeySource.so` | рядом с `fbclient` / `lib` | Ваша библиотека с ключами (необязательно).
+| `libcrypto-*.dll` / `libcrypto.so.*` | рядом с `fbclient` / системная | Библиотека OpenSSL.
+|===
+
+== firebird.conf и databases.conf
+
+[cols="2,4", options="header"]
+|===
+| Параметр | Описание
+| `KeyHolderPlugin`
+| Список плагинов управления ключами. Для плагина IBSurgeon: `KeyHolderPlugin = KeyHolder`. Параметр можно задать для всего сервера (`firebird.conf`) или для одной базы данных (`databases.conf`). Параметр нужен и на клиенте, если используется библиотека `KeySource`.
+
+| `WireCrypt`
+| Шифрование сетевого протокола. Не связано с шифрованием базы данных, но обязательно (`Required`), если ключ передают Java- или .NET-приложения.
+|===
+
+[[fbcrypt-config-dbcrypt]]
+== DbCrypt.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Параметр | Тип | Описание
+| `License` | строка | Лицензионный ключ. Обязателен.
+| `RegName` | строка | Имя владельца лицензии. Обязателен.
+| `RegEmail` | строка | Адрес владельца лицензии. Обязателен.
+| `ExpireDate` | число | Дата окончания пробной лицензии (время Unix в секундах). В постоянной лицензии отсутствует.
+| `Logger` | логический | Если `true`, плагин записывает в `firebird.log` подключения с индивидуальными ключами клиентов (см. <<fbcrypt-keygen-clientkeys>>). По умолчанию `false`.
+|===
+
+Значение `License` связано со значениями `RegName`, `RegEmail` и `ExpireDate`. Не изменяйте эти параметры: лицензия станет недействительной.
+
+Пример:
+
+[source,conf]
+----
+License = 0123456789abcdef0123456789abcdef
+RegName = My Company
+RegEmail = admin@example.com
+----
+
+[[fbcrypt-config-keyholder]]
+== KeyHolder.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Параметр | Тип | Описание
+| `Key` | строка | Именованный ключ: `Key = <имя> <значение>`. Параметр можно повторять. Формат значения описан в <<fbcrypt-keygen-format>>.
+| `Password` | строка | Именованный ключ, заданный парольной фразой: `Password = <имя> <фраза>`. Параметр можно повторять. См. <<fbcrypt-keygen-password>>.
+| `UnsafeClient` | логический | Если `true`, плагин принимает ключи, которые клиент отправил без защищённого обмена (Jaybird, Firebird .NET). По умолчанию `false`. См. <<fbcrypt-client-unsafe>>.
+| `Prompt` | строка | Текст приглашения для ввода ключа пользователем в embedded-режиме. См. <<fbcrypt-client-prompt>>.
+|===
+
+Пример файла для тестового сервера:
+
+[source,conf]
+----
+Key = Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Password = Blue my long secret phrase
+----
+
+Пример файла для рабочего сервера, к которому подключаются Java-приложения:
+
+[source,conf]
+----
+UnsafeClient = true
+----
+
+[WARNING]
+====
+В рабочей системе файл `KeyHolder.conf` на сервере не должен содержать строк `Key` и `Password`. Иначе любой, кто получил доступ к серверу, получит и ключ.
+====
+
+[[fbcrypt-config-openssl]]
+== Библиотека OpenSSL
+
+Плагины и библиотека `fbcrypt` загружают библиотеку `libcrypto` из состава OpenSSL. Имя библиотеки зависит от версии пакета плагина:
+
+[cols="1,2,2", options="header"]
+|===
+| Платформа | OpenSSL 3 | OpenSSL 1.1
+| Windows 64 бит | `libcrypto-3-x64.dll` | `libcrypto-1_1-x64.dll`
+| Windows 32 бит | `libcrypto-3.dll` | `libcrypto-1_1.dll`
+| Linux | `libcrypto.so.3` | `libcrypto.so.1.1`
+|===
+
+Плагины из состава HQbird 5 сначала ищут OpenSSL 3, затем OpenSSL 1.1. Плагины для Firebird 3.0 и 4.0 требуют OpenSSL 1.1.
+
+На Windows библиотека входит в пакет плагина. На Linux используется системная библиотека; при необходимости установите пакет совместимости (см. <<fbcrypt-install>>).
+
+== Дополнительные библиотеки
+
+Плагин `KeyHolder` при запуске ищет в каталоге библиотек Firebird две необязательные библиотеки.
+
+[cols="1,2,4", options="header"]
+|===
+| Библиотека | Функция | Назначение
+| `KeySource` | `MakeKeys` | Возвращает список ключей. См. <<fbcrypt-keysource>>.
+| `KeyChecker` | `CheckKey` | Вызывается для каждого ключа, который плагин загрузил или получил от клиента.
+|===
+
+Функция `CheckKey` имеет следующий вид:
+
+[source,cpp]
+----
+void CheckKey(const char* keyName, const char* exeName, unsigned keyLen, void* keyValue);
+----
+
+[cols="1,4", options="header"]
+|===
+| Параметр | Значение
+| `keyName` | имя ключа
+| `exeName` | полный путь к исполняемому файлу текущего процесса
+| `keyLen` | длина ключа в байтах
+| `keyValue` | указатель на значение ключа
+|===
+
+[NOTE]
+====
+Библиотека `KeyChecker` -- точка расширения для особых схем проверки ключей. В обычной установке она не нужна. Перед использованием проконсультируйтесь с поддержкой IBSurgeon.
+====

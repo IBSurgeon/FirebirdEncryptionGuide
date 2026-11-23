@@ -1,0 +1,149 @@
+[[fbcrypt-troubleshooting]]
+= Диагностика ошибок
+
+В таблицах ниже собраны сообщения плагина шифрования, их причины и способы исправления.
+
+== Ошибки ключа
+
+[cols="3,3,3", options="header"]
+|===
+| Сообщение | Причина | Что делать
+| `Invalid crypt key <имя>` +
+`Key not set (missing KeyHolder plugin in firebird.conf / databases.conf)`
+| Параметр `KeyHolderPlugin` не задан для этой базы данных.
+| Добавьте `KeyHolderPlugin = KeyHolder` в `firebird.conf` или в секцию базы данных в `databases.conf`. При настройке в `databases.conf` подключайтесь по псевдониму.
+
+| `Invalid crypt key <имя>` +
+`Key not set`
+| Подключение не передало ключ, и на сервере его нет.
+| Передайте ключ из клиента (`fbcrypt`, `KeySource`, `KeyHolderStdin`) или запишите его в `KeyHolder.conf` для теста.
+
+| `Key not set (loading keys from KeyHolder.conf)`
+| В файле `KeyHolder.conf` есть ключи, но ключа с нужным именем среди них нет или его значение неверно.
+| Проверьте имя ключа в заголовке (`gstat -h`) и в файле `KeyHolder.conf`.
+
+| `Unknown key name <имя> - key can't be found in KeyHolder.conf`
+| В файле `KeyHolder.conf` нет ключа с таким именем.
+| Добавьте ключ или исправьте имя.
+
+| `Unknown key name <имя> - key can't be found in external source`
+| Библиотека `KeySource` не вернула ключ с таким именем.
+| Проверьте текст, который возвращает функция `MakeKeys`.
+
+| `Missing database encryption key for your attachment`
+| База данных зашифрована, а это подключение не передало ключ. Другие подключения с ключом не помогают: ключ нужен каждому подключению.
+| Передайте ключ из этого клиента. Для утилит используйте `-KeyHolder`.
+
+| `Invalid key length N bytes, need 16, 24, 32 or 64`
+| Неверная длина ключа.
+| Используйте ключ длиной 16, 24 или 32 байта. Проверьте, что запись ключа не содержит пробелов и лишних символов.
+
+| `Key format error`
+| Значение ключа не соответствует формату `0x..,0x..,`.
+| См. <<fbcrypt-keygen-format>>.
+
+| `Bad key or password in config file` +
+`Bad key or password passed from external source`
+| В строке `Key=` или `Password=` нет пробела между именем и значением.
+| Исправьте строку: `Key=<имя> <значение>`.
+
+| `No input`
+| Плагин `KeyHolderStdin` получил пустой входной поток.
+| Передайте ключ: `echo Key=... \| утилита ...` или `утилита ... < файл`.
+|===
+
+== Ошибки обмена ключом
+
+[cols="3,3,3", options="header"]
+|===
+| Сообщение | Причина | Что делать
+| `RSA_private_decrypt failed` +
+`Too long reply from callback >1Mb`
+| Клиент отправил ключ без защищённого обмена (Jaybird, Firebird .NET), а параметр `UnsafeClient` не включён. Другая причина: библиотеки клиента и сервера из разных пакетов плагина.
+| Включите `UnsafeClient = true` (см. <<fbcrypt-client-unsafe>>) или используйте `fbcrypt` и плагины из одного пакета.
+
+| Приложение с `fbcrypt` получает `Missing database encryption key for your attachment`
+| Обратный вызов зарегистрирован в другом потоке или в другом экземпляре `fbclient.dll`.
+| Вызывайте `fbcrypt_callback(nil)` в потоке, который подключается. Передавайте в `fbcrypt_init` путь к той же библиотеке, которую загружает компонент доступа.
+
+| `fbcrypt_init` возвращает `-1`
+| Клиентская библиотека не найдена, имеет другую разрядность или не хватает зависимых dll. Либо `fbcrypt_init` уже вызывали с другим путём.
+| Проверьте путь, разрядность и наличие dll из клиентского пакета.
+
+| `fbcrypt_callback` возвращает `-10`
+| Не было успешного вызова `fbcrypt_init`.
+| Сначала вызовите `fbcrypt_init`.
+
+| `fbcrypt_callback` возвращает `-5`
+| Загружен `fbclient` версии 2.5 или старше.
+| Используйте `fbclient` из клиентского пакета плагина.
+|===
+
+== Ошибки лицензии
+
+[cols="3,3,3", options="header"]
+|===
+| Сообщение | Причина | Что делать
+| `No crypt license info found`
+| Нет файла `plugins/DbCrypt.conf` или в нём нет параметра `License`.
+| Скопируйте файл лицензии в каталог `plugins`.
+
+| `In crypt license info RegName not found` +
+`In crypt license info RegEmail not found`
+| В файле лицензии нет обязательного параметра.
+| Используйте файл лицензии без изменений.
+
+| `License is incorrect`
+| Параметры лицензии изменены или файл повреждён.
+| Восстановите исходный файл лицензии.
+
+| `Trial period expired`
+| Срок пробной лицензии закончился.
+| Установите постоянную лицензию.
+|===
+
+Эти же ошибки появляются в утилите `gbak`, если рядом с ней нет файла `plugins/DbCrypt.conf`.
+
+== Ошибки окружения
+
+[cols="3,3,3", options="header"]
+|===
+| Сообщение | Причина | Что делать
+| `Library libcrypto... failed to load`
+| Не найдена библиотека OpenSSL нужной версии.
+| См. <<fbcrypt-config-openssl>>. На Linux установите пакет с `libcrypto.so.1.1` для Firebird 3.0 и 4.0.
+
+| `Entrypoint ... not found`
+| Найдена библиотека OpenSSL неподходящей версии.
+| Используйте `libcrypto` из пакета плагина.
+
+| `Key holder parameter missing but backup file is encrypted` (gbak)
+| Файл резервной копии зашифрован, а переключатель `-KEYHOLDER` не указан.
+| Добавьте `-KeyHolder KeyHolderStdin` и передайте ключ.
+
+| `Unknown crypt plugin name - use -CRYPT switch` (gbak)
+| Утилита не смогла определить имя плагина шифрования.
+| Добавьте `-CRYPT DbCrypt`.
+
+| `Crypt plugin DBCRYPT failed to load` (Linux)
+| Имя плагина в операторе `ALTER DATABASE ENCRYPT` записано без кавычек и преобразовано в верхний регистр.
+| Пишите имя в двойных кавычках: `"DbCrypt"`.
+
+| `Key holder plugin <имя> failed to load`
+| Плагин, указанный в `KeyHolderPlugin` или в переключателе `-KEYHOLDER`, не найден в каталоге `plugins`.
+| Проверьте имя плагина и наличие файла. Для утилит нужен каталог `plugins` рядом с утилитой.
+|===
+
+== Частые вопросы
+
+*База данных зашифрована, но подключиться можно без ключа.* +
+Ключ есть на сервере: в файле `plugins/KeyHolder.conf` или в библиотеке `KeySource`. Удалите его с сервера и перезапустите Firebird.
+
+*Строка `crypt thread not complete` не исчезает.* +
+Поток шифрования работает, только пока к базе данных есть подключения. Держите подключение открытым. См. <<fbcrypt-monitoring>>.
+
+*Файл резервной копии не зашифрован.* +
+Утилита `gbak` запущена без переключателя `-KEYHOLDER`. См. <<fbcrypt-utils-gbak>>.
+
+*Ключ потерян.* +
+Восстановить данные без ключа нельзя. Храните копию ключа отдельно от сервера и от резервных копий.
