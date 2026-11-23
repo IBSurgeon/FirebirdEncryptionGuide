@@ -1,6 +1,6 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 23.11.2026. Редакция 3 (после ревью). Лицензия для CI отложена.
+Дата: 23.11.2026. Редакция 4 (исполнение начато, состояние в разделе 17). Лицензия для CI отложена.
 
 ## 1. Цель
 
@@ -26,16 +26,18 @@
 | Способ | Защищённый обмен | Где работает | Состояние |
 |---|---|---|---|
 | A. `fbcrypt` + `fbcrypt_callback(nil)` | да | Драйверы на ISC API: FireDAC, IBX, SQLdb, ZeosLib | работает в существующем примере (Lazarus + IBX) |
-| B. `fbcrypt` + `fbcrypt_callback(provider)` | да | Код на объектно-ориентированном API: `Firebird.pas`, `fbintf` | проверено по исходникам |
-| C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | проверено по исходникам |
-| D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | проверено по исходникам драйверов |
-| E. `fbcrypt` из управляемого или скриптового кода | да | Jaybird native (JNA), .NET embedded (P/Invoke), PHP (FFI), Python `fdb` (`ctypes`) | не проверено на практике |
+| B. `fbcrypt` + `fbcrypt_callback(provider)` | да | Код на объектно-ориентированном API: `Firebird.pas`, `fbintf`, Python `firebird-driver` | работает (Python, Firebird 4.0) |
+| C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | работает (Python, Firebird 4.0) |
+| D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | работает (.NET и Python, Firebird 4.0); Jaybird не проверен |
+| E. `fbcrypt` из управляемого или скриптового кода | да | Jaybird native (JNA), PHP (FFI), Python `fdb` (`ctypes`) | не проверено на практике; .NET embedded не работает |
 
 Пояснения к способу E:
 
 - Все четыре драйвера вызывают `isc_attach_database`. Библиотека `fbclient` берёт обратный вызов из переменной потока только в функциях ISC API. Поэтому `fbcrypt_callback(nil)` должен работать.
 - Условия: вызов в том же потоке ОС, что и подключение; тот же экземпляр `fbclient`, путь к которому передан в `fbcrypt_init`.
-- Python `firebird-driver` использует объектно-ориентированный API и создаёт `IProvider` внутри `connect`. Для него `fbcrypt_callback(nil)` не работает. Остаются способы C и D.
+- Python `firebird-driver` использует объектно-ориентированный API и создаёт `IProvider` внутри `connect`. Для него `fbcrypt_callback(nil)` не работает (проверено). Работает способ B: пример заменяет метод `iProvider.set_dbcrypt_callback` и вызывает `fbcrypt_callback(provider)`.
+- .NET: в режиме `ServerType=Embedded` провайдер 10.3.4 не передаёт пароль и не подключается к удалённому серверу (`unavailable database`). Способ E для .NET исключён.
+- При `UnsafeClient = false` способы B и C работают, способ D завершается ошибкой `Too long reply from callback >1Mb` (проверено).
 
 ## 4. Общие правила для всех примеров
 
@@ -126,7 +128,7 @@
 | `gbak-stdin` | S6 | — | P2 | `Process` с `RedirectStandardInput`. Вариант для 3.0. |
 | `ado-pool` | S1, S4 | D | P2 | Пул провайдера (`Pooling=true`). Ключ входит в строку подключения, отдельных вызовов в потоках нет. |
 | `efcore` | S1, S5, S8 | D | P2 | EF Core. Ключ из переменной окружения, `user-secrets` или DPAPI, а не из `appsettings.json`. |
-| `embedded-fbcrypt` | S1 | E | P3 | Режим `ServerType=Embedded`, `fbcrypt` через P/Invoke. Только синхронный `Open()`: `await` может сменить поток. |
+| ~~`embedded-fbcrypt`~~ | S1 | E | — | Исключён: проверка на этапе 1 показала, что способ не работает (раздел 3). |
 
 Требования к серверу такие же, как для Java: `UnsafeClient = true` и `WireCrypt = Required`.
 
@@ -136,8 +138,9 @@
 
 | Пример | Сценарии | Способ | Приоритет | Замечания |
 |---|---|---|---|---|
-| `driver-keysource` | S1, S7 | C | P1 | Клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource`. Основной способ. |
-| `driver-callback` | S1, S2, S5 | D | P2 | Параметр `crypt_callback` функции `connect`. Класс на основе `iCryptKeyCallbackImpl` возвращает строку `<имя>:0x..,0x..,`. |
+| `driver-fbcrypt` | S1, S2, S3 | B | P1 | `fbcrypt` через `ctypes`, вызов `fbcrypt_callback(provider)`. Защищённый обмен. Основной способ. |
+| `driver-keysource` | S1, S7 | C | P1 | Клиентский `firebird.conf` с `KeyHolderPlugin = KeyHolder` и библиотека `KeySource`. Для приложений без изменения кода. |
+| `driver-callback` | S1, S2 | D | P2 | Параметр `crypt_callback` функции `connect`. В `firebird-driver` 2.0.3 класс `iCryptKeyCallbackImpl` содержит ошибку, пример устанавливает свою функцию обратного вызова. |
 | `gbak-stdin` | S6 | — | P2 | `subprocess.run(..., input=...)`. Вариант для 3.0. |
 
 Другие драйверы (только абзац в README, без примеров):
@@ -241,9 +244,39 @@ README должен описать, где хранить ключ на веб-�
 2. Практические проверки этапа 1: способ E для Jaybird native, .NET embedded, PHP FFI; сценарий S11 через `fbcrypt` и через Jaybird `FBBackupManager`; драйвер `firebirdsql`.
 3. Предложение разработчикам плагина: добавить в `fbcrypt` функцию, которая возвращает указатель на `ICryptKeyCallback`. Тогда Python `firebird-driver` (`crypt_callback`) и другие драйверы на объектно-ориентированном API получат защищённый обмен ключом без способа D.
 4. Нужны ли английские README раньше этапа 8.
+5. Лицензия плагина для Firebird 5.0 для тестов (сейчас есть только для 3.0 и 4.0, до 07.12.2026).
+6. Где собирать Delphi, Lazarus, Java и PHP: на этой машине нет компиляторов и сред выполнения.
+7. .NET: способа с защищённым обменом ключом нет. Возможное решение — поддержка обратного вызова в провайдере или функция из вопроса 3.
 
-## 17. История изменений
+## 17. Состояние работ
+
+Проверено 23.11.2026 на Windows x64, локальная сборка HQbird 4.0 с плагином шифрования, порт 3070.
+
+| Работа | Состояние |
+|---|---|
+| `examples/common`: `setup.ps1`, `start-server.ps1`, `stop-server.ps1`, `cleanup.ps1`, `new-keysource-client.ps1`, `run-test.ps1`, `run-all-tests.ps1`, тестовые ключи, README | готово, проверено |
+| Python: `driver-fbcrypt`, `driver-keysource`, `driver-callback`, `gbak-stdin` | готово, тесты проходят |
+| .NET: `ado-basic`, `gbak-stdin` | готово, тесты проходят |
+| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено, не собрано (нет Lazarus) |
+| Этап 1: Python `fbcrypt_callback(nil)`, способы B, C, D, .NET embedded | проверено (раздел 3) |
+| Этап 1: Jaybird native, PHP FFI, S11, `fdb`, `firebirdsql` | не сделано |
+| Delphi, Lazarus, Java, PHP | не начато: на машине разработки нет компиляторов и сред выполнения |
+
+Что не проверено:
+
+- **Firebird 5.0.** Тестовая лицензия не подходит плагину для 5.0 (`License is incorrect`). Нужна лицензия для 5.0.
+- **Firebird 3.0.** Вариант `gbak -KEYFILE` написан по исходным кодам. Локальная сборка 3.0 не содержит `firebird.exe`.
+- **Linux.** Скриптов `setup.sh` нет.
+
+Найдено при проверке:
+
+- `firebird-driver` 2.0.3: встроенная функция обратного вызова `iCryptKeyCallbackImpl` завершается с `TypeError`, процесс аварийно завершается. Стоит сообщить авторам драйвера.
+- Клиент без строки `Providers = Remote` пробует другие серверы Firebird этого компьютера. Тогда сообщение об ошибке приходит от чужого сервера. Каталог `client` примеров содержит эту строку.
+- Windows PowerShell 5.1: `isql` не выполняет команды, записанные в `StandardInput` процесса. Скрипт `setup.ps1` использует файл сценария и переключатель `-i`.
+
+## 18. История изменений
 
 - Редакция 1: первый план (Delphi, Lazarus, Java).
 - Редакция 2: решения по вопросам, добавлены .NET, Python, PHP, `ClientKeygen`, `KeyChecker`.
 - Редакция 3 (ревью): таблица способов A–E; вариант S6 для Firebird 3.0; сценарий S11; приоритеты; проверки перенесены на этап 1; сохранены существующие пути; `run-test`; сокращённая матрица; риски; факты о `CheckKey` и драйверах проверены по исходникам.
+- Редакция 4: начато исполнение. Готовы `examples/common`, примеры Python и .NET. Добавлен пример `driver-fbcrypt` (способ B для Python). Пример .NET `embedded-fbcrypt` исключён. Состояние в разделе 17.
