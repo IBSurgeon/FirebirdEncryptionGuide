@@ -1,6 +1,6 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 23.11.2026. Редакция 4 (исполнение начато, состояние в разделе 17). Лицензия для CI отложена.
+Дата: 24.11.2026. Редакция 5 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
 
 ## 1. Цель
 
@@ -27,9 +27,9 @@
 |---|---|---|---|
 | A. `fbcrypt` + `fbcrypt_callback(nil)` | да | Драйверы на ISC API: FireDAC, IBX, SQLdb, ZeosLib | работает в существующем примере (Lazarus + IBX) |
 | B. `fbcrypt` + `fbcrypt_callback(provider)` | да | Код на объектно-ориентированном API: `Firebird.pas`, `fbintf`, Python `firebird-driver` | работает (Python, Firebird 4.0) |
-| C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | работает (Python, Firebird 4.0) |
-| D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | работает (.NET и Python, Firebird 4.0); Jaybird не проверен |
-| E. `fbcrypt` из управляемого или скриптового кода | да | Jaybird native (JNA), PHP (FFI), Python `fdb` (`ctypes`) | не проверено на практике; .NET embedded не работает |
+| C. Клиентский `KeyHolder` + `KeySource` | да | Любой драйвер, который загружает `fbclient` | работает (Python, Java native, PHP; Firebird 4.0) |
+| D. Статическое значение в параметре драйвера | нет, нужен `UnsafeClient = true` | Jaybird (`dbCryptConfig`), .NET (`crypt key`), Python `firebird-driver` (`crypt_callback`) | работает (Java, .NET, Python; Firebird 4.0) |
+| E. `fbcrypt` из управляемого или скриптового кода | да | Jaybird native (JNA), PHP (FFI), Python `fdb` (`ctypes`) | работает (Jaybird native и PHP, Firebird 4.0); `fdb` не проверен; .NET embedded не работает |
 
 Пояснения к способу E:
 
@@ -90,7 +90,7 @@
 
 ## 7. Pascal (Lazarus / Free Pascal)
 
-Каталог `examples/lazarus`. Версии: Lazarus 3.x, FPC 3.2.2. Платформы: Windows и Linux.
+Каталог `examples/lazarus`. Версии: Lazarus 4.x, FPC 3.2.2. Платформы: Windows и Linux.
 
 | Пример | Сценарии | Способ | Приоритет | Замечания |
 |---|---|---|---|---|
@@ -114,7 +114,7 @@
 | `spring-boot` | S1, S5, S8 | D | P2 | Ключ из переменной окружения или хранилища секретов, а не из `application.properties`. Шифрование и опрос `MON$DATABASE`. |
 | `services-backup` | S11 | D | P2 | `FBBackupManager` со свойством `dbCryptConfig`. Сначала проверка на этапе 1. |
 | `jdbc-native-keysource` | S1, S7 | C | P2 | Jaybird native (JNA). Java-код не меняется. |
-| `jdbc-native-fbcrypt` | S1, S4 | E | P3 | Собственный интерфейс JNA для `fbcrypt`. Для пула нужна обёртка `DataSource`, которая вызывает `fbcrypt_callback(null)` перед `getConnection`. Виртуальные потоки использовать нельзя. |
+| `jdbc-native-fbcrypt` | S1, S2, S3 | E | P1 | Собственный интерфейс JNA для `fbcrypt`. Для пула нужна обёртка `DataSource`, которая вызывает `fbcrypt_callback(null)` перед `getConnection`. Виртуальные потоки использовать нельзя. |
 
 Каждый README начинается с требований к серверу из `server-setup`.
 
@@ -157,7 +157,7 @@
 | Пример | Сценарии | Способ | Приоритет | Замечания |
 |---|---|---|---|---|
 | `pdo-keysource` | S1, S7 | C | P1 | `KeyHolderPlugin = KeyHolder` и библиотека `KeySource` на веб-сервере. Основной способ. Тот же способ для `ibase_connect` описать в README. |
-| `pdo-ffi-fbcrypt` | S1, S2 | E | P3 | Расширение FFI загружает `fbcrypt`. Вызовы `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback(NULL)` перед `new PDO`. Проверить постоянные подключения и сборки ZTS. |
+| `pdo-ffi-fbcrypt` | S1, S2, S3 | E | P2 | Расширение FFI загружает `fbcrypt`. Вызовы `fbcrypt_init`, `fbcrypt_key`, `fbcrypt_callback(NULL)` перед `new PDO`. Проверить постоянные подключения и сборки ZTS. |
 | `gbak-stdin` | S6 | — | P3 | `proc_open` с каналом для stdin. |
 
 README должен описать, где хранить ключ на веб-сервере и какие права доступа нужны для `php-fpm` и Apache.
@@ -245,34 +245,42 @@ README должен описать, где хранить ключ на веб-�
 3. Предложение разработчикам плагина: добавить в `fbcrypt` функцию, которая возвращает указатель на `ICryptKeyCallback`. Тогда Python `firebird-driver` (`crypt_callback`) и другие драйверы на объектно-ориентированном API получат защищённый обмен ключом без способа D.
 4. Нужны ли английские README раньше этапа 8.
 5. Лицензия плагина для Firebird 5.0 для тестов (сейчас есть только для 3.0 и 4.0, до 07.12.2026).
-6. Где собирать Delphi, Lazarus, Java и PHP: на этой машине нет компиляторов и сред выполнения.
+6. Delphi и Lazarus: компиляторов нет. JDK 17, Maven и PHP 8.4 распакованы в `D:\FirebirdCrypt\tools`. Установщик Lazarus лежит в `D:\FirebirdCrypt\tools\downloads`, ему нужны права администратора.
 7. .NET: способа с защищённым обменом ключом нет. Возможное решение — поддержка обратного вызова в провайдере или функция из вопроса 3.
 
 ## 17. Состояние работ
 
-Проверено 23.11.2026 на Windows x64, локальная сборка HQbird 4.0 с плагином шифрования, порт 3070.
+Проверено 24.11.2026 на Windows x64, локальная сборка HQbird 4.0 с плагином шифрования, порт 3070.
+Скрипт `run-all-tests.ps1`: 13 тестов проходят.
 
 | Работа | Состояние |
 |---|---|
 | `examples/common`: `setup.ps1`, `start-server.ps1`, `stop-server.ps1`, `cleanup.ps1`, `new-keysource-client.ps1`, `run-test.ps1`, `run-all-tests.ps1`, тестовые ключи, README | готово, проверено |
 | Python: `driver-fbcrypt`, `driver-keysource`, `driver-callback`, `gbak-stdin` | готово, тесты проходят |
 | .NET: `ado-basic`, `gbak-stdin` | готово, тесты проходят |
-| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено, не собрано (нет Lazarus) |
-| Этап 1: Python `fbcrypt_callback(nil)`, способы B, C, D, .NET embedded | проверено (раздел 3) |
-| Этап 1: Jaybird native, PHP FFI, S11, `fdb`, `firebirdsql` | не сделано |
-| Delphi, Lazarus, Java, PHP | не начато: на машине разработки нет компиляторов и сред выполнения |
+| Java: `jdbc-basic`, `jdbc-native-fbcrypt`, `jdbc-native-keysource`, `gbak-stdin` | готово, тесты проходят |
+| PHP: `pdo-ffi-fbcrypt`, `pdo-keysource`, `gbak-stdin` | готово, тесты проходят |
+| Free Pascal: `console-sqldb`, `gbak-stdin`, модули `fbcryptapi.pas`, `examplecommon.pas` | написано, не собрано, в репозиторий не добавлено |
+| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено, не собрано |
+| Этап 1: способы B, C, D, E (Java, PHP), .NET embedded | проверено (раздел 3) |
+| Этап 1: S11, `fdb`, `firebirdsql`, ZTS и постоянные подключения PHP | не сделано |
+| Delphi | не начато: нет компилятора |
+| Java: `jdbc-datasource`, `spring-boot`, `services-backup`; .NET: `ado-pool`, `efcore` | не начато |
 
 Что не проверено:
 
 - **Firebird 5.0.** Тестовая лицензия не подходит плагину для 5.0 (`License is incorrect`). Нужна лицензия для 5.0.
 - **Firebird 3.0.** Вариант `gbak -KEYFILE` написан по исходным кодам. Локальная сборка 3.0 не содержит `firebird.exe`.
 - **Linux.** Скриптов `setup.sh` нет.
+- **Free Pascal и Lazarus.** Установщики Lazarus 4.8 и FPC 3.2.2 из автоматической сессии не работают: нужен запрос UAC. Установку должен выполнить пользователь.
 
 Найдено при проверке:
 
 - `firebird-driver` 2.0.3: встроенная функция обратного вызова `iCryptKeyCallbackImpl` завершается с `TypeError`, процесс аварийно завершается. Стоит сообщить авторам драйвера.
 - Клиент без строки `Providers = Remote` пробует другие серверы Firebird этого компьютера. Тогда сообщение об ошибке приходит от чужого сервера. Каталог `client` примеров содержит эту строку.
 - Windows PowerShell 5.1: `isql` не выполняет команды, записанные в `StandardInput` процесса. Скрипт `setup.ps1` использует файл сценария и переключатель `-i`.
+- PHP и Jaybird native загружают `fbclient` по имени. Каталог клиента плагина должен быть первым в пути поиска (`PATH`, `jna.library.path`).
+- При `UnsafeClient = false` способы B, C и E работают во всех проверенных языках. Способ D завершается ошибкой `Too long reply from callback >1Mb`.
 
 ## 18. История изменений
 
@@ -280,3 +288,4 @@ README должен описать, где хранить ключ на веб-�
 - Редакция 2: решения по вопросам, добавлены .NET, Python, PHP, `ClientKeygen`, `KeyChecker`.
 - Редакция 3 (ревью): таблица способов A–E; вариант S6 для Firebird 3.0; сценарий S11; приоритеты; проверки перенесены на этап 1; сохранены существующие пути; `run-test`; сокращённая матрица; риски; факты о `CheckKey` и драйверах проверены по исходникам.
 - Редакция 4: начато исполнение. Готовы `examples/common`, примеры Python и .NET. Добавлен пример `driver-fbcrypt` (способ B для Python). Пример .NET `embedded-fbcrypt` исключён. Состояние в разделе 17.
+- Редакция 5: готовы примеры Java (4) и PHP (3). Способ E подтверждён для Jaybird native и PHP. Примеры Free Pascal написаны, но не собраны.
