@@ -1,0 +1,2 @@
+Pool for crypt_red: 8 tasks, 8 correct answers
+Pool for crypt_green: 8 tasks, 8 correct answers
