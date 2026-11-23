@@ -1,0 +1,2 @@
+S1 EF Core, key from the environment: Hello from crypt_red
+Rows in the table: 1
