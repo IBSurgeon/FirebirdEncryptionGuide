@@ -17,6 +17,7 @@
 |---|---|
 | [console-sqldb](console-sqldb) | Подключение с ключом через SQLdb. Один ключ, два ключа, замена ключей, ошибки. |
 | [gbak-stdin](gbak-stdin) | Запуск `gbak` из программы (`TProcess`). Ключ передаётся в стандартный ввод процесса. |
+| [threads-sqldb](threads-sqldb) | Потоки: каждый поток вызывает `RegisterForThread`. Поток без вызова получает ошибку. |
 
 Сборка и запуск:
 
@@ -65,4 +66,4 @@ fpc -Fu..\common -FUlib -oconsole_sqldb.exe console_sqldb.lpr
 ## Что не сделано
 
 - Сборка и проверка на Linux.
-- Примеры `threads-sqldb`, `console-fbintf`, `console-zeos` из плана.
+- Примеры `console-fbintf` и `console-zeos` из плана.

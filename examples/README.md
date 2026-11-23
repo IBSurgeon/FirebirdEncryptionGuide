@@ -23,17 +23,24 @@
 | [python/driver-keysource](python/driver-keysource) | Python, `firebird-driver` | подключение без кода для ключа | C |
 | [python/driver-callback](python/driver-callback) | Python, `firebird-driver` | подключение, ошибки ключа | D |
 | [python/gbak-stdin](python/gbak-stdin) | Python | резервная копия и восстановление из программы | — |
+| [python/encrypt-monitor](python/encrypt-monitor) | Python, `firebird-driver` | шифрование, смена ключа, мониторинг | B |
+| [python/services-backup](python/services-backup) | Python, `firebird-driver` | резервная копия через Services API | B |
 | [java/jdbc-basic](java/jdbc-basic) | Java, Jaybird | подключение, ошибки ключа | D |
 | [java/jdbc-native-fbcrypt](java/jdbc-native-fbcrypt) | Java, Jaybird native | подключение, ошибки ключа, несколько ключей | E |
 | [java/jdbc-native-keysource](java/jdbc-native-keysource) | Java, Jaybird native | подключение без кода для ключа | C |
 | [java/gbak-stdin](java/gbak-stdin) | Java | резервная копия и восстановление из программы | — |
+| [java/jdbc-datasource](java/jdbc-datasource) | Java, HikariCP | пул подключений и потоки | D, E |
+| [java/spring-boot](java/spring-boot) | Java, Spring Boot | ключ из переменной окружения | D |
 | [php/pdo-ffi-fbcrypt](php/pdo-ffi-fbcrypt) | PHP, PDO | подключение, ошибки ключа, несколько ключей | E |
 | [php/pdo-keysource](php/pdo-keysource) | PHP, PDO | подключение без кода для ключа | C |
 | [php/gbak-stdin](php/gbak-stdin) | PHP | резервная копия и восстановление из скрипта | — |
 | [dotnet/ado-basic](dotnet/ado-basic) | C#, ADO.NET | подключение, ошибки ключа | D |
 | [dotnet/gbak-stdin](dotnet/gbak-stdin) | C# | резервная копия и восстановление из программы | — |
+| [dotnet/ado-pool](dotnet/ado-pool) | C#, ADO.NET | пул подключений и параллельные задачи | D |
+| [dotnet/efcore](dotnet/efcore) | C#, EF Core | ключ из переменной окружения | D |
 | [lazarus/console-sqldb](lazarus/console-sqldb) | Free Pascal, SQLdb | подключение, ошибки ключа, несколько ключей | A |
 | [lazarus/gbak-stdin](lazarus/gbak-stdin) | Free Pascal | резервная копия и восстановление из программы | — |
+| [lazarus/threads-sqldb](lazarus/threads-sqldb) | Free Pascal, SQLdb | потоки | A |
 | [keysource](keysource) | C++, Delphi, Lazarus | библиотека `KeySource` | C |
 | [app/Example_ForLazarus_IBX](app/Example_ForLazarus_IBX) | Lazarus, IBX | подключение, шифрование, мониторинг | A |
 

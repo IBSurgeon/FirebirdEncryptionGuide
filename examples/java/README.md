@@ -20,6 +20,8 @@ Jaybird имеет два протокола:
 | [jdbc-native-fbcrypt](jdbc-native-fbcrypt) | native | E | Библиотека `fbcrypt` через JNA. Один ключ, два ключа, замена ключей, ошибки. |
 | [jdbc-native-keysource](jdbc-native-keysource) | native | C | В программе нет кода для ключа. Ключи отдаёт библиотека `KeySource`. |
 | [gbak-stdin](gbak-stdin) | — | — | Запуск `gbak` из программы. Ключ передаётся в стандартный ввод процесса. |
+| [jdbc-datasource](jdbc-datasource) | Java и native | D, E | Пул HikariCP и потоки. Класс `FbCryptDataSource` для пула с `fbcrypt`. |
+| [spring-boot](spring-boot) | Java | D | Spring Boot: ключ в свойстве источника данных, значение из переменной окружения. |
 
 Сборка всех примеров (один раз, в каталоге `java`):
 
@@ -34,6 +36,8 @@ mvn -q -pl jdbc-basic exec:java
 ```
 
 Проверка: `.\run-test.ps1` в каталоге примера.
+
+Пример `spring-boot` — отдельный проект Maven. Запуск в его каталоге: `mvn -q spring-boot:run`. Перед запуском задайте переменную `FBCRYPT_DB_KEY` со значением `<имя>:0x..,0x..,`.
 
 ## Свойство dbCryptConfig (способ D)
 
@@ -57,7 +61,8 @@ mvn -q -pl jdbc-basic exec:java
 
 - Вызывайте `registerForThread()` в том потоке, который открывает подключение, перед `DriverManager.getConnection`.
 - Jaybird и `fbcrypt` должны использовать один `fbclient`. Пример задаёт `jna.library.path` до первого подключения.
-- Для пула подключений нужна обёртка `DataSource`, которая вызывает `registerForThread()` перед `getConnection`. Пул сам создаёт подключения в своих потоках.
+- Для пула подключений нужна обёртка `DataSource`, которая вызывает `registerForThread()` перед `getConnection`. Пул сам создаёт подключения в своих потоках. Готовый класс: `FbCryptDataSource` в примере `jdbc-datasource`.
+- Поток, который не вызвал `registerForThread()`, получает ошибку `Key not set`.
 - Не используйте виртуальные потоки: виртуальный поток может перейти на другой поток ОС.
 - Пример проверен на 64-битной JVM в Windows. Для 32-битной JVM в Windows нужен `StdCallLibrary`.
 
@@ -74,4 +79,4 @@ mvn -q -pl jdbc-basic exec:java
 
 ## Что не сделано
 
-Примеры `jdbc-datasource` (пул), `spring-boot` и `services-backup` из плана пока не написаны.
+Пример `services-backup` (резервная копия через Services API) для Jaybird не написан. Пример для Python: [../python/services-backup](../python/services-backup).

@@ -21,6 +21,8 @@ python -m pip install firebird-driver
 | [driver-keysource](driver-keysource) | C | В программе нет кода для ключа. Ключи отдаёт библиотека `KeySource`. |
 | [driver-callback](driver-callback) | D | Свой класс обратного вызова отправляет ключ статическим значением. Нужен `UnsafeClient = true`. |
 | [gbak-stdin](gbak-stdin) | — | Запуск `gbak` из программы. Ключ передаётся в стандартный ввод процесса. |
+| [encrypt-monitor](encrypt-monitor) | B | `ALTER DATABASE ENCRYPT` и `DECRYPT`, смена ключа, состояние из `MON$DATABASE`. Firebird 4.0 и 5.0. |
+| [services-backup](services-backup) | B | Резервная копия и восстановление через Services API. Firebird 4.0 и 5.0. |
 
 Запуск одного примера:
 
@@ -54,6 +56,25 @@ python driver-fbcrypt\main.py
 - **`fbcrypt_callback(nil)` не работает.** Драйвер использует объектно-ориентированный API. Нужен вызов `fbcrypt_callback(provider)`. Драйвер создаёт `IProvider` внутри `connect`, поэтому `fbcrypt_api.install_firebird_driver_hook()` заменяет метод `iProvider.set_dbcrypt_callback`.
 - **Ошибка в классе `iCryptKeyCallbackImpl` (версия 2.0.3).** Встроенная функция обратного вызова завершается с `TypeError`, и подключение аварийно прерывается. Пример `driver-callback` устанавливает свою функцию в таблицу интерфейса.
 - **Параметр `keyhoder`.** В методах `backup` и `restore` сервисов параметр назван с опечаткой: `keyhoder`.
+
+## Шифрование и мониторинг
+
+- Подключение, которое выполняет `ALTER DATABASE ENCRYPT`, должно передать ключ.
+- Поток шифрования работает, только пока к базе данных есть подключение. Пример держит подключение открытым и опрашивает `MON$CRYPT_STATE`.
+- Данные мониторинга неизменны внутри транзакции. Каждый опрос выполняется в новой транзакции.
+- Смена ключа: расшифровать базу данных, затем зашифровать новым ключом.
+
+## Резервная копия через Services API
+
+Утилита `gbak` работает внутри сервера. Нужны три вещи:
+
+1. Обратный вызов ключа для подключения к диспетчеру служб (`crypt_callback`).
+2. Параметр службы `keyholder` — плагин управления ключами сервера (`KeyHolder`).
+3. Параметр службы `keyname` — имя ключа.
+
+Без параметра `keyholder` служба завершается с ошибкой `Key not set`. Файл резервной копии создаётся на сервере и зашифрован.
+
+Адрес диспетчера служб `firebird-driver` берёт из конфигурации сервера: `driver_config.register_server(...)`.
 
 ## gbak и версия Firebird
 

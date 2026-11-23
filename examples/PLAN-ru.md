@@ -1,6 +1,6 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 24.11.2026. Редакция 6 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
+Дата: 24.11.2026. Редакция 7 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
 
 ## 1. Цель
 
@@ -251,21 +251,22 @@ README должен описать, где хранить ключ на веб-�
 ## 17. Состояние работ
 
 Проверено 24.11.2026 на Windows x64: локальная сборка HQbird 4.0 (порт 3070) и HQbird 5.0.5 (порт 3071).
-Скрипт `run-all-tests.ps1`: 15 тестов проходят на обеих версиях.
+Скрипт `run-all-tests.ps1`: 22 теста проходят на обеих версиях.
 
 | Работа | Состояние |
 |---|---|
 | `examples/common`: `setup.ps1`, `start-server.ps1`, `stop-server.ps1`, `cleanup.ps1`, `new-keysource-client.ps1`, `run-test.ps1`, `run-all-tests.ps1`, тестовые ключи, README | готово, проверено |
-| Python: `driver-fbcrypt`, `driver-keysource`, `driver-callback`, `gbak-stdin` | готово, тесты проходят |
-| .NET: `ado-basic`, `gbak-stdin` | готово, тесты проходят |
-| Java: `jdbc-basic`, `jdbc-native-fbcrypt`, `jdbc-native-keysource`, `gbak-stdin` | готово, тесты проходят |
+| Python: `driver-fbcrypt`, `driver-keysource`, `driver-callback`, `gbak-stdin`, `encrypt-monitor` (S5), `services-backup` (S11) | готово, тесты проходят |
+| .NET: `ado-basic`, `gbak-stdin`, `ado-pool` (S4), `efcore` (S8) | готово, тесты проходят |
+| Java: `jdbc-basic`, `jdbc-native-fbcrypt`, `jdbc-native-keysource`, `gbak-stdin`, `jdbc-datasource` (S4), `spring-boot` (S8) | готово, тесты проходят |
 | PHP: `pdo-ffi-fbcrypt`, `pdo-keysource`, `gbak-stdin` | готово, тесты проходят |
-| Free Pascal: `console-sqldb`, `gbak-stdin`, модули `fbcryptapi.pas`, `examplecommon.pas` | готово, тесты проходят |
+| Free Pascal: `console-sqldb`, `gbak-stdin`, `threads-sqldb` (S4), модули `fbcryptapi.pas`, `examplecommon.pas` | готово, тесты проходят |
 | Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено; модуль `dbcrypthelper.pas` компилируется, весь проект не собирался (нужен пакет IBX) |
 | Этап 1: способы B, C, D, E (Java, PHP), .NET embedded | проверено (раздел 3) |
-| Этап 1: S11, `fdb`, `firebirdsql`, ZTS и постоянные подключения PHP | не сделано |
+| Этап 1: S11 через Services API | проверено: нужны обратный вызов ключа и параметры `keyholder`, `keyname` |
+| Этап 1: `fdb`, `firebirdsql`, ZTS и постоянные подключения PHP | не сделано |
 | Delphi | не начато: нет компилятора |
-| Java: `jdbc-datasource`, `spring-boot`, `services-backup`; .NET: `ado-pool`, `efcore` | не начато |
+| Java `services-backup`, Lazarus `console-fbintf` и `console-zeos`, GUI-примеры, S9 и S10 (`ClientKeygen`, `KeyChecker`) | не начато |
 
 Что не проверено:
 
@@ -280,6 +281,8 @@ README должен описать, где хранить ключ на веб-�
 - Клиент без строки `Providers = Remote` пробует другие серверы Firebird этого компьютера. Тогда сообщение об ошибке приходит от чужого сервера. Каталог `client` примеров содержит эту строку.
 - Windows PowerShell 5.1: `isql` не выполняет команды, записанные в `StandardInput` процесса. Скрипт `setup.ps1` использует файл сценария и переключатель `-i`.
 - PHP и Jaybird native загружают `fbclient` по имени. Каталог клиента плагина должен быть первым в пути поиска (`PATH`, `jna.library.path`).
+- Обратный вызов `fbcrypt_callback(nil)` действует только для потока, который его вызвал. Поток без вызова получает `Key not set` (проверено в Java и Free Pascal).
+- Пул провайдера .NET не ждёт свободное подключение: `Connection pool is full`.
 - При `UnsafeClient = false` способы B, C и E работают во всех проверенных языках. Способ D завершается ошибкой `Too long reply from callback >1Mb`.
 
 ## 18. История изменений
@@ -290,3 +293,4 @@ README должен описать, где хранить ключ на веб-�
 - Редакция 4: начато исполнение. Готовы `examples/common`, примеры Python и .NET. Добавлен пример `driver-fbcrypt` (способ B для Python). Пример .NET `embedded-fbcrypt` исключён. Состояние в разделе 17.
 - Редакция 5: готовы примеры Java (4) и PHP (3). Способ E подтверждён для Jaybird native и PHP. Примеры Free Pascal написаны, но не собраны.
 - Редакция 6: примеры Free Pascal собраны и проверены. Все 15 тестов проходят на Firebird 4.0 и 5.0.
+- Редакция 7: сценарии S4 (пул и потоки), S5 (шифрование и мониторинг), S8 (ключ из окружения), S11 (Services API). Всего 22 теста.
