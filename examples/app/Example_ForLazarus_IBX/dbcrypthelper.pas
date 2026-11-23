@@ -26,13 +26,13 @@ type
   Tfbcrypt_callback_Func = function(provider: Pointer): Integer; StdCall;
   {$ELSE}
   // extern "C" int fbcrypt_init(const char* clientPathName);
-  Tfbcrypt_init_Func = function (const aStr: PAnsiChar): Integer; cdelc;
+  Tfbcrypt_init_Func = function (const aStr: PAnsiChar): Integer; cdecl;
 
   // extern "C" int fbcrypt_key(const char* name, const unsigned char* data, unsigned dl);
-  Tfbcrypt_key_Func = function (pszKeyName: Pointer; pKeyValue: Pointer; iKeyLength: Cardinal): Integer; cdelc;
+  Tfbcrypt_key_Func = function (pszKeyName: Pointer; pKeyValue: Pointer; iKeyLength: Cardinal): Integer; cdecl;
 
   // extern "C" int fbcrypt_callback(void* provider);
-  Tfbcrypt_callback_Func = function(provider: Pointer): Integer; cdelc;
+  Tfbcrypt_callback_Func = function(provider: Pointer): Integer; cdecl;
   {$ENDIF}
 
   { TDBCryptHelper }
@@ -192,7 +192,7 @@ begin
 {$IFDEF WINDOWS}
   FLibraryPath := 'fbcrypt.dll';
 {$ELSE}
-  FLibraryPath := 'fbcrypt.so';
+  FLibraryPath := 'libfbcrypt.so';
 {$ENDIF}
 
   FLibFbCrypt := DynLibs.NilHandle;
