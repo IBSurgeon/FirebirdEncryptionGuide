@@ -1,0 +1,3 @@
+Pool, pure Java protocol: 8 tasks, 8 correct answers
+Pool, native protocol and fbcrypt: 8 tasks, 8 correct answers
+Thread without registerForThread: error, as expected

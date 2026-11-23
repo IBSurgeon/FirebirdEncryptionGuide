@@ -10,4 +10,14 @@
   </parent>
   <artifactId>common</artifactId>
   <name>Helpers shared by the Java examples</name>
+
+  <dependencies>
+    <!-- Needed only by the class FbCrypt (JNA). Optional: the examples of the pure Java
+         protocol do not get it. -->
+    <dependency>
+      <groupId>org.firebirdsql.jdbc</groupId>
+      <artifactId>jaybird-native</artifactId>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
 </project>
