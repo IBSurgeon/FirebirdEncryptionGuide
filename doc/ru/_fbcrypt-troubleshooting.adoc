@@ -34,7 +34,8 @@
 | База данных зашифрована, а это подключение не передало ключ. Другие подключения с ключом не помогают: ключ нужен каждому подключению.
 | Передайте ключ из этого клиента. Для утилит используйте `-KeyHolder`.
 
-| `Invalid key length N bytes, need 16, 24, 32 or 64`
+| `Invalid key length N bytes, need 16, 24, 32 or 64` (Firebird 5.0) +
+`Invalid key length N bytes, need 16, 24 or 32` (Firebird 3.0 и 4.0)
 | Неверная длина ключа.
 | Используйте ключ длиной 16, 24 или 32 байта. Проверьте, что запись ключа не содержит пробелов и лишних символов.
 
@@ -117,7 +118,17 @@
 | Найдена библиотека OpenSSL неподходящей версии.
 | Используйте `libcrypto` из пакета плагина.
 
-| `Key holder parameter missing but backup file is encrypted` (gbak)
+| `Keyfile parameter missing but backup file is encrypted` (gbak 3.0)
+| Файл резервной копии зашифрован, а переключатели `-KEYFILE` и `-KEY` не указаны.
+| Добавьте `-KEYFILE <файл>` или `-KEY <значение> -KEYNAME <имя>`.
+
+| `KEY switch requires KEYNAME` +
+`KEYNAME switch requires KEY or KEYFILE` +
+`KEY switch is not compatible with KEYFILE` (gbak 3.0)
+| Неверное сочетание переключателей.
+| См. <<fbcrypt-utils-fb3>>.
+
+| `Key holder parameter missing but backup file is encrypted` (gbak 4.0, 5.0)
 | Файл резервной копии зашифрован, а переключатель `-KEYHOLDER` не указан.
 | Добавьте `-KeyHolder KeyHolderStdin` и передайте ключ.
 
@@ -143,7 +154,7 @@
 Поток шифрования работает, только пока к базе данных есть подключения. Держите подключение открытым. См. <<fbcrypt-monitoring>>.
 
 *Файл резервной копии не зашифрован.* +
-Утилита `gbak` запущена без переключателя `-KEYHOLDER`. См. <<fbcrypt-utils-gbak>>.
+Утилита `gbak` запущена без переключателя `-KEYHOLDER` (в версии 3.0 -- без `-KEYFILE` и `-KEY`). См. <<fbcrypt-utils-gbak>> и <<fbcrypt-utils-fb3>>.
 
 *Ключ потерян.* +
 Восстановить данные без ключа нельзя. Храните копию ключа отдельно от сервера и от резервных копий.

@@ -5,7 +5,35 @@
 
 Для того, чтобы использовать встроенные утилиты Firebird и не хранить ключ на сервере, мы модифицировали утилиты `gbak`, `nbackup`, `isql` и `gfix`. Модифицированные утилиты позволяют указывать альтернативный плагин для хранения ключа (`KeyHolder`). Также был разработан плагин `KeyHolderStdin`, который позволяет считывать ключ шифрования из входного потока консоли.
 
-== Переключатели утилит
+Модифицированные утилиты входят в клиентский пакет плагина шифрования (`Client\32bit`, `Client\64bit`) и в HQbird.
+
+[[fbcrypt-utils-versions]]
+== Различия между версиями Firebird
+
+Набор переключателей зависит от версии Firebird и от того, чья это утилита: стандартная ("ванильная") или из пакета плагина.
+
+.Какие переключатели есть в утилитах
+[cols="2,2,3,3", options="header"]
+|===
+| Утилита | Версия | Стандартный Firebird | Пакет плагина и HQbird
+| `gbak` | 3.0 | нет | `-KEYFILE`, `-KEYNAME`, `-KEY`
+| `gbak` | 4.0, 5.0 | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT` | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT`
+| `gfix`, `isql`, `nbackup` | 3.0 | нет | нет (ключ через `firebird.conf`, см. <<fbcrypt-utils-fb3>>)
+| `gfix`, `isql`, `nbackup` | 4.0, 5.0 | нет | `-KEYHOLDER`
+| `gstat` | 3.0, 4.0, 5.0 | `-e` | `-e`
+|===
+
+Главные выводы из таблицы:
+
+* В Firebird 4.0 и 5.0 зашифрованную резервную копию можно сделать и стандартным `gbak`.
+* Для `gfix`, `isql` и `nbackup` переключатель `-KEYHOLDER` есть только в утилитах из пакета плагина и HQbird, начиная с версии 4.0.
+* В Firebird 3.0 у утилит другие переключатели. Команды из разделов для 4.0 и 5.0 в версии 3.0 не работают.
+
+Между версиями 4.0 и 5.0 различий в переключателях нет.
+
+== Firebird 4.0 и 5.0
+
+=== Переключатели
 
 [cols="1,2,4", options="header"]
 |===
@@ -19,19 +47,19 @@
 | `gstat` | `-e` | Статистика шифрования страниц (см. <<fbcrypt-monitoring>>).
 |===
 
-Переключатель можно сокращать до `-KEYH`. Регистр букв не учитывается.
+Регистр букв в переключателях не учитывается. Сокращения: `-KEYH`, `-KEYN`, `-CRY`.
 
 Переключатель `-KEYHOLDER` задаёт для утилиты параметр `KeyHolderPlugin`. Утилита загружает указанный плагин из своего каталога `plugins` и через него передаёт ключ серверу по защищённому протоколу.
 
 [IMPORTANT]
 ====
-Используйте утилиты из клиентского пакета плагина шифрования (`Client\32bit`, `Client\64bit`) или из HQbird. Рядом с утилитой должны находиться каталог `plugins` с плагинами `KeyHolderStdin`, `KeyHolder` и `DbCrypt`, файл лицензии `DbCrypt.conf` и библиотека OpenSSL.
+Рядом с утилитой должны находиться каталог `plugins` с плагинами `KeyHolderStdin`, `KeyHolder` и `DbCrypt`, файл лицензии `DbCrypt.conf` и библиотека OpenSSL.
 
 Плагин `DbCrypt` и лицензия нужны утилите `gbak`: она сама шифрует и расшифровывает файл резервной копии.
 ====
 
 [[fbcrypt-utils-stdin]]
-== Плагин KeyHolderStdin
+=== Плагин KeyHolderStdin
 
 Плагин `KeyHolderStdin` читает ключ из стандартного входного потока утилиты.
 
@@ -68,7 +96,7 @@ Password=<KeyName> <passphrase>
 * Если входной поток пуст, утилита завершается с ошибкой `No input`.
 * Входной поток занят ключом. Поэтому команды для `isql` передавайте в файле с помощью переключателя `-i`, а не через входной поток.
 
-=== Ключ из файла
+==== Ключ из файла
 
 Команда `echo` с ключом остаётся в истории команд и видна в списке процессов. Надёжнее хранить строку с ключом в файле с ограниченным доступом.
 
@@ -99,7 +127,7 @@ Key=MyKey 0x35,0xa1,...,0x1e,
 * Дайте права на чтение файла с ключом только этой учётной записи.
 * Регулярно проверяйте восстановление из резервной копии на тестовом сервере.
 
-=== Ключ из программы
+==== Ключ из программы
 
 Приложение может запустить утилиту как дочерний процесс и записать ключ в её входной поток. Тогда ключ не хранится в файле. Пример на C для Linux:
 
@@ -126,7 +154,7 @@ int main()
 ----
 
 [[fbcrypt-utils-gbak]]
-== Резервное копирование и восстановление (gbak)
+=== Резервное копирование и восстановление (gbak)
 
 [WARNING]
 ====
@@ -151,7 +179,7 @@ echo Key=Green 0xab,0xd7,...,0x74, | gbak -c C:\db\emp-crypted.fbk localhost:C:\
 
 При восстановлении `gbak` читает имя ключа и плагина из заголовка файла резервной копии. Новая база данных шифруется сразу после создания. Чтобы зашифровать её другим ключом, укажите `-KEYNAME <новое имя>` (ключ с этим именем должен быть доступен утилите и серверу).
 
-Если ключи находятся на сервере в файле `KeyHolder.conf`, вместо `KeyHolderStdin` можно использовать плагин `KeyHolder`. В этом случае `gbak` запускается на сервере и читает тот же файл:
+Если ключи находятся на сервере в файле `KeyHolder.conf`, вместо `KeyHolderStdin` можно использовать плагин `KeyHolder`. В этом случае `gbak` запускается на сервере и читает тот же файл. Так работает и стандартный `gbak` Firebird 4.0 и 5.0:
 
 [source,bash]
 ----
@@ -163,12 +191,7 @@ gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -cryp
 Для восстановления в новый файл параметр `KeyHolderPlugin` должен быть задан в `firebird.conf`. Настройка в `databases.conf` действует только для своего псевдонима и на новый файл не распространяется.
 ====
 
-[NOTE]
-====
-Переключатели `-KEYHOLDER`, `-KEYNAME` и `-CRYPT` есть в утилите `gbak` Firebird 4.0 и 5.0. Утилита `gbak` из стандартного Firebird 3.0 их не имеет: используйте `gbak` из клиентского пакета плагина шифрования для Firebird 3.0. В нём ключ задаётся переключателями `-keyfile <файл KeyHolder.conf>` и `-keyname <имя>`.
-====
-
-== nbackup
+=== nbackup
 
 Утилита `nbackup` копирует страницы базы данных как есть. Копия остаётся зашифрованной тем же ключом, что и база данных. Ключ нужен утилите для подключения к базе данных:
 
@@ -177,14 +200,14 @@ gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -cryp
 echo Key=Green 0xab,0xd7,...,0x74, | nbackup -b 0 localhost:C:\db\emp-crypted.fdb C:\db\emp-nbackup.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
 ----
 
-== gfix
+=== gfix
 
 [source,cmd]
 ----
 echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full -KeyHolder KeyHolderStdin localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
 ----
 
-== isql
+=== isql
 
 [source,cmd]
 ----
@@ -199,6 +222,83 @@ alter database encrypt with "DbCrypt" key Green;
 commit;
 show database;
 ----
+
+[[fbcrypt-utils-fb3]]
+== Firebird 3.0
+
+Стандартные утилиты Firebird 3.0 не имеют переключателей для ключей. Используйте утилиты из клиентского пакета плагина шифрования для Firebird 3.0 или из HQbird 3.
+
+=== gbak
+
+[cols="2,4", options="header"]
+|===
+| Переключатель | Назначение
+| `-KEYFILE <файл>` | Файл с ключами. Формат строк такой же, как в `KeyHolder.conf`: `Key=<имя> <значение>`. Можно указать сам файл `KeyHolder.conf`.
+| `-KEY <значение>` | Значение ключа в записи `0x..,0x..,`. Требует `-KEYNAME`. Нельзя использовать вместе с `-KEYFILE`.
+| `-KEYNAME <имя>` | Имя ключа. Требует `-KEYFILE` или `-KEY`. Если имя не указано, при резервном копировании оно берётся из базы данных.
+|===
+
+Сокращения: `-KEYF`, `-KEYN`. Переключателей `-KEYHOLDER` и `-CRYPT` в версии 3.0 нет. Имя плагина шифрования всегда `DbCrypt`.
+
+Если указан `-KEYFILE` или `-KEY`, утилита передаёт ключ серверу для подключения и шифрует файл резервной копии.
+
+.Зашифрованная резервная копия, ключ из файла
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red localhost:employee /backup/employee.fbk
+----
+
+.Зашифрованная резервная копия, ключ в командной строке
+[source,cmd]
+----
+gbak -b -user SYSDBA -password masterkey -key 0xec,0xa1,...,0x75, -keyname Red localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+----
+
+.Восстановление в зашифрованную базу данных
+[source,bash]
+----
+gbak -c -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red /backup/employee.fbk localhost:/data/employee_restored.fdb
+----
+
+[WARNING]
+====
+Ключ в переключателе `-KEY` виден в списке процессов и остаётся в истории команд. Предпочитайте `-KEYFILE` с файлом, доступ к которому ограничен.
+
+Если `gbak -b` запущен без `-KEYFILE` и `-KEY`, а ключ есть на сервере, файл `.fbk` будет *не зашифрован*.
+====
+
+На Linux утилите `gbak` из клиентского пакета 3.0 нужна ссылка `libcrypto.so` на OpenSSL 1.1 в её каталоге `lib`:
+
+[source,bash]
+----
+cp -r /root/crypt/Client /opt/fbcrypt-client
+ln -sf /usr/lib64/libcrypto.so.1.1 /opt/fbcrypt-client/lib/libcrypto.so
+----
+
+=== gfix, isql, nbackup и плагин KeyHolderStdin
+
+В версии 3.0 у этих утилит нет переключателя `-KEYHOLDER`. Плагин управления ключами для них задаётся в файле `firebird.conf`, который лежит в каталоге утилиты (каталог клиентского пакета):
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolderStdin
+----
+
+После этого ключ передаётся через входной поток, как в версиях 4.0 и 5.0, но без переключателя:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+Так же можно указать `KeyHolderPlugin = KeyHolder`. Тогда утилита берёт ключи из файла `plugins/KeyHolder.conf` или из библиотеки `KeySource` в своём каталоге.
+
+Утилита `gbak` 3.0 без `-KEYFILE` и `-KEY` тоже использует плагин из `firebird.conf`. Если плагин передал ключ, файл резервной копии шифруется.
+
+[NOTE]
+====
+Параметр `KeyHolderPlugin` в `firebird.conf` действует на все программы, которые используют клиентскую библиотеку из этого каталога. С плагином `KeyHolderStdin` каждая из них будет читать входной поток при подключении. Держите утилиты для обслуживания в отдельном каталоге.
+====
 
 == Утилита decrypt
 
