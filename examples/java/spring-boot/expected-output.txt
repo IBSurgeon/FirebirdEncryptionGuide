@@ -1,0 +1,2 @@
+S1 Spring Boot, key from the environment: Hello from crypt_red
+Pool of Spring Boot: 8 queries, 8 correct answers
