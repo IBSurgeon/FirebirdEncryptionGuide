@@ -50,10 +50,24 @@ function Get-File([string]$url, [string]$file, [switch]$Force) {
         return
     }
     New-Item -ItemType Directory -Force (Split-Path $file -Parent) | Out-Null
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $part = "$file.part"
     Write-Host "   download: $url"
-    Invoke-WebRequest -Uri $url -OutFile $part -UseBasicParsing
+    # cc.ib-aid.com needs TLS 1.3. Windows PowerShell 5.1 uses it only when it is turned on here.
+    $protocols = [Net.SecurityProtocolType]::Tls12
+    if ([enum]::GetNames([Net.SecurityProtocolType]) -contains 'Tls13') {
+        $protocols = $protocols -bor [Net.SecurityProtocolType]::Tls13
+    }
+    [Net.ServicePointManager]::SecurityProtocol = $protocols
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $part -UseBasicParsing
+    } catch {
+        # Second way: curl.exe is a part of Windows 10 and 11.
+        $curl = Join-Path $env:SystemRoot "System32\curl.exe"
+        if (-not (Test-Path $curl)) { throw }
+        Write-Host "   Invoke-WebRequest failed ($($_.Exception.Message)); trying curl.exe"
+        & $curl -sS -L --fail -o $part $url
+        if ($LASTEXITCODE -ne 0) { Fail "Cannot download $url" }
+    }
     Move-Item $part $file -Force
 }
 

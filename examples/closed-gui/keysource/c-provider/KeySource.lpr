@@ -164,7 +164,7 @@ begin
       Break;                       // the key provider closed the pipe: the answer is complete
     if Available = 0 then
     begin
-      Sleep(30);
+      Sleep(5);
       Continue;
     end;
     Got := 0;
