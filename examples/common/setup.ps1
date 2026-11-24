@@ -70,6 +70,13 @@ New-Item -ItemType Directory -Force $WorkDir, $dbDir, $tmpDir | Out-Null
 & robocopy $FirebirdDir $server /E /XF *.pdb /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { Fail "robocopy failed with code $LASTEXITCODE" }
 Copy-Item $LicenseFile (Join-Path $server "plugins\DbCrypt.conf") -Force
+
+# Major version of Firebird: gbak of Firebird 3.0 has other switches than 4.0 and 5.0.
+$fbMajor = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $server "fbclient.dll")).FileMajorPart
+if ($fbMajor -ge 5) {
+    # Firebird 5.0: write logins with individual client keys to firebird.log (example clientkeygen).
+    Add-Content -Path (Join-Path $server "plugins\DbCrypt.conf") -Value @("", "Logger = true") -Encoding ASCII
+}
 if ($OpenSslDll -ne "") { Copy-Item $OpenSslDll $server -Force }
 
 $conf = @(
@@ -201,8 +208,6 @@ foreach ($f in $clientPlugins) {
 Set-Content -Path (Join-Path $client "firebird.conf") -Value @("Providers = Remote") -Encoding ASCII
 
 # ---------------------------------------------------------------- environment file
-# Major version of Firebird: gbak of Firebird 3.0 has other switches than 4.0 and 5.0.
-$fbMajor = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $server "fbclient.dll")).FileMajorPart
 $envFile = Join-Path $WorkDir "test-env.ps1"
 $envLines = @(
     "# Dot-source this file before you run an example:  . `"$envFile`"",

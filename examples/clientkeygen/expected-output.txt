@@ -1,0 +1,6 @@
+ClientKeygen: 3 client keys, 64 bytes each
+Client key 1: Hello from crypt_red
+Client key 2: Hello from crypt_red
+Client key 3: Hello from crypt_red
+Log records for the client keys: 1, 2, 3
+Damaged client key: error, as expected

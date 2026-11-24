@@ -45,6 +45,7 @@
 | `FBCRYPT_KEYS` | файл с тестовыми ключами |
 | `FBCRYPT_WORK` | рабочий каталог |
 | `FBCRYPT_FB_MAJOR` | версия Firebird: 3, 4 или 5 |
+| `FBCRYPT_CLIENTKEYGEN` | путь к утилите `ClientKeygen`. Задаётся вручную, нужен только примеру `clientkeygen`. |
 
 ## Проверка примеров
 
@@ -70,6 +71,8 @@
 | Остановить сервер и удалить рабочий каталог | `.\cleanup.ps1` |
 
 ## Настройка сервера
+
+Для Firebird 5.0 скрипт добавляет в `plugins\DbCrypt.conf` сервера строку `Logger = true` (журнал клиентских ключей).
 
 Файл `plugins\KeyHolder.conf` тестового сервера содержит одну строку: `UnsafeClient = true`.
 Она нужна только примерам со способом D. См. [server-unsafe-client.md](server-unsafe-client.md).
