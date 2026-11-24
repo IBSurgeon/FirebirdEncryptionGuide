@@ -25,6 +25,7 @@ RED = "#fee2e2"
 RED_EDGE = "#dc2626"
 GREY = "#f1f5f9"
 GREY_EDGE = "#94a3b8"
+KEY = "#b45309"   # thick line: the way of the key
 STEP = 19   # distance between text lines
 
 
@@ -52,9 +53,24 @@ class Svg:
         first = y + h / 2 - (len(lines) - 1) * STEP / 2 + size * 0.35
         self.text(x + w / 2, first, text, size=size, bold=bold)
 
-    def line(self, x1, y1, x2, y2, color=LINE, dash=False, width=1.4, arrow=True):
+    def card(self, x, y, w, h, title, lines, fill=GREY, edge=GREY_EDGE, dash=False, size=13):
+        """Box with a bold title and small lines under it."""
+        self.rect(x, y, w, h, fill, edge, dash=dash)
+        self.text(x + w / 2, y + 24, title, size=14, bold=True)
+        for i, text in enumerate(lines):
+            self.text(x + w / 2, y + 44 + i * 18, text, size=size)
+
+    def badge(self, x, y, number, color=INK):
+        """Number of a step in a circle."""
+        self.items.append(f'<circle cx="{x}" cy="{y}" r="10" fill="{color}"/>')
+        self.text(x, y + 4.5, str(number), size=12, bold=True, color="#ffffff")
+
+    def line(self, x1, y1, x2, y2, color=LINE, dash=False, width=1.4, arrow=True, key=False):
+        """key=True: thick line, the way of the key."""
+        if key:
+            color, width = KEY, 3
         d = ' stroke-dasharray="6 4"' if dash else ""
-        marker = ' marker-end="url(#arrow)"' if arrow else ""
+        marker = f' marker-end="url(#{"arrowkey" if key else "arrow"})"' if arrow else ""
         self.items.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" '
                           f'stroke-width="{width}"{d}{marker}/>')
 
@@ -62,7 +78,9 @@ class Svg:
         head = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.width}" height="{self.height}" '
                 f'viewBox="0 0 {self.width} {self.height}">\n'
                 '<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">'
-                f'<path d="M0,0 L10,4 L0,8 z" fill="{LINE}"/></marker></defs>\n'
+                f'<path d="M0,0 L10,4 L0,8 z" fill="{LINE}"/></marker>'
+                '<marker id="arrowkey" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="12" '
+                f'refY="6" orient="auto"><path d="M0,0 L14,6 L0,12 z" fill="{KEY}"/></marker></defs>\n'
                 f'<rect x="0" y="0" width="{self.width}" height="{self.height}" fill="#ffffff"/>\n')
         (OUT / name).write_text(head + "\n".join(self.items) + "\n</svg>\n", encoding="utf-8", newline="\n")
         print(name)
@@ -149,33 +167,85 @@ def sequence(name: str, participants: list[tuple[str, str]], steps: list[tuple],
 
 # --------------------------------------------------------------------------- 1. components
 def components() -> None:
-    svg = Svg(940, 500)
-    svg.rect(20, 20, 400, 400, "#ffffff", GREY_EDGE, dash=True)
-    svg.text(220, 46, "Рабочее место", size=16, bold=True)
-    svg.rect(520, 20, 400, 400, "#ffffff", GREY_EDGE, dash=True)
-    svg.text(720, 46, "Сервер", size=16, bold=True)
+    svg = Svg(1000, 870)
+    svg.rect(20, 20, 410, 564, "#ffffff", GREY_EDGE, dash=True)
+    svg.text(225, 46, "Рабочее место: каталог приложения", size=16, bold=True)
+    svg.rect(570, 20, 410, 564, "#ffffff", GREY_EDGE, dash=True)
+    svg.text(775, 46, "Сервер: каталог Firebird", size=16, bold=True)
 
-    left = [("Приложение\n(нет кода шифрования)", GREY, GREY_EDGE),
-            ("fbclient.dll", BLUE, BLUE_EDGE),
-            ("plugins\\keyholder.dll\nKeyHolder клиента", BLUE, BLUE_EDGE),
-            ("KeySource.dll\nваша библиотека: отдаёт ключ", YELLOW, YELLOW_EDGE)]
-    right = [("firebird.exe", GREEN, GREEN_EDGE),
-             ("plugins\\keyholder.dll\nKeyHolder сервера", GREEN, GREEN_EDGE),
-             ("plugins\\dbcrypt.dll и DbCrypt.conf\nDbCrypt и лицензия", GREEN, GREEN_EDGE),
-             ("employee.fdb\nстраницы зашифрованы", RED, RED_EDGE)]
-    for column, x in ((left, 60), (right, 560)):
-        for i, (text, fill, edge) in enumerate(column):
-            y = 66 + i * 88
-            svg.box(x, y, 320, 58, text, fill, edge, size=14)
-            if i < len(column) - 1:
-                svg.line(x + 160, y + 58, x + 160, y + 86)
-    svg.line(380, 183, 558, 97)
-    svg.text(470, 176, "SQL и ключ:", size=13)
-    svg.text(470, 194, "в зашифрованном", size=13)
-    svg.text(470, 212, "виде", size=13)
-    svg.text(220, 448, "Ключ находится только здесь", size=14, bold=True)
-    svg.text(720, 448, "Ключей на диске сервера нет.", size=14, bold=True)
-    svg.text(720, 470, "Каждое подключение приносит ключ", size=14)
+    rows = [64, 170, 276, 382, 488]
+    lx, rx, w, h = 45, 595, 360, 76
+    left = [
+        ("Приложение", ["вызывает обычные функции Firebird,", "о шифровании не знает"], GREY, GREY_EDGE, False),
+        ("fbclient.dll", ["клиентская библиотека Firebird", "firebird.conf: KeyHolderPlugin = KeyHolder"],
+         BLUE, BLUE_EDGE, False),
+        ("plugins\\keyholder.dll", ["плагин KeyHolder клиента:", "получает ключ от KeySource.dll"],
+         BLUE, BLUE_EDGE, False),
+        ("KeySource.dll", ["ваша библиотека:", "функция MakeKeys возвращает ключ"], YELLOW, YELLOW_EDGE, False),
+        ("Источник ключа", ["код библиотеки, файл, человек у экрана", "или служба ключей: четыре варианта"],
+         RED, RED_EDGE, False),
+    ]
+    right = [
+        ("На диске сервера ключей нет", ["нет файла KeyHolder.conf с ключами,", "нет библиотеки KeySource.dll"],
+         "#ffffff", GREY_EDGE, True),
+        ("firebird.exe", ["сервер Firebird", "firebird.conf: KeyHolderPlugin = KeyHolder"], GREEN, GREEN_EDGE, False),
+        ("plugins\\keyholder.dll", ["плагин KeyHolder сервера: принимает ключ,", "держит его в памяти подключения"],
+         GREEN, GREEN_EDGE, False),
+        ("plugins\\dbcrypt.dll + DbCrypt.conf", ["плагин DbCrypt и файл лицензии:", "шифрует и расшифровывает страницы"],
+         GREEN, GREEN_EDGE, False),
+        ("Файл базы данных", ["EMPLOYEE.FDB:", "все страницы зашифрованы"], GREY, GREY_EDGE, False),
+    ]
+    for column, x in ((left, lx), (right, rx)):
+        for (title, lines, fill, edge, dash), y in zip(column, rows):
+            svg.card(x, y, w, h, title, lines, fill, edge, dash=dash)
+
+    cl, cr = lx + w / 2, rx + w / 2
+    # workstation, from top to bottom
+    svg.line(cl, 140, cl, 168)
+    svg.badge(cl + 22, 154, 1)
+    svg.line(cl, 246, cl, 274)
+    svg.badge(cl + 22, 260, 4)
+    svg.line(cl - 30, 352, cl - 30, 380)
+    svg.badge(cl - 52, 366, 5)
+    svg.line(cl + 30, 382, cl + 30, 355, key=True)
+    svg.badge(cl + 54, 366, 6)
+    svg.line(cl, 488, cl, 461, key=True)
+    # network
+    svg.text(500, 180, "подключение", size=13)
+    svg.line(lx + w, 196, rx - 2, 196)
+    svg.badge(500, 196, 2)
+    svg.line(rx, 226, lx + w + 2, 226, dash=True)
+    svg.badge(500, 226, 3)
+    svg.text(500, 252, "сервер просит ключ", size=13)
+    svg.text(500, 298, "зашифрованный ключ", size=13)
+    svg.line(lx + w, 314, rx - 3, 314, key=True)
+    svg.badge(500, 314, 7)
+    # server, from top to bottom
+    svg.line(cr, 246, cr, 274)
+    svg.line(cr, 352, cr, 379, key=True)
+    svg.badge(cr + 24, 366, 8)
+    svg.line(cr - 20, 458, cr - 20, 486)
+    svg.line(cr + 20, 488, cr + 20, 460)
+    svg.badge(cr + 44, 472, 9)
+
+    steps = [
+        "Приложение вызывает подключение к базе данных.",
+        "fbclient.dll отправляет запрос серверу.",
+        "Сервер видит, что база данных зашифрована, и просит ключ у клиента.",
+        "fbclient.dll загружает плагин KeyHolder из каталога plugins.",
+        "KeyHolder клиента вызывает функцию MakeKeys библиотеки KeySource.dll.",
+        "KeySource.dll берёт ключ из своего источника и возвращает его.",
+        "KeyHolder клиента отправляет ключ серверу в зашифрованном виде.",
+        "KeyHolder сервера передаёт ключ плагину DbCrypt.",
+        "DbCrypt расшифровывает страницы при чтении и шифрует при записи.",
+    ]
+    y = 616
+    for i, text in enumerate(steps):
+        svg.badge(40, y, i + 1)
+        svg.text(60, y + 5, text, size=14, anchor="start")
+        y += 24
+    svg.line(30, y + 4, 96, y + 4, key=True)
+    svg.text(108, y + 9, "толстая линия: путь ключа", size=14, anchor="start", italic=True)
     svg.save("components.svg")
 
 
@@ -255,27 +325,64 @@ def dll_life() -> None:
 
 # --------------------------------------------------------------------------- 5. variants A and B
 def variants_ab() -> None:
-    svg = Svg(940, 330)
-    svg.rect(20, 20, 400, 290, "#ffffff", GREY_EDGE, dash=True)
-    svg.text(220, 48, "а) ключ в библиотеке", size=16, bold=True)
-    svg.rect(60, 80, 320, 150, YELLOW, YELLOW_EDGE)
-    svg.text(220, 106, "KeySource.dll", size=14, bold=True)
-    svg.box(90, 126, 260, 70, "константа в коде:\nKey=Red 0xec,0xa1,…", "#ffffff", YELLOW_EDGE, size=13)
-    svg.text(220, 262, "Настроек нет. Ключ можно", size=13)
-    svg.text(220, 281, "прочитать из файла dll", size=13)
+    svg = Svg(1000, 548)
 
-    svg.rect(480, 20, 440, 290, "#ffffff", GREY_EDGE, dash=True)
-    svg.text(700, 48, "б) ключ в файле", size=16, bold=True)
-    svg.box(500, 80, 170, 60, "KeySource.dll", YELLOW, YELLOW_EDGE, size=14, bold=True)
-    svg.box(500, 180, 170, 76, "KeySource.ini\nKeyFile=E:\\keys\\\nemployee.key", GREY, GREY_EDGE, size=12)
-    svg.box(730, 100, 170, 110, "employee.key\n\nKey=Red 0xec,…", RED, RED_EDGE, size=13)
-    svg.line(585, 140, 585, 178)
-    svg.text(596, 164, "путь", size=12, anchor="start")
-    svg.line(670, 112, 728, 140)
-    svg.text(700, 104, "читает", size=12)
-    svg.text(815, 236, "съёмный диск или", size=13)
-    svg.text(815, 255, "папка с правами доступа", size=13)
-    svg.text(700, 296, "Файл читается при каждом подключении", size=13)
+    def steps(x, y, texts):
+        for i, text in enumerate(texts):
+            svg.badge(x, y + i * 26, i + 1)
+            svg.text(x + 18, y + i * 26 + 5, text, size=13, anchor="start")
+
+    def facts(x0, rows):
+        for i, (label, text) in enumerate(rows):
+            svg.text(x0 + 20, 462 + i * 24, label, size=13, anchor="start", bold=True)
+            svg.text(x0 + 132, 462 + i * 24, text, size=13, anchor="start")
+
+    # ---- a: the key is in the library
+    svg.rect(20, 20, 470, 508, "#ffffff", GREY_EDGE, dash=True)
+    svg.text(255, 48, "а) ключ в библиотеке", size=16, bold=True)
+    svg.box(40, 114, 170, 64, "Приложение,\nKeyHolder клиента", GREY, GREY_EDGE, size=13)
+    svg.rect(280, 76, 190, 262, YELLOW, YELLOW_EDGE)
+    svg.text(375, 102, "KeySource.dll", size=14, bold=True)
+    svg.box(294, 118, 162, 56, "функция\nMakeKeys", "#ffffff", YELLOW_EDGE, size=13)
+    svg.box(294, 206, 162, 76, "константа в коде:\nKey=Red\n0xec,0xa1,…,0x75,", RED, RED_EDGE, size=13)
+    svg.text(375, 308, "ключ записан", size=13)
+    svg.text(375, 326, "в файле dll", size=13)
+    svg.line(210, 134, 292, 134)
+    svg.badge(251, 134, 1)
+    svg.line(294, 160, 213, 160, key=True)
+    svg.badge(251, 160, 2)
+    svg.line(375, 206, 375, 177, key=True)
+    steps(50, 222, ["вызов MakeKeys", "ключ из кода библиотеки"])
+    svg.box(40, 362, 430, 62, "На диске рабочего места: только KeySource.dll.\nФайла настроек нет", GREY, GREY_EDGE,
+            size=13, dash=True)
+    facts(20, [("Ключ лежит", "в файле KeySource.dll"),
+               ("Смена ключа", "новая dll на каждое рабочее место"),
+               ("Риск", "ключ можно извлечь из файла dll")])
+
+    # ---- b: the key is in a file
+    svg.rect(510, 20, 470, 508, "#ffffff", GREY_EDGE, dash=True)
+    svg.text(745, 48, "б) ключ в файле", size=16, bold=True)
+    svg.box(530, 114, 160, 64, "Приложение,\nKeyHolder клиента", GREY, GREY_EDGE, size=13)
+    svg.rect(750, 76, 210, 112, YELLOW, YELLOW_EDGE)
+    svg.text(855, 102, "KeySource.dll", size=14, bold=True)
+    svg.box(764, 118, 182, 56, "функция MakeKeys;\nключа в коде нет", "#ffffff", YELLOW_EDGE, size=13)
+    svg.line(690, 134, 762, 134)
+    svg.badge(726, 134, 1)
+    svg.line(764, 160, 693, 160, key=True)
+    svg.badge(726, 160, 4)
+    svg.box(750, 218, 210, 56, "KeySource.ini\nKeyFile=E:\\keys\\employee.key", GREY, GREY_EDGE, size=12)
+    svg.line(855, 188, 855, 216)
+    svg.badge(877, 202, 2)
+    svg.rect(736, 304, 238, 122, "#ffffff", RED_EDGE, dash=True)
+    svg.text(855, 322, "съёмный диск или папка", size=12)
+    svg.box(750, 334, 210, 80, "E:\\keys\\employee.key\nKey=Red 0xec,…,0x75,\nили Password=Main фраза", RED, RED_EDGE, size=12)
+    svg.line(855, 304, 855, 277, key=True)
+    svg.badge(877, 290, 3)
+    steps(540, 222, ["вызов MakeKeys", "путь к файлу ключа", "чтение файла ключа", "ключ из файла"])
+    svg.box(530, 362, 186, 62, "На диске рабочего\nместа ключа нет", GREY, GREY_EDGE, size=13, dash=True)
+    facts(510, [("Ключ лежит", "в отдельном файле; его можно унести"),
+                ("Смена ключа", "заменить файл ключа"),
+                ("Риск", "файл ключа можно скопировать")])
     svg.save("variants-ab.svg")
 
 
@@ -324,30 +431,63 @@ def seq_rest() -> None:
 
 # --------------------------------------------------------------------------- 8. deployment
 def deploy() -> None:
-    svg = Svg(1000, 560)
-    svg.text(190, 30, "Откуда", size=16, bold=True)
-    svg.text(750, 30, "Куда", size=16, bold=True)
+    columns = [
+        ("Сервер", "work\\fb<N>\\server · скрипты 10 и 20", [
+            ("blue", "Firebird целиком: firebird.exe,\nдвижок, утилиты, примеры"),
+            ("green", "Server\\*: fbclient.dll, fbcrypt.dll,\nOpenSSL"),
+            ("green", "plugins\\dbcrypt.dll\nplugins\\keyholder.dll"),
+            ("green", "plugins\\DbCrypt.conf: лицензия"),
+            ("grey", "firebird.conf:\nKeyHolderPlugin = KeyHolder"),
+            ("grey", "db\\EMPLOYEE.FDB: зашифрована\nскриптом 20"),
+            ("none", "Ключей нет: нет KeyHolder.conf,\nнет KeySource.dll"),
+        ]),
+        ("Рабочее место", "work\\fb<N>\\remote · скрипт 40", [
+            ("green", "Client\\64bit\\*: fbclient.dll, ICU,\nOpenSSL, isql, gbak"),
+            ("green", "plugins\\keyholder.dll"),
+            ("yellow", "KeySource.dll: вариант a, b, c или d"),
+            ("yellow", "EmployeeRemote.exe"),
+            ("grey", "firebird.conf: Providers = Remote,\nKeyHolderPlugin = KeyHolder"),
+            ("grey", "KeySource.ini, EmployeeApp.ini"),
+            ("none", "DbCrypt и лицензия не нужны"),
+        ]),
+        ("Каталог embedded", "work\\fb<N>\\embedded · скрипт 41", [
+            ("green", "Client\\64bit\\*: fbclient.dll, ICU,\nOpenSSL, isql, gbak"),
+            ("green", "plugins\\keyholder.dll\nplugins\\dbcrypt.dll"),
+            ("green", "plugins\\DbCrypt.conf: лицензия"),
+            ("blue", "plugins\\engine13.dll (3.0: engine12.dll),\nintl\\*"),
+            ("yellow", "KeySource.dll, EmployeeEmbedded.exe"),
+            ("grey", "firebird.conf: Providers = Engine13,\nKeyHolderPlugin = KeyHolder"),
+            ("grey", "EMPLOYEE.FDB: своя зашифрованная\nкопия; KeySource.ini, EmployeeApp.ini"),
+        ]),
+    ]
     sources = [
-        (50, "github.com/FirebirdSQL/firebird\nFirebird-<версия>-x64.zip\nскрипт 01", BLUE, BLUE_EDGE),
-        (200, "cc.ib-aid.com\nCryptPlugin-FB_<NN>_WINDOWS_64bit.zip\nкаталоги Server и Client\\64bit,\nпробная лицензия DbCrypt.conf\nскрипты 02 и 03", GREEN, GREEN_EDGE),
-        (400, "Программы примера: work\\build\nEmployeeRemote.exe, EmployeeEmbedded.exe,\nKeySource.dll, KeyProvider.exe\nскрипт 30 или 05", YELLOW, YELLOW_EDGE),
+        ("Официальный Firebird", ["github.com/FirebirdSQL/firebird", "скрипт 01"], "blue"),
+        ("Архив плагина", ["cc.ib-aid.com, с пробной лицензией", "скрипты 02 и 03"], "green"),
+        ("Программы примера", ["релиз на GitHub или сборка", "в Lazarus; скрипты 05 или 30"], "yellow"),
+        ("Создаёт скрипт", ["файлы настроек,", "зашифрованная база данных"], "grey"),
     ]
-    targets = [
-        (50, "Сервер: work\\fb<N>\\server  (скрипт 10)\nFirebird целиком + Server\\*\n+ plugins\\DbCrypt.conf\nключей нет", GREY, GREY_EDGE),
-        (210, "Рабочее место: work\\fb<N>\\remote  (скрипт 40)\nClient\\64bit\\* + plugins\\keyholder.dll\n+ KeySource.dll + EmployeeRemote.exe\nfirebird.conf: KeyHolderPlugin = KeyHolder", GREY, GREY_EDGE),
-        (380, "Embedded: work\\fb<N>\\embedded  (скрипт 41)\nClient\\64bit\\* + keyholder.dll + dbcrypt.dll\n+ engine12/13.dll + intl + DbCrypt.conf\n+ KeySource.dll + EmployeeEmbedded.exe\n+ своя копия базы", GREY, GREY_EDGE),
-    ]
-    ends_s, ends_t = [], []
-    for y, text, fill, edge in sources:
-        h = 22 + (text.count("\n") + 1) * STEP
-        svg.box(20, y, 340, h, text, fill, edge, size=13)
-        ends_s.append((360, y + h / 2))
-    for y, text, fill, edge in targets:
-        h = 22 + (text.count("\n") + 1) * STEP
-        svg.box(540, y, 440, h, text, fill, edge, size=13)
-        ends_t.append((538, y + h / 2))
-    for a, b in [(0, 0), (0, 2), (1, 0), (1, 1), (1, 2), (2, 1), (2, 2)]:
-        svg.line(ends_s[a][0], ends_s[a][1], ends_t[b][0], ends_t[b][1])
+    heights = [sum(20 + (text.count("\n") + 1) * STEP for _, text in rows) for _, _, rows in columns]
+    svg = Svg(1000, 262 + max(heights) + 14)
+
+    svg.text(20, 34, "Откуда: четыре источника файлов", size=16, bold=True, anchor="start")
+    for i, (title, lines, colour) in enumerate(sources):
+        fill, edge = FILLS[colour]
+        svg.card(20 + i * 243.3, 48, 230, 76, title, lines, fill, edge, size=12)
+    svg.text(20, 160, "Куда: три каталога. Цвет строки показывает источник файла", size=16, bold=True, anchor="start")
+    for i, (title, path, rows) in enumerate(columns):
+        x = 20 + i * 325
+        svg.rect(x, 174, 310, 62, "#ffffff", INK, width=1.6)
+        svg.text(x + 155, 198, title, size=15, bold=True)
+        svg.text(x + 155, 220, path, size=12)
+        y = 244
+        for colour, text in rows:
+            h = 14 + (text.count("\n") + 1) * STEP
+            if colour == "none":
+                svg.box(x, y, 310, h, text, "#ffffff", GREY_EDGE, size=12, dash=True)
+            else:
+                fill, edge = FILLS[colour]
+                svg.box(x, y, 310, h, text, fill, edge, size=12)
+            y += h + 6
     svg.save("deploy.svg")
 
 
