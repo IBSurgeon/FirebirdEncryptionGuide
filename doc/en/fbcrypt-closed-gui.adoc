@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Firebird database encryption for a closed-source application
-1.3.2, 24.11.2026
+1.3.3, 24.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -127,6 +127,8 @@ image::closed-gui/components.svg[pdfwidth=100%]
 === Usual connection
 
 The server asks for the key. The client plugin `KeyHolder` calls the function `MakeKeys` of the library `KeySource.dll` and sends the key to the server. The application does nothing for this.
+
+The server asks for the key only on a TCP/IP connection. On XNET (`xnet://`) the key from `KeySource.dll` is not sent: the connection fails with the error `Key not set`. A local path without a server name is not suitable either: it is embedded mode or XNET. The connection string of the application must always have a server name, for example `localhost:database` or `server/3050:database`. Details: the main guide, section "Connection kinds".
 
 .Key transfer at a connection to the server
 image::closed-gui/seq-remote.svg[pdfwidth=100%]
@@ -1150,6 +1152,7 @@ Checklist:
 . *Files near it.* All files of the folder `Client\64bit`, `plugins\keyholder.dll`, your `KeySource.dll` and `firebird.conf` with the line `KeyHolderPlugin = KeyHolder`.
 . *Version.* The plugin archive has the same version as the server: 3.0, 4.0 or 5.0.
 . *The variable `FIREBIRD`.* It must not be set on the workstation.
+. *Connection string.* It has a server name: `server:database` or `server/port:database`. On XNET and with a local path without a server name, the key is not sent to the server.
 . *Embedded.* Add `plugins\dbcrypt.dll` and the license `plugins\DbCrypt.conf`.
 . *Server.* The line `KeyHolderPlugin = KeyHolder` in `firebird.conf`, the plugins and the license in `plugins`. There are no keys on the server: no file `plugins\KeyHolder.conf` with keys and no `KeySource.dll`.
 . *Test.* Install the diagnostic library: `.\40-deploy-remote.ps1 -Version 5 -KeySource probe`.
@@ -1264,6 +1267,11 @@ Main guide: chapters "Encryption, decryption and key change" and "Support in the
 | The server did not receive the key. The library is not found, it returned `NULL`, or the client did not load `KeyHolder`.
 | Check `KeySource.log`. If there is no log, see step 2.
 
+| `Invalid crypt key RED` +
+`Key not set`, and `KeySource.log` shows a call of `MakeKeys`
+| The connection uses XNET: `xnet://` or a local path without a server name. The server asks for the key only on TCP/IP.
+| Write the server name in the connection string: `localhost:database`.
+
 | `Invalid crypt key RED` without the line `Key not set`
 | The key with the name `RED` is received, but its value is incorrect.
 | Check the key value or the pass phrase.
@@ -1365,6 +1373,7 @@ The script takes the database key from the file `work\fb<N>\db-key.conf`. In var
 | Load: 1000 connections in sequence and 8 threads with 125 connections each, each variant, Firebird 5.0. No errors, memory growth 3.5–5 MB | passed
 | Variant d: one request to the service for each process at 1000 connections | passed
 | Client files from HQbird (`ClientLibs\64`, builds 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) with the library of variant a. The file `libcrypto-1_1-x64.dll` was added to the folder of version 5.0 | passed
+| Connection kinds, versions 3.0, 4.0, 5.0. TCP/IP (`inet://`, `server/port:`): the key from `KeySource.dll` is sent. XNET: the client key is not sent, error `Key not set`. XNET with the key in a file on the server: the database opens | passed
 |===
 
 Test environment: Windows 11 x64, official Firebird builds 3.0.14, 4.0.7, 5.0.4, plugin archives of 01.10.2026, Lazarus 4.8 with Free Pascal 3.2.2.

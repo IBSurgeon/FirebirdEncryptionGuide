@@ -16,7 +16,33 @@ Verifique o seguinte:
 ** enviar a chave a partir do cliente com o utilitário `isql` e o plugin `KeyHolderStdin` (veja <<fbcrypt-utils>>);
 ** executar o comando com o utilitário `isql` a partir da pasta do cliente que contém a biblioteca `KeySource` (veja <<fbcrypt-keysource>>). O plugin `KeyHolder` do cliente envia a chave ao servidor, e não é necessário um arquivo no servidor.
 
-Conecte-se por TCP/IP (`localhost:` ou `inet://`), e não por um caminho local sem o nome do servidor.
+Se o cliente envia a chave, conecte-se por TCP/IP (`localhost:` ou `inet://`), e não por um caminho local sem o nome do servidor nem por XNET. Veja <<fbcrypt-connection-kinds>>.
+
+[[fbcrypt-connection-kinds]]
+== Tipos de conexão
+
+O servidor Firebird pede a chave ao cliente somente em uma conexão TCP/IP. Em uma conexão XNET, a chave deve estar no servidor.
+
+[cols="3,2,2", options="header"]
+|===
+| Conexão | Chave no arquivo `KeyHolder.conf` do servidor | O cliente envia a chave
+| TCP/IP: `servidor:banco`, `servidor/porta:banco`, `inet://servidor:porta/banco`
+| funciona
+| funciona
+
+| XNET: `xnet://banco`. Somente Windows, cliente e servidor no mesmo computador
+| funciona
+| não funciona, erro `Key not set`
+|===
+
+O cliente envia a chave em cada um destes métodos: `fbcrypt`, `KeySource`, `KeyHolderStdin`, a opção `-KeyHolder` dos utilitários. Quem define essa regra é o servidor Firebird, por isso ela é a mesma para todos os métodos.
+
+* *Caminho local sem o nome do servidor (Windows).* O resultado depende do parâmetro `Providers` do cliente. O provedor `Engine13` (na 3.0: `Engine12`) abre o arquivo dentro do processo do cliente: é o modo embedded, não há rede, e o plugin `KeyHolder` desse processo obtém a chave. O provedor `Loopback` no Windows tenta primeiro o XNET, e a chave do cliente não é enviada. Com apenas `Remote` em `Providers`, a conexão termina com o erro `unavailable database`. Escreva o nome do servidor, e o resultado não dependerá das configurações.
+* *Criptografia do canal.* No XNET os dados passam pela memória compartilhada do computador. Os plugins `WireCrypt` não os criptografam: `WIRE_ENCRYPTED = FALSE`. Esse é o comportamento padrão do Firebird.
+* *WNET (pipes nomeados).* Existe somente no Firebird 3.0 e 4.0. Não foi testado. Pelo código-fonte do servidor, a regra é a mesma do XNET.
+* *Nome do XNET.* Se o servidor tem o parâmetro `IpcName`, o `firebird.conf` do cliente precisa do mesmo valor.
+
+Testado em 24.11.2026 no Firebird 3.0.14, 4.0.7 e 5.0.4 para Windows: `isql` com a biblioteca `KeySource` e `gbak` (na 4.0 e 5.0 com a opção `-KeyHolder KeyHolder`).
 
 == Criptografia do banco de dados
 

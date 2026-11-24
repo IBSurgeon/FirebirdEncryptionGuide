@@ -16,7 +16,33 @@ Check the following:
 ** send the key from the client with the `isql` utility and the `KeyHolderStdin` plugin (see <<fbcrypt-utils>>);
 ** run the statement with the `isql` utility from the client folder that contains the `KeySource` library (see <<fbcrypt-keysource>>). The client `KeyHolder` plugin sends the key to the server, a file on the server is not necessary.
 
-Connect over TCP/IP (`localhost:` or `inet://`), not with a local path without a server name.
+If the client sends the key, connect over TCP/IP (`localhost:` or `inet://`), not with a local path without a server name and not over XNET. See <<fbcrypt-connection-kinds>>.
+
+[[fbcrypt-connection-kinds]]
+== Connection kinds
+
+The Firebird server asks the client for the key only on a TCP/IP connection. On an XNET connection the key must be on the server.
+
+[cols="3,2,2", options="header"]
+|===
+| Connection | Key in the file `KeyHolder.conf` on the server | The client sends the key
+| TCP/IP: `server:database`, `server/port:database`, `inet://server:port/database`
+| works
+| works
+
+| XNET: `xnet://database`. Windows only, the client and the server are on the same computer
+| works
+| does not work, error `Key not set`
+|===
+
+The client sends the key in each of these methods: `fbcrypt`, `KeySource`, `KeyHolderStdin`, the switch `-KeyHolder` of the utilities. The Firebird server sets this rule, so it is the same for all methods.
+
+* *Local path without a server name (Windows).* The result depends on the client parameter `Providers`. The provider `Engine13` (in 3.0: `Engine12`) opens the file inside the client process: this is embedded mode, there is no network, and the plugin `KeyHolder` of this process gets the key. The provider `Loopback` on Windows tries XNET first, and the client key is not sent. With only `Remote` in `Providers`, the connection fails with the error `unavailable database`. Write the server name, and the result does not depend on the settings.
+* *Wire encryption.* On XNET the data goes through the shared memory of the computer. The `WireCrypt` plugins do not encrypt it: `WIRE_ENCRYPTED = FALSE`. This is the standard behaviour of Firebird.
+* *WNET (named pipes).* It exists only in Firebird 3.0 and 4.0. Not tested. By the source code of the server, the rule is the same as for XNET.
+* *XNET name.* If the server has the parameter `IpcName`, the client `firebird.conf` needs the same value.
+
+Tested on 24.11.2026 with Firebird 3.0.14, 4.0.7 and 5.0.4 for Windows: `isql` with the `KeySource` library, and `gbak` (on 4.0 and 5.0 with the switch `-KeyHolder KeyHolder`).
 
 == Database encryption
 

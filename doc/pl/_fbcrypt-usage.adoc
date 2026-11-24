@@ -16,7 +16,33 @@ Sprawdź następujące elementy:
 ** przekazać klucz z klienta narzędziem `isql` z wtyczką `KeyHolderStdin` (patrz <<fbcrypt-utils>>);
 ** wykonać instrukcję narzędziem `isql` z folderu klienta, w którym znajduje się biblioteka `KeySource` (patrz <<fbcrypt-keysource>>). Klucz przekazuje serwerowi kliencka wtyczka `KeyHolder`, plik na serwerze nie jest potrzebny.
 
-Łącz się przez TCP/IP (`localhost:` lub `inet://`), a nie przez ścieżkę lokalną bez nazwy serwera.
+Jeśli klucz przekazuje klient, łącz się przez TCP/IP (`localhost:` lub `inet://`), a nie przez ścieżkę lokalną bez nazwy serwera ani przez XNET. Zob. <<fbcrypt-connection-kinds>>.
+
+[[fbcrypt-connection-kinds]]
+== Rodzaje połączeń
+
+Serwer Firebird żąda klucza od klienta tylko przy połączeniu przez TCP/IP. Przy połączeniu przez XNET klucz musi być na serwerze.
+
+[cols="3,2,2", options="header"]
+|===
+| Połączenie | Klucz w pliku `KeyHolder.conf` na serwerze | Klucz przekazuje klient
+| TCP/IP: `serwer:baza`, `serwer/port:baza`, `inet://serwer:port/baza`
+| działa
+| działa
+
+| XNET: `xnet://baza`. Tylko Windows, klient i serwer na tym samym komputerze
+| działa
+| nie działa, błąd `Key not set`
+|===
+
+Klient przekazuje klucz w każdym z tych sposobów: `fbcrypt`, `KeySource`, `KeyHolderStdin`, przełącznik `-KeyHolder` narzędzi. Tę regułę ustala serwer Firebird, dlatego jest ona taka sama dla wszystkich sposobów.
+
+* *Ścieżka lokalna bez nazwy serwera (Windows).* Wynik zależy od parametru `Providers` klienta. Dostawca `Engine13` (w 3.0: `Engine12`) otwiera plik wewnątrz procesu klienta: to tryb embedded, sieci nie ma, a klucz otrzymuje wtyczka `KeyHolder` tego procesu. Dostawca `Loopback` w systemie Windows najpierw próbuje XNET i klucz klienta nie jest przekazywany. Gdy w `Providers` jest tylko `Remote`, połączenie kończy się błędem `unavailable database`. Podawaj nazwę serwera, a wynik nie będzie zależał od ustawień.
+* *Szyfrowanie kanału.* Przez XNET dane idą przez pamięć współdzieloną komputera. Wtyczki `WireCrypt` ich nie szyfrują: `WIRE_ENCRYPTED = FALSE`. To standardowe zachowanie Firebird.
+* *WNET (nazwane potoki).* Istnieje tylko w Firebird 3.0 i 4.0. Nie sprawdzono. Według kodu źródłowego serwera reguła jest taka sama jak dla XNET.
+* *Nazwa XNET.* Jeśli na serwerze ustawiono parametr `IpcName`, tę samą wartość trzeba wpisać w `firebird.conf` klienta.
+
+Sprawdzono 24.11.2026 na Firebird 3.0.14, 4.0.7 i 5.0.4 dla Windows: `isql` z biblioteką `KeySource` oraz `gbak` (w 4.0 i 5.0 z przełącznikiem `-KeyHolder KeyHolder`).
 
 == Szyfrowanie bazy danych
 

@@ -15,8 +15,8 @@ As tabelas abaixo reúnem as mensagens do plugin de criptografia, as causas dela
 
 | `Invalid crypt key <nome>` +
 `Key not set`
-| A conexão não enviou a chave, e ela não está no servidor.
-| Envie a chave a partir do cliente (`fbcrypt`, `KeySource`, `KeyHolderStdin`) ou grave-a no `KeyHolder.conf` para teste.
+| A conexão não enviou a chave, e ela não está no servidor. Ou a conexão usa XNET: no XNET o servidor não pede a chave ao cliente.
+| Envie a chave a partir do cliente (`fbcrypt`, `KeySource`, `KeyHolderStdin`) ou grave-a no `KeyHolder.conf` para teste. Se o cliente envia a chave, conecte-se por TCP/IP: veja <<fbcrypt-connection-kinds>>.
 
 | `Invalid crypt key <nome>` sem a linha `Key not set`
 | Uma chave com esse nome foi recebida, mas o valor dela está errado. Causa frequente: a frase secreta contém o caractere `#`, `{` ou `}`.

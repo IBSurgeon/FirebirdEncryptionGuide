@@ -15,8 +15,8 @@ Poniższe tabele zawierają komunikaty wtyczki szyfrowania, ich przyczyny i spos
 
 | `Invalid crypt key <nazwa>` +
 `Key not set`
-| Połączenie nie przekazało klucza i nie ma go na serwerze.
-| Przekaż klucz z klienta (`fbcrypt`, `KeySource`, `KeyHolderStdin`) lub zapisz go w `KeyHolder.conf` do testu.
+| Połączenie nie przekazało klucza i nie ma go na serwerze. Albo połączenie idzie przez XNET: przez XNET serwer nie żąda klucza od klienta.
+| Przekaż klucz z klienta (`fbcrypt`, `KeySource`, `KeyHolderStdin`) lub zapisz go w `KeyHolder.conf` do testu. Jeśli klucz przekazuje klient, łącz się przez TCP/IP: zob. <<fbcrypt-connection-kinds>>.
 
 | `Invalid crypt key <nazwa>` bez wiersza `Key not set`
 | Otrzymano klucz o tej nazwie, ale jego wartość jest nieprawidłowa. Częsta przyczyna: we frazie hasła jest znak `#`, `{` lub `}`.
