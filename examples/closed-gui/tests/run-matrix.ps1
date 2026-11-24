@@ -19,6 +19,7 @@
 
   -Negative   also run the checks that must end with an error (first version, network mode)
   -Load       also run 1000 connections and 8 threads for each variant (first version, network mode)
+  -Backup     also make an encrypted backup and a test restore for each version (script 50-backup.ps1)
 
   Run the scripts 01-30 before this script.
 
@@ -33,7 +34,8 @@ param(
     [ValidateSet('a', 'b', 'c', 'd')][string[]]$KeySource = @('a', 'b', 'c', 'd'),
     [string]$WorkDir = "",
     [switch]$Negative,
-    [switch]$Load
+    [switch]$Load,
+    [switch]$Backup
 )
 $deploy = Join-Path (Split-Path $PSScriptRoot -Parent) "deploy"
 . (Join-Path $deploy "common.ps1")
@@ -314,6 +316,22 @@ if ($Load) {
             if ($requests -ne 2) { $failed++ }
         }
         Stop-Helpers $d
+    }
+}
+
+# ------------------------------------------------------------------ backup
+if ($Backup) {
+    Write-Host ""
+    Write-Host "== Encrypted backup and test restore (50-backup.ps1, KeySource variant b)"
+    foreach ($v in $Version) {
+        $d = Get-Deploy $v $WorkDir
+        Set-VersionEnv $d
+        Stop-Helpers $d
+        $global:LASTEXITCODE = 0
+        $text = (& (Join-Path $deploy "50-backup.ps1") -Version $v -WorkDir $d.WorkDir *>&1 | Out-String).Trim()
+        $ok = ($LASTEXITCODE -eq 0) -and ($text -match 'Done\. Encrypted backup')
+        if (-not $ok) { $failed++ }
+        Write-Host ("{0,-4} Firebird {1}: {2}" -f $(if ($ok) { 'OK' } else { 'FAIL' }), $v, (($text -split "`n")[-1]).Trim())
     }
 }
 
