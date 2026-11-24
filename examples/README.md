@@ -42,6 +42,8 @@
 | [lazarus/gbak-stdin](lazarus/gbak-stdin) | Free Pascal | резервная копия и восстановление из программы | — |
 | [lazarus/threads-sqldb](lazarus/threads-sqldb) | Free Pascal, SQLdb | потоки | A |
 | [keysource](keysource) | C++, Delphi, Lazarus | библиотека `KeySource` | C |
+| [clientkeygen](clientkeygen) | Python | индивидуальные ключи клиентов, журнал сервера (только Firebird 5.0) | B |
+| [keychecker](keychecker) | C++, Free Pascal | библиотека `KeyChecker` | — |
 | [app/Example_ForLazarus_IBX](app/Example_ForLazarus_IBX) | Lazarus, IBX | подключение, шифрование, мониторинг | A |
 
 Примеры Python, Java, PHP, .NET и Free Pascal проверены на Firebird 4.0 и 5.0 (Windows x64). У каждого есть скрипт `run-test.ps1`.
