@@ -1,6 +1,6 @@
 # План разработки примеров шифрования (Delphi, Pascal, Java, .NET, Python, PHP)
 
-Дата: 24.11.2026. Редакция 8 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
+Дата: 24.11.2026. Редакция 9 (исполнение идёт, состояние в разделе 17). Лицензия для CI отложена.
 
 ## 1. Цель
 
@@ -270,7 +270,7 @@ README должен описать, где хранить ключ на веб-�
 | Java: `jdbc-basic`, `jdbc-native-fbcrypt`, `jdbc-native-keysource`, `gbak-stdin`, `jdbc-datasource` (S4), `spring-boot` (S8) | готово, тесты проходят |
 | PHP: `pdo-ffi-fbcrypt`, `pdo-keysource`, `gbak-stdin` | готово, тесты проходят |
 | Free Pascal: `console-sqldb`, `gbak-stdin`, `threads-sqldb` (S4), модули `fbcryptapi.pas`, `examplecommon.pas` | готово, тесты проходят |
-| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено; модуль `dbcrypthelper.pas` компилируется, весь проект не собирался (нужен пакет IBX) |
+| Lazarus IBX: опечатка `cdelc` и имя `libfbcrypt.so` | исправлено; проект собран (Lazarus 4.8, IBX), подключение с ключом `Red` проверено на Firebird 5.0; архив в релизе 1.1. Шифрование из программы, ключи 16 и 24 байта, Linux не проверены |
 | Этап 1: способы B, C, D, E (Java, PHP), .NET embedded | проверено (раздел 3) |
 | Этап 1: S11 через Services API | проверено: нужны обратный вызов ключа и параметры `keyholder`, `keyname` |
 | Этап 1: `fdb`, `firebirdsql`, ZTS и постоянные подключения PHP | не сделано |
@@ -304,3 +304,4 @@ README должен описать, где хранить ключ на веб-�
 - Редакция 6: примеры Free Pascal собраны и проверены. Все 15 тестов проходят на Firebird 4.0 и 5.0.
 - Редакция 7: сценарии S4 (пул и потоки), S5 (шифрование и мониторинг), S8 (ключ из окружения), S11 (Services API). Всего 22 теста.
 - Редакция 8: примеры `clientkeygen` (S9) и `keychecker` (S10). Расширены разделы руководства «Индивидуальные ключи клиентов» и «Библиотека KeyChecker».
+- Редакция 9: пример Lazarus IBX собран с IBX4Lazarus. Архив `AppLazarus-IBX-x86_64-win64.zip` добавлен в релиз 1.1.

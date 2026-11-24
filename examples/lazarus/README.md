@@ -61,7 +61,22 @@ fpc -Fu..\common -FUlib -oconsole_sqldb.exe console_sqldb.lpr
 ## Существующий пример с IBX
 
 Графический пример находится в каталоге [../app/Example_ForLazarus_IBX](../app/Example_ForLazarus_IBX).
-В модуле `dbcrypthelper.pas` исправлены опечатка `cdelc` и имя библиотеки для Linux (`libfbcrypt.so`). Модуль компилируется. Весь проект не собирался: для него нужен пакет IBX.
+В модуле `dbcrypthelper.pas` исправлены опечатка `cdelc` и имя библиотеки для Linux (`libfbcrypt.so`).
+
+Готовая программа для Windows x64: [AppLazarus-IBX-x86_64-win64.zip](https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/AppLazarus-IBX-x86_64-win64.zip).
+
+Сборка из исходных текстов:
+
+1. Установите в Lazarus пакет `IBX4Lazarus` (вместе с ним `FBIntf` и `IBControls`). Это можно сделать через Online Package Manager.
+2. Соберите проект:
+
+```
+lazbuild --build-mode=Release FbCryptExample.lpi
+```
+
+Программа появится в каталоге `bin\x86_64-win64\Release`.
+
+Проверено 24.11.2026: Lazarus 4.8, FPC 3.2.2, IBX из Online Package Manager, Windows x64, Firebird 5.0. Программа открыла зашифрованную копию базы `employee` с ключом `Red` и показала таблицу `EMPLOYEE`. Кнопки шифрования, расшифровки и `gstat -h` в этой сборке не проверялись.
 
 ## Что не сделано
 
