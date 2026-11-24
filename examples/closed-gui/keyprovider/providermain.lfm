@@ -1,0 +1,124 @@
+object ProviderForm: TProviderForm
+  Left = 400
+  Height = 320
+  Top = 200
+  Width = 600
+  Caption = 'Key Provider'
+  ClientHeight = 320
+  ClientWidth = 600
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object InfoLabel: TLabel
+    Left = 8
+    Height = 15
+    Top = 8
+    Width = 584
+    Align = alTop
+    BorderSpacing.Around = 8
+    Caption = 'Key name'
+  end
+  object LogMemo: TMemo
+    Left = 8
+    Height = 238
+    Top = 31
+    Width = 584
+    Align = alClient
+    BorderSpacing.Left = 8
+    BorderSpacing.Right = 8
+    ReadOnly = True
+    ScrollBars = ssAutoVertical
+    TabOrder = 0
+  end
+  object ButtonPanel: TPanel
+    Left = 0
+    Height = 43
+    Top = 277
+    Width = 600
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 43
+    ClientWidth = 600
+    TabOrder = 1
+    object EnterKeyButton: TButton
+      Left = 8
+      Height = 27
+      Top = 8
+      Width = 120
+      Caption = 'Enter the key'
+      OnClick = EnterKeyClick
+      TabOrder = 0
+    end
+    object ForgetKeyButton: TButton
+      Left = 136
+      Height = 27
+      Top = 8
+      Width = 120
+      Caption = 'Forget the key'
+      OnClick = ForgetKeyClick
+      TabOrder = 1
+    end
+    object ExitButton: TButton
+      Left = 472
+      Height = 27
+      Top = 8
+      Width = 120
+      Anchors = [akTop, akRight]
+      Caption = 'Exit'
+      OnClick = ExitClick
+      TabOrder = 2
+    end
+  end
+  object TrayIcon: TTrayIcon
+    PopUpMenu = TrayMenu
+    Hint = 'Key Provider'
+    OnDblClick = ShowClick
+    Left = 48
+    Top = 64
+  end
+  object TrayMenu: TPopupMenu
+    Left = 136
+    Top = 64
+    object ShowItem: TMenuItem
+      Caption = 'Show the window'
+      OnClick = ShowClick
+    end
+    object EnterKeyItem: TMenuItem
+      Caption = 'Enter the key...'
+      OnClick = EnterKeyClick
+    end
+    object ForgetKeyItem: TMenuItem
+      Caption = 'Forget the key'
+      OnClick = ForgetKeyClick
+    end
+    object KeepItem: TMenuItem
+      Caption = 'Keep the key'
+      object KeepUntilExitItem: TMenuItem
+        Caption = 'Until the program ends'
+        GroupIndex = 1
+        RadioItem = True
+        OnClick = KeepItemClick
+      end
+      object Keep15Item: TMenuItem
+        Tag = 15
+        Caption = '15 minutes'
+        GroupIndex = 1
+        RadioItem = True
+        OnClick = KeepItemClick
+      end
+      object Keep60Item: TMenuItem
+        Tag = 60
+        Caption = '1 hour'
+        GroupIndex = 1
+        RadioItem = True
+        OnClick = KeepItemClick
+      end
+    end
+    object ExitItem: TMenuItem
+      Caption = 'Exit'
+      OnClick = ExitClick
+    end
+  end
+end

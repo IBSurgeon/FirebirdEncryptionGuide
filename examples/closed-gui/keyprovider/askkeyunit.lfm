@@ -1,0 +1,70 @@
+object AskKeyForm: TAskKeyForm
+  Left = 500
+  Height = 190
+  Top = 300
+  Width = 520
+  BorderStyle = bsDialog
+  Caption = 'Key Provider - enter the key'
+  ClientHeight = 190
+  ClientWidth = 520
+  FormStyle = fsSystemStayOnTop
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object PromptLabel: TLabel
+    Left = 12
+    Height = 48
+    Top = 10
+    Width = 496
+    AutoSize = False
+    Caption = 'Enter the key'
+    WordWrap = True
+  end
+  object KeyEdit: TEdit
+    Left = 12
+    Height = 23
+    Top = 66
+    Width = 496
+    EchoMode = emPassword
+    PasswordChar = '*'
+    TabOrder = 0
+  end
+  object ShowCheck: TCheckBox
+    Left = 12
+    Height = 19
+    Top = 96
+    Width = 110
+    Caption = 'Show the text'
+    OnChange = ShowCheckChange
+    TabOrder = 1
+  end
+  object ErrorLabel: TLabel
+    Left = 12
+    Height = 15
+    Top = 122
+    Width = 496
+    AutoSize = False
+    Font.Color = clRed
+    ParentFont = False
+  end
+  object OkButton: TButton
+    Left = 324
+    Height = 27
+    Top = 150
+    Width = 88
+    Caption = 'OK'
+    Default = True
+    OnClick = OkButtonClick
+    TabOrder = 2
+  end
+  object CancelButton: TButton
+    Left = 420
+    Height = 27
+    Top = 150
+    Width = 88
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 3
+  end
+end

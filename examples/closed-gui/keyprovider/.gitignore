@@ -1,0 +1,6 @@
+bin/
+lib/
+*.res
+*.lps
+*.compiled
+backup/

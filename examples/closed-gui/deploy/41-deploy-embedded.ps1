@@ -10,16 +10,17 @@
     official Firebird              the engine plugin and the folder intl
     license                        plugins\DbCrypt.conf
 
-  Then it adds a KeySource library and its own copy of the encrypted database.
+  Then it adds the example application, one of the KeySource libraries (-KeySource a, b, c or d)
+  and its own copy of the encrypted database.
   In the embedded mode the engine works inside the application, so the folder needs
   the DbCrypt plugin and the license. The key does not go through the network.
 
 .EXAMPLE
-  .\41-deploy-embedded.ps1 -Version 5 -KeySourceDll C:\build\KeySource.dll
+  .\41-deploy-embedded.ps1 -Version 5 -KeySource a
 #>
 param(
     [Parameter(Mandatory = $true)][ValidateSet('3', '4', '5')][string]$Version,
-    [Parameter(Mandatory = $true)][string]$KeySourceDll,
+    [ValidateSet('a', 'b', 'c', 'd', 'probe')][string]$KeySource = 'a',
     [string]$WorkDir = "",
     [string]$Folder = "embedded"
 )
@@ -32,7 +33,6 @@ $engine = $d.Fb.Provider.ToLower() + ".dll"
 
 if (-not (Test-Path $client)) { Fail "$client is not found. Run 10-install-server.ps1 first." }
 if (-not (Test-Path $dbSource)) { Fail "$dbSource is not found. Run 20-encrypt-database.ps1 first." }
-if (-not (Test-Path $KeySourceDll)) { Fail "Library is not found: $KeySourceDll" }
 
 Step "Make the embedded folder $target"
 if (Test-Path $target) { Remove-Item $target -Recurse -Force }
@@ -46,8 +46,7 @@ Copy-Item (Join-Path $d.Server "plugins\$engine") (Join-Path $target "plugins")
 Copy-Item (Join-Path $d.Server "intl\*") (Join-Path $target "intl")
 # The DbCrypt plugin works only with a license.
 Copy-Item $d.License (Join-Path $target "plugins\DbCrypt.conf")
-# The KeyHolder plugin of the engine looks for the library with the name KeySource next to fbclient.dll.
-Copy-Item $KeySourceDll (Join-Path $target "KeySource.dll")
+Install-KeySource $d $target $KeySource
 Copy-Item $dbSource (Join-Path $target "EMPLOYEE.FDB")
 
 Set-Content -Path (Join-Path $target "firebird.conf") -Encoding ASCII -Value @(
@@ -56,4 +55,5 @@ Set-Content -Path (Join-Path $target "firebird.conf") -Encoding ASCII -Value @(
     "# The KeyHolder plugin of the engine takes the keys from KeySource.dll.",
     "KeyHolderPlugin = KeyHolder"
 )
-Write-Host "Done. Database: $(Join-Path $target 'EMPLOYEE.FDB')"
+Install-App $d $target "embedded"
+Write-Host "Done. KeySource: $KeySource. Start: $(Join-Path $target 'EmployeeEmbedded.exe')"

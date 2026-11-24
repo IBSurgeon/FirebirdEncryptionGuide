@@ -34,6 +34,7 @@ function Get-Deploy([string]$Version, [string]$WorkDir) {
         Db          = Join-Path $root "db"
         Tmp         = Join-Path $root "tmp"
         PidFile     = Join-Path $root "server.pid"
+        Build       = Join-Path $WorkDir "build"
         KeysFile    = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "common\test-keys.conf"
     }
 }
@@ -103,4 +104,69 @@ function Get-LicenseInfo([string]$file) {
         $expire = [DateTimeOffset]::FromUnixTimeSeconds([long]$info["ExpireDate"]).LocalDateTime
     }
     return [pscustomobject]@{ RegName = $info["RegName"]; Expire = $expire }
+}
+
+$script:KeySourceFolders = @{ a = "a-static"; b = "b-file"; c = "c-provider"; d = "d-rest"; probe = "probe" }
+
+# Copies one KeySource library to an application folder and writes its settings.
+function Install-KeySource($d, [string]$target, [string]$variant) {
+    $dll = Join-Path $d.Build "keysource\$($script:KeySourceFolders[$variant])\KeySource.dll"
+    if (-not (Test-Path $dll)) { Fail "$dll is not found. Run 30-build.ps1 first." }
+    # The KeyHolder plugin looks for the library with the name KeySource next to fbclient.dll.
+    Copy-Item $dll (Join-Path $target "KeySource.dll") -Force
+    $ini = @("[KeySource]", "Log=1")
+
+    if ($variant -eq "b") {
+        # The folder "keyfile" plays the role of a removable disk with the key.
+        $keyDir = Join-Path $d.Root "keyfile"
+        New-Item -ItemType Directory -Force $keyDir | Out-Null
+        $keyLine = Get-Content $d.KeysFile | Where-Object { $_ -match '^\s*Key\s*=\s*Red\s' } | Select-Object -First 1
+        Set-Content -Path (Join-Path $keyDir "employee.key") -Value $keyLine -Encoding ASCII
+        $ini += "KeyFile=$(Join-Path $keyDir 'employee.key')"
+    }
+    if ($variant -eq "c") {
+        $provider = Join-Path $d.Build "KeyProvider.exe"
+        if (-not (Test-Path $provider)) { Fail "$provider is not found. Run 30-build.ps1 first." }
+        $providerDir = Join-Path $d.Root "keyprovider"
+        New-Item -ItemType Directory -Force $providerDir | Out-Null
+        Copy-Item $provider $providerDir -Force
+        Set-Content -Path (Join-Path $providerDir "KeyProvider.ini") -Encoding ASCII -Value @(
+            "[KeyProvider]", "KeyName=Red", "KeepMinutes=0")
+        $ini += "ProviderExe=$(Join-Path $providerDir 'KeyProvider.exe')"
+        $ini += "TimeoutMs=120000"
+    }
+    if ($variant -eq "d") {
+        $ini += "Url=http://localhost:8085/keys/Red"
+        $ini += "Token=test-token"
+        $ini += "TimeoutMs=5000"
+        $ini += "CacheSeconds=300"
+    }
+    Set-Content -Path (Join-Path $target "KeySource.ini") -Value $ini -Encoding ASCII
+}
+
+# Copies the example application to its folder and writes its connection settings.
+function Install-App($d, [string]$target, [string]$mode) {
+    if ($mode -eq "remote") {
+        $exe = "EmployeeRemote.exe"
+        # The password in the file is for the demonstration only.
+        $ini = @("[Connection]", "Host=localhost", "Port=$($d.Fb.Port)", "Database=crypt_employee",
+                 "User=SYSDBA", "Password=masterkey")
+    } else {
+        $exe = "EmployeeEmbedded.exe"
+        $ini = @("[Connection]", "Database=EMPLOYEE.FDB", "User=SYSDBA")
+    }
+    $source = Join-Path $d.Build $exe
+    if (-not (Test-Path $source)) { Fail "$source is not found. Run 30-build.ps1 first." }
+    Copy-Item $source $target -Force
+    Set-Content -Path (Join-Path $target "EmployeeApp.ini") -Value $ini -Encoding ASCII
+
+    if (($mode -eq "embedded") -and ($d.Version -eq '3')) {
+        # Firebird 3.0: the embedded engine and the server of the example must use the same lock folder
+        # when they work at the same time.
+        Set-Content -Path (Join-Path $target "EmployeeEmbedded.cmd") -Encoding ASCII -Value @(
+            "@echo off",
+            "rem Firebird 3.0: the same lock folder as the server of the example.",
+            "set FIREBIRD_LOCK=$(Join-Path $d.Root 'lock')",
+            "start `"`" `"%~dp0EmployeeEmbedded.exe`" %*")
+    }
 }
