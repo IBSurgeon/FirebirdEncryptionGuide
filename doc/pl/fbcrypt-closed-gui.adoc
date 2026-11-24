@@ -1,0 +1,1324 @@
+[[closed-gui]]
+= Szyfrowanie bazy danych Firebird dla aplikacji bez kodu źródłowego
+1.3.1, 24.11.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 2
+:outlinelevels: 3:0
+:icons: font
+:experimental:
+:imagesdir: images
+:repo: https://github.com/IBSurgeon/FirebirdEncryptionGuide
+:mainguide: https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/fbcrypt-pl.pdf
+include::../../attributes-pl.adoc[opts=optional]
+
+toc::[]
+
+[preface]
+== Wstęp
+
+[discrete]
+=== Cel dokumentu
+
+Dokument opisuje, jak włączyć szyfrowanie bazy danych Firebird dla gotowej aplikacji Windows, której nie można zmienić. Dokument jest przeznaczony dla administratorów systemów, administratorów baz danych i specjalistów od wdrożeń.
+
+[discrete]
+=== Scenariusz zastosowania
+
+Organizacja używa programu użytkowego: księgowego, magazynowego, medycznego lub innego. Program przechowuje dane w bazie danych Firebird 3.0, 4.0 lub 5.0.
+
+Warunki początkowe:
+
+* Kodu źródłowego programu nie ma albo producent nie wprowadza w nim zmian.
+* Baza danych zawiera informacje, które należy chronić: dane osobowe, tajemnicę handlową. Ochrony wymaga prawo, umowa lub zasady organizacji.
+* Administrator może zmieniać pliki w folderze programu na stanowiskach roboczych oraz ustawienia serwera Firebird.
+* Program działa według jednego z dwóch schematów: kilka stanowisk roboczych i serwer Firebird w sieci albo jedno stanowisko robocze z bazą danych w trybie embedded.
+
+Wymagany wynik:
+
+* Pliku bazy danych i jego kopii nie można odczytać bez klucza.
+* Program działa jak wcześniej. Jego pliki się nie zmieniają.
+* Klucz nie jest przechowywany na serwerze obok bazy danych.
+* Administrator wybiera, gdzie znajduje się klucz: w bibliotece, w pliku na dysku wymiennym, w pamięci człowieka (fraza hasła) lub w usłudze kluczy.
+
+Rozwiązanie: wtyczka szyfrowania IBSurgeon na serwerze i mała biblioteka `KeySource.dll` obok biblioteki klienckiej Firebird na stanowisku roboczym. Biblioteka przekazuje klucz szyfrowania przy każdym połączeniu.
+
+[discrete]
+=== Zakres dokumentu
+
+* Stanowiska robocze: Windows x64. Programy przykładu są zbudowane tylko dla 64 bitów.
+* Serwer w przykładzie: Firebird dla Windows uruchomiony jako zwykły program.
+* Aplikacje, które można zmienić, oraz klienty Java i .NET są opisane w głównym przewodniku.
+* Generowanie kluczy, narzędzia i wszystkie parametry wtyczki są opisane w głównym przewodniku: {mainguide}[Firebird Encryption plugin (PDF)].
+
+[discrete]
+=== Jak czytać dokument
+
+Dokument zawiera gotowy przykład dla Firebird 3.0, 4.0 i 5.0. Zacznij od rozdziału <<closed-gui-quick>>: instaluje on przykład na Twoim komputerze w kilka minut.
+
+Główny tekst jest krótki. Informacje szczegółowe znajdują się w blokach „Szczegóły”. W HTML i na GitHub blok rozwija się kliknięciem. W PDF wszystkie bloki są rozwinięte.
+
+NOTE: To jest tłumaczenie rosyjskiego oryginału (doc/ru). Jeśli teksty się różnią, obowiązuje tekst rosyjski.
+
+.Szczegóły: zawartość przykładu i co jest potrzebne do pracy
+[%collapsible]
+====
+Przykład zawiera:
+
+* aplikację `EmployeeApp` z tabelą danych. Pełni ona rolę aplikacji bez kodu źródłowego;
+* cztery warianty biblioteki `KeySource.dll`: klucz w kodzie, klucz w pliku, klucz z programu w zasobniku systemowym Windows, klucz z usługi REST;
+* skrypty, które pobierają Firebird i wtyczkę, instalują osobny serwer i tworzą foldery stanowiska roboczego;
+* automatyczne sprawdzenie wszystkich kombinacji.
+
+Co jest potrzebne do pracy z przykładem:
+
+* Windows 10 lub nowszy, PowerShell 5.1;
+* dostęp do internetu: `github.com` i `cc.ib-aid.com`;
+* Lazarus 4 z Free Pascal, jeśli chcesz samodzielnie zbudować programy. Gotowe programy można pobrać.
+
+Kod źródłowy przykładu: {repo}/tree/main/examples/closed-gui[folder `examples/closed-gui`].
+====
+
+== Zadanie: gdzie znajduje się klucz
+
+Wtyczka `DbCrypt` szyfruje strony pliku bazy danych. Bez klucza pliku nie można odczytać. Chroni to przed kradzieżą pliku, dysku, serwera i kopii zapasowej dysku.
+
+Serwer bez klucza nie otworzy bazy danych. Ktoś musi mu przekazać klucz.
+
+* Zła droga: zapisać klucz w pliku na serwerze. Kto ukradnie serwer, otrzymuje razem bazę danych i klucz.
+* Właściwa droga: serwer nie przechowuje klucza. Klucz przynosi każde połączenie.
+
+Aplikacja z kodem źródłowym przekazuje klucz przez wywołanie biblioteki `fbcrypt`. Aplikacja bez kodu źródłowego nie może tego zrobić. Dla niej klucz przekazuje biblioteka `KeySource.dll`.
+
+[IMPORTANT]
+====
+Klucz zawsze znajduje się gdzieś po stronie stanowiska roboczego: w pliku, w pamięci programu, w pamięci człowieka, w usłudze kluczy. Wybór wariantu `KeySource` określa, jak trudno go stamtąd wydobyć. Żaden wariant nie chroni przed użytkownikiem, który ma pełny dostęp do stanowiska roboczego i prawo do pracy z bazą danych.
+====
+
+.Szczegóły: czego szyfrowanie nie robi
+[%collapsible]
+====
+* Użytkownik, który połączył się z bazą danych z poprawnym kluczem i hasłem, widzi dane jak zwykle.
+* Szyfrowanie nie zastępuje uprawnień SQL ani haseł użytkowników.
+* Kopia zapasowa `gbak` nie jest szyfrowana automatycznie. Należy ją szyfrować osobno, zob. <<closed-gui-backup>>.
+====
+
+== Jak klucz trafia do bazy danych
+
+.Komponenty stanowiska roboczego i serwera
+image::closed-gui/components.svg[pdfwidth=100%]
+
+.Szczegóły: co robi każdy komponent
+[%collapsible]
+====
+[cols="2,5", options="header"]
+|===
+| Komponent | Co robi
+| Aplikacja | Wywołuje zwykłe funkcje biblioteki klienckiej Firebird. Nie wie o szyfrowaniu.
+| `fbclient.dll` | Biblioteka kliencka Firebird. Czyta plik `firebird.conf` ze swojego folderu.
+| `KeyHolder` klienta | Wtyczka `plugins\keyholder.dll`. Klient ładuje ją, jeśli w `firebird.conf` jest wiersz `KeyHolderPlugin = KeyHolder`.
+| `KeySource.dll` | Twoja biblioteka. Eksportuje jedną funkcję `MakeKeys`, która zwraca klucze.
+| `KeyHolder` serwera | Ta sama wtyczka na serwerze. Przyjmuje klucz od klienta i przekazuje go wtyczce `DbCrypt`.
+| `DbCrypt` | Wtyczka szyfrowania `plugins\dbcrypt.dll`. Szyfruje i odszyfrowuje strony. Działa tylko z plikiem licencji `plugins\DbCrypt.conf`.
+|===
+====
+
+=== Zwykłe połączenie
+
+Klucza żąda serwer. Kliencka wtyczka `KeyHolder` wywołuje funkcję `MakeKeys` biblioteki `KeySource.dll` i wysyła klucz do serwera. Aplikacja nic w tym celu nie robi.
+
+.Przekazanie klucza przy połączeniu z serwerem
+image::closed-gui/seq-remote.svg[pdfwidth=100%]
+
+.Szczegóły: właściwości tego schematu
+[%collapsible]
+====
+* Klient tworzy wtyczkę `KeyHolder` od nowa dla każdego połączenia. Wtyczka za każdym razem ładuje `KeySource.dll` i jeden raz wywołuje `MakeKeys`.
+* Klucz przechodzi od klienta do serwera w postaci zaszyfrowanej. Wymianę chronią pary kluczy wbudowane we wtyczki.
+* Klient wysyła do serwera *wszystkie* klucze, które zwróciła `MakeKeys`.
+* Serwer nie zapamiętuje klucza dla innych połączeń. Połączenie bez klucza otrzymuje błąd, nawet gdy inny klient w tym samym czasie pracuje z bazą danych.
+====
+
+=== Tryb embedded
+
+W trybie embedded nie ma serwera. Silnik Firebird działa wewnątrz aplikacji, a jego wtyczka `KeyHolder` sama wywołuje `MakeKeys`. Klucz nie przechodzi przez sieć.
+
+.Uzyskanie klucza w trybie embedded
+image::closed-gui/seq-embedded.svg[pdfwidth=100%]
+
+.Szczegóły: różnice w stosunku do zwykłego połączenia
+[%collapsible]
+====
+* Wtyczka `DbCrypt` i plik licencji `DbCrypt.conf` znajdują się w folderze aplikacji.
+* Tryb embedded włącza nie aplikacja, lecz wiersz `Providers = Engine13` (dla Firebird 3.0: `Engine12`) w pliku `firebird.conf` obok `fbclient.dll`.
+====
+
+[[closed-gui-versions]]
+== Różnice między Firebird 3.0, 4.0 i 5.0
+
+Biblioteka `KeySource.dll` jest taka sama dla wszystkich trzech wersji: jeden kod źródłowy, jeden plik. Różni się środowisko.
+
+[WARNING]
+====
+Firebird 3.0: oficjalna biblioteka kliencka `fbclient.dll` nie wywołuje klienckiej wtyczki `KeyHolder`. Na stanowisku roboczym musi być biblioteka `fbclient.dll` z archiwum wtyczki. W przeciwnym razie `KeySource.dll` nie jest używana, a połączenie kończy się błędem `Key not set`.
+====
+
+.Szczegóły: tabela różnic
+[%collapsible]
+====
+[cols="3,2,2,2", options="header"]
+|===
+| Właściwość | Firebird 3.0 | Firebird 4.0 | Firebird 5.0
+| Archiwum wtyczki | `CryptPlugin-FB_30_…` | `CryptPlugin-FB_40_…` | `CryptPlugin-FB_50_…`
+| Dostawca (provider) dla trybu embedded | `Engine12` | `Engine13` | `Engine13`
+| `fbclient.dll` na stanowisku roboczym | tylko z archiwum wtyczki | z archiwum wtyczki; oficjalna też działa | z archiwum wtyczki; oficjalna też działa
+| Stan szyfrowania w SQL | brak; zobacz `gstat -h` | `MON$CRYPT_STATE` | `MON$CRYPT_STATE`
+| Błąd bez klucza, gdy baza jest otwarta przez innego klienta | `Missing correct crypt key` | `Missing database encryption key for your attachment` | to samo
+| Biblioteki ICU | `icu*52` | `icu*63` | `icu*63`
+| Biblioteki C++ | `msvcp100`, `msvcr100` | `msvcp140`, `vcruntime140` | te same oraz `vcruntime140_1`
+| Rozmiar folderu embedded | 28 MB | 53 MB | 53 MB
+| Własny folder `FIREBIRD_LOCK` obok usługi Firebird tej samej wersji | potrzebny | niepotrzebny | niepotrzebny
+|===
+
+Przełączniki narzędzi `gbak`, `nbackup` i innych również różnią się w wersji 3.0. Są opisane w głównym przewodniku, w rozdziale „Obsługa w narzędziach konsolowych Firebird”.
+====
+
+[[closed-gui-quick]]
+== Szybki start
+
+Przykład instaluje na Twoim komputerze osobny serwer Firebird 5.0 z zaszyfrowaną bazą danych oraz aplikację, która z nią pracuje.
+
+Co jest potrzebne: Windows 10 lub nowszy, PowerShell 5.1, dostęp do `github.com` i `cc.ib-aid.com`, 500 MB na dysku. Uprawnienia administratora nie są potrzebne. Zainstalowane instancje Firebird nie są zmieniane.
+
+. Pobierz przykład i przejdź do folderu skryptów:
++
+[source,powershell]
+----
+git clone https://github.com/IBSurgeon/FirebirdEncryptionGuide
+cd FirebirdEncryptionGuide\examples\closed-gui\deploy
+----
+
+. Zezwól na uruchamianie skryptów w tym oknie PowerShell:
++
+[source,powershell]
+----
+Set-ExecutionPolicy -Scope Process Bypass
+----
+
+. Pobierz gotowe programy przykładu (4 MB):
++
+[source,powershell]
+----
+.\05-download-example.ps1
+----
++
+Jeśli masz Lazarus, pomiń ten krok. Programy zbuduje następny skrypt: dodaj do jego polecenia `-LazarusDir D:\lazarus`.
+
+. Wykonaj wszystkie kroki wdrożenia:
++
+[source,powershell]
+----
+.\run-all.ps1 -Version 5
+----
++
+Skrypt pobiera Firebird (25 MB) i archiwum wtyczki (35 MB), instaluje serwer na porcie 30055, szyfruje kopię bazy `employee` kluczem testowym `Red` i tworzy folder stanowiska roboczego. Na końcu wypisuje:
++
+[source]
+----
+Ready. Firebird 5.0.4.1812, port 30055, KeySource variant: a
+  Network connection:  ...\work\fb5\remote\EmployeeRemote.exe
+  Embedded:            ...\work\fb5\embedded\EmployeeEmbedded.exe
+  Stop the server:     .\12-stop-server.ps1 -Version 5
+----
+
+. Uruchom aplikację i naciśnij btn:[Connect]:
++
+[source,powershell]
+----
+..\work\fb5\remote\EmployeeRemote.exe
+----
+
+Aplikacja pokazuje tabelę `CUSTOMER` z zaszyfrowanej bazy danych. Na pasku stanu jest napis `database: encrypted`. Klucz przekazała serwerowi biblioteka `KeySource.dll` z folderu aplikacji.
+
+.Aplikacja otworzyła zaszyfrowaną bazę danych na serwerze
+image::closed-gui/app-remote.png[pdfwidth=80%]
+
+Co wypróbować dalej:
+
+. Zmień wartość w tabeli i naciśnij btn:[Save changes]. Dane są zapisywane w zaszyfrowanej bazie.
+. Otwórz dziennik `..\work\fb5\remote\KeySource.log`. Zawiera on jeden wiersz na każde żądanie klucza.
+. Zamknij aplikację i zmień nazwę pliku `..\work\fb5\remote\KeySource.dll`. Uruchom aplikację i naciśnij btn:[Connect]. Serwer odmówi: `Key not set`. Przywróć nazwę pliku.
+. Uruchom `..\work\fb5\embedded\EmployeeEmbedded.exe`. To ta sama aplikacja w trybie embedded: bez serwera, z własną kopią bazy.
+
+Po zakończeniu zatrzymaj serwer i usuń folder wersji:
+
+[source,powershell]
+----
+.\cleanup.ps1 -Version 5
+----
+
+.Szczegóły: inne wersje Firebird i inne warianty KeySource
+[%collapsible]
+====
+[source,powershell]
+----
+.\run-all.ps1 -Version 3
+.\run-all.ps1 -Version 4 -KeySource b
+.\40-deploy-remote.ps1 -Version 5 -KeySource c
+----
+
+Serwery trzech wersji działają jednocześnie: porty 30053, 30054 i 30055. Cztery warianty `KeySource` są opisane w rozdziale <<closed-gui-variants>>.
+
+Folder `work` zawiera wszystko, co przykład pobrał i utworzył: `work\downloads`, `work\build`, `work\fb<N>`. Parametr `-All` skryptu `cleanup.ps1` usuwa również pobrane archiwa.
+====
+
+[[closed-gui-quick-phrase]]
+=== Z frazą hasła
+
+Bazę danych można zaszyfrować nie kluczem `0x…`, lecz frazą hasła. Frazę zna człowiek, na dysku jej nie ma.
+
+[source,powershell]
+----
+.\run-all.ps1 -Version 5 -AskPassphrase
+..\work\fb5\remote\EmployeeRemote.exe
+----
+
+Skrypt pyta o frazę i szyfruje nią bazę danych. Stanowisko robocze tworzy z wariantem „c”: przy pierwszym połączeniu program w zasobniku systemowym Windows pyta o frazę i przechowuje ją w pamięci.
+
+.Okno dostawcy klucza: wpisz frazę hasła
+image::closed-gui/provider-ask.png[pdfwidth=60%]
+
+Jeśli serwer przykładu jest już zainstalowany, najpierw wykonaj `.\cleanup.ps1 -Version 5`. Więcej informacji: <<closed-gui-encrypt>> i <<closed-gui-variant-c>>.
+
+[WARNING]
+====
+Klucz `Red`, hasło `masterkey` i token `test-token` w przykładzie są znane wszystkim. Nie używaj ich dla prawdziwych danych.
+
+Archiwum wtyczki zawiera licencję próbną. Jest ona ważna do końca bieżącego miesiąca. System produkcyjny wymaga stałej licencji IBSurgeon.
+====
+
+== Wdrożenie krok po kroku
+
+Każdy skrypt wykonuje jeden krok. Skrypty pobierania niczego nie instalują. Skrypty instalacji niczego nie pobierają.
+
+.Skąd pochodzą pliki i dokąd trafiają
+image::closed-gui/deploy.svg[pdfwidth=100%]
+
+=== Skrypty
+
+Skrypty znajdują się w folderze `examples\closed-gui\deploy`. Numer w nazwie określa kolejność. Parametr `-Version 3|4|5` wybiera wersję Firebird.
+
+.Szczegóły: lista skryptów, wersje i porty
+[%collapsible]
+====
+Parametr `-WorkDir` określa folder roboczy; domyślnie jest to `examples\closed-gui\work`.
+
+[cols="3,6", options="header"]
+|===
+| Skrypt | Co robi
+| `01-download-firebird.ps1` | Pobiera oficjalne archiwum Firebird z `github.com/FirebirdSQL/firebird/releases`. Sprawdza SHA-256.
+| `02-download-plugin.ps1` | Pobiera archiwum wtyczki z `cc.ib-aid.com`. Parametr `-Force` pobiera archiwum ponownie.
+| `03-download-license.ps1` | Pobiera licencję próbną z archiwum wtyczki. Sprawdza okres ważności. Parametr `-LicenseFile` wskazuje Twoją licencję.
+| `05-download-example.ps1` | Pobiera gotowe programy przykładu do `work\build`.
+| `10-install-server.ps1` | Rozpakowuje Firebird, kopiuje na wierzch folder `Server` z archiwum wtyczki, kopiuje licencję, uzupełnia `firebird.conf`, tworzy użytkownika `SYSDBA`.
+| `11-start-server.ps1`, `12-stop-server.ps1` | Uruchamiają i zatrzymują serwer jako zwykły program.
+| `20-encrypt-database.ps1` | Szyfruje kopię bazy `employee` kluczem lub frazą hasła. Serwer musi być zatrzymany.
+| `30-build.ps1` | Buduje aplikację, biblioteki i dostawcę klucza. Wymaga Lazarus.
+| `40-deploy-remote.ps1` | Tworzy folder stanowiska roboczego. Parametr `-KeySource` o wartości `a`, `b`, `c` lub `d` wybiera wariant biblioteki.
+| `41-deploy-embedded.ps1` | Tworzy folder embedded. Parametr `-KeySource` jest taki sam.
+| `run-all.ps1` | Wykonuje kroki po kolei.
+| `50-backup.ps1` | Tworzy zaszyfrowaną kopię zapasową i sprawdza ją próbnym odtwarzaniem. Zob. <<closed-gui-backup>>.
+| `cleanup.ps1` | Zatrzymuje serwer i usuwa folder `work\fb<N>`.
+|===
+
+Wersje Firebird, adresy archiwów i porty są zapisane w pliku `versions.psd1`.
+
+[cols="1,2,1", options="header"]
+|===
+| Wersja | Oficjalna kompilacja | Port przykładu
+| 3.0 | 3.0.14.33856 | 30053
+| 4.0 | 4.0.7.3271 | 30054
+| 5.0 | 5.0.4.1812 | 30055
+|===
+
+Serwery trzech wersji działają jednocześnie.
+====
+
+=== Serwer
+
+Skrypt `10-install-server.ps1` robi to samo, co należy zrobić na prawdziwym serwerze: kopiuje wtyczkę i licencję do folderu Firebird i dodaje do `firebird.conf` wiersz:
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolder
+----
+
+Pliku `plugins\KeyHolder.conf` na serwerze nie ma. Serwer nie przechowuje kluczy, więc plik nie jest potrzebny.
+
+.Szczegóły: kroki instalacji serwera
+[%collapsible]
+====
+. Folder `Server` z archiwum wtyczki jest kopiowany na wierzch folderu Firebird. Zawiera on bibliotekę kliencką, `fbcrypt.dll`, OpenSSL, wtyczki `plugins\dbcrypt.dll` i `plugins\keyholder.dll`.
+. Plik licencji jest kopiowany do `plugins\DbCrypt.conf`.
+. Na końcu pliku `firebird.conf` są dodawane wiersze:
++
+[source,conf]
+----
+RemoteServicePort = 30055
+IpcName = FB_CLOSED_GUI_5
+KeyHolderPlugin = KeyHolder
+----
++
+Pierwsze dwa wiersze są potrzebne tylko przykładowi: oddzielają jego serwer od innych instancji Firebird na komputerze.
+
+Plik `plugins\KeyHolder.conf` na serwerze jest potrzebny tylko dla parametrów wtyczki, na przykład `UnsafeClient` dla klientów Jaybird i .NET. Parametry są opisane w głównym przewodniku, w rozdziale „Opis parametrów”. Bez tego pliku wtyczka działa z wartościami domyślnymi.
+====
+
+[[closed-gui-encrypt]]
+=== Szyfrowanie: klucz lub fraza hasła
+
+Skrypt `20-encrypt-database.ps1` szyfruje kopię bazy `employee`. Serwer jest w tym czasie zatrzymany. Są dwa rodzaje klucza:
+
+[source,powershell]
+----
+# klucz testowy Red: 32 bajty w postaci 0x..,0x..,
+.\20-encrypt-database.ps1 -Version 5
+
+# fraza hasła: skrypt o nią zapyta, nie jest widoczna na ekranie
+.\20-encrypt-database.ps1 -Version 5 -AskPassphrase
+
+# fraza hasła w poleceniu i własna nazwa klucza
+.\20-encrypt-database.ps1 -Version 5 -KeyName Main -Passphrase "my long pass phrase 2026"
+----
+
+[cols="2,3,3", options="header"]
+|===
+| | Klucz `Key=<nazwa> 0x..,` | Fraza `Password=<nazwa> <fraza>`
+| Co to jest | 16, 24 lub 32 losowe bajty | tekst; wtyczka oblicza z niego klucz
+| Kto go przechowuje | plik, biblioteka, usługa kluczy | człowiek
+| Nadaje się do | wariantów „a”, „b”, „d” | wariantu „c” i parametru `Prompt`; działa też w „b”, „d”
+|===
+
+Polecenie szyfrowania jest jedno i to samo: `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <nazwa>`. Rodzaj klucza określa wiersz, który otrzymuje wtyczka `KeyHolder`.
+
+[WARNING]
+====
+Fraza hasła musi być długa: krótką frazę można odgadnąć. Nie można w niej używać znaków `#`, `"`, `{`, `}` ani sekwencji `$(`. Spacje na początku i na końcu są niedozwolone. Skrypt to sprawdza.
+====
+
+.Szczegóły: kroki skryptu i plik `db-key.conf`
+[%collapsible]
+====
+. Kopiuje `employee.fdb` z przykładów Firebird do `work\fb<N>\db\EMPLOYEE.FDB`.
+. Tworzy tymczasowy plik `plugins\KeyHolder.conf` z wierszem klucza: `Key=Red 0x..,` lub `Password=Main my long pass phrase 2026`. Plik jest zapisywany w UTF-8 bez BOM.
+. Wykonuje w `isql` polecenie `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <nazwa>`.
+. Czeka, aż pole `MON$CRYPT_PAGE` wróci do zera. Szyfrowanie odbywa się w tle i tylko wtedy, gdy połączenie jest otwarte.
+. Sprawdza nagłówek: `gstat -h` pokazuje `Attributes encrypted, plugin DbCrypt`.
+. Usuwa plik `plugins\KeyHolder.conf`.
+. Tworzy drugą kopię zaszyfrowanego pliku dla trybu embedded.
+. Zapisuje wiersz klucza w pliku `work\fb<N>\db-key.conf`.
+
+Plik `db-key.conf` jest potrzebny tylko przykładowi. Skrypty `40` i `41` pobierają z niego nazwę klucza i wiersz klucza, aby skonfigurować warianty `KeySource`. Przy prawdziwych danych takiego pliku obok serwera być nie może: klucz lub fraza są przechowywane tylko w Twoim magazynie kluczy.
+
+Parametr `-Passphrase` pozostawia frazę w historii poleceń PowerShell. Dla prawdziwej frazy używaj `-AskPassphrase`.
+
+Wariant „a” działa tylko z kluczem testowym `Red`: jest on zapisany w kodzie biblioteki. Jeśli baza danych jest zaszyfrowana innym kluczem lub frazą, skrypty `40` i `41` z parametrem `-KeySource a` kończą pracę z odpowiednim komunikatem.
+====
+
+.Szczegóły: jak zaszyfrować własną bazę danych
+[%collapsible]
+====
+Sposób 1, na serwerze, jak w skrypcie:
+
+. Zatrzymaj serwer lub odłącz użytkowników.
+. Utwórz plik `plugins\KeyHolder.conf` z jednym wierszem: `Key=<nazwa> 0x..,` lub `Password=<nazwa> <fraza>`.
+. Połącz się z bazą danych i wykonaj `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <nazwa>`. Nie zamykaj połączenia, dopóki szyfrowanie się nie zakończy.
+. Usuń plik `plugins\KeyHolder.conf`.
+
+Sposób 2, ze stanowiska roboczego, bez pliku na serwerze. Wykonaj to samo polecenie w `isql` z folderu stanowiska roboczego. Klucz przekaże serwerowi `KeySource.dll`:
+
+[source,sql]
+----
+ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY Main;
+----
+
+Sposób 2 działa w Firebird 3.0, 4.0 i 5.0.
+
+Generowanie klucza, odszyfrowanie i zmiana klucza są opisane w głównym przewodniku, w rozdziale „Szyfrowanie, odszyfrowanie i zmiana klucza”.
+====
+
+=== Folder stanowiska roboczego
+
+Skrypt `40-deploy-remote.ps1` tworzy folder `work\fb<N>\remote`: klient Firebird z archiwum wtyczki, wtyczkę `KeyHolder`, bibliotekę `KeySource.dll` i aplikację.
+
+.Szczegóły: zawartość folderu
+[%collapsible]
+====
+[source]
+----
+EmployeeRemote.exe      aplikacja
+EmployeeApp.ini         parametry połączenia aplikacji
+fbclient.dll            biblioteka kliencka z archiwum wtyczki
+firebird.conf           dwa wiersze, zob. niżej
+firebird.msg
+icu*.dll, icudt*.dat    biblioteki ICU
+msvcp*.dll, vcruntime*  biblioteki C++
+libcrypto-*.dll         OpenSSL
+plugins\keyholder.dll   wtyczka KeyHolder
+KeySource.dll           biblioteka z kluczem
+KeySource.ini           ustawienia biblioteki
+gbak.exe, isql.exe ...  narzędzia z archiwum wtyczki
+----
+
+Wtyczka `DbCrypt` i licencja nie są potrzebne stanowisku roboczemu.
+====
+
+Plik `firebird.conf` stanowiska roboczego:
+
+[source,conf]
+----
+Providers = Remote
+KeyHolderPlugin = KeyHolder
+----
+
+Wiersz `KeyHolderPlugin` włącza przekazywanie klucza. Bez niego klient nie ładuje wtyczki.
+
+Wiersz `Providers = Remote` pozostawia klientowi tylko połączenie sieciowe. Klient nie próbuje załadować silnika embedded i jego wtyczek ani nie szuka lokalnego serwera. Wartość domyślna: `Remote,Engine13,Loopback`.
+
+=== Folder embedded
+
+Skrypt `41-deploy-embedded.ps1` tworzy folder `work\fb<N>\embedded`. Do plików stanowiska roboczego są dodawane silnik Firebird, wtyczka `DbCrypt`, licencja i plik bazy danych.
+
+.Szczegóły: zawartość folderu
+[%collapsible]
+====
+[source]
+----
+EmployeeEmbedded.exe    aplikacja
+plugins\engine13.dll    silnik Firebird (engine12.dll dla 3.0)
+plugins\dbcrypt.dll     wtyczka szyfrowania
+plugins\DbCrypt.conf    licencja
+intl\                   zestawy znaków
+EMPLOYEE.FDB            zaszyfrowana baza danych
+----
+
+Baza bezpieczeństwa `security5.fdb` nie jest potrzebna w tym folderze.
+
+Silnik embedded i serwer nie otwierają jednocześnie tego samego pliku bazy danych. Dlatego folder embedded ma własną kopię bazy.
+====
+
+Plik `firebird.conf`:
+
+[source,conf]
+----
+Providers = Engine13
+KeyHolderPlugin = KeyHolder
+----
+
+Wiersz `Providers = Engine13` (dla Firebird 3.0: `Engine12`) pozostawia tylko silnik embedded: bez sieci i bez lokalnego serwera.
+
+== Aplikacja przykładowa
+
+Aplikacja `EmployeeApp` jest napisana w Lazarus z komponentami SQLdb. W jej kodzie nie ma ani jednego wiersza o szyfrowaniu. Ładuje ona `fbclient.dll` ze swojego folderu, pokazuje tabelę `CUSTOMER` i pozwala zmieniać dane.
+
+.Tryb embedded: nie ma serwera, baza danych znajduje się w folderze aplikacji
+image::closed-gui/app-embedded.png[pdfwidth=80%]
+
+.Szczegóły: co robi aplikacja
+[%collapsible]
+====
+Kod źródłowy: `examples\closed-gui\app\EmployeeApp`. Aplikacja robi to samo co zwykła stara aplikacja:
+
+* łączy się z bazą danych przez stare ISC API;
+* pokazuje tabelę `CUSTOMER`, pozwala zmieniać, dodawać i usuwać wiersze;
+* zapisuje zmiany przyciskiem btn:[Save changes] i anuluje je przyciskiem btn:[Cancel changes].
+
+Z jednego kodu źródłowego są budowane dwa programy:
+
+[cols="2,5", options="header"]
+|===
+| Program | Przeznaczenie
+| `EmployeeRemote.exe` | Połączenie z serwerem. Pola: serwer, port, baza danych, użytkownik, hasło.
+| `EmployeeEmbedded.exe` | Tryb embedded. Pola: plik bazy danych i użytkownik.
+|===
+
+Parametry połączenia aplikacja czyta z pliku `EmployeeApp.ini`.
+
+Przełącznik uruchomienia `/selftest` wykonuje sprawdzenie bez udziału użytkownika: połączenie, zmiana wiersza, ponowne połączenie, odczyt wiersza. Wynik jest zapisywany w `selftest.log`. Z tego przełącznika korzysta automatyczne sprawdzenie przykładu.
+====
+
+[[closed-gui-rules]]
+== Zasady dla biblioteki KeySource
+
+Ten rozdział jest potrzebny osobie, która pisze własną bibliotekę. Aby uruchomić przykład, można go pominąć.
+
+=== Funkcja MakeKeys
+
+Biblioteka eksportuje jedną funkcję z konwencją wywołania `cdecl`:
+
+[source,cpp]
+----
+char* MakeKeys(char* (*allocator)(unsigned int size), unsigned int* size);
+----
+
+* Pamięć na tekst kluczy przydzielaj tylko funkcją `allocator`. Wtyczka sama ją zwalnia.
+* W `size` zapisz długość tekstu w bajtach.
+* Jeśli zwrócisz `NULL`, połączenie zakończy się błędem klucza.
+
+.Szczegóły: deklaracja w Free Pascal, pamięć, `NULL`
+[%collapsible]
+====
+[source,pascal]
+----
+type
+  TAllocator = function(size: Cardinal): PAnsiChar; cdecl;
+
+function MakeKeys(Alloc: TAllocator; var Size: Cardinal): PAnsiChar; cdecl;
+----
+
+* Funkcja `allocator(n)` przydziela `n + 1` bajtów. Kończące zero dodaje wtyczka.
+* Jeśli `MakeKeys` zwróciła `NULL`, wtyczka szuka kluczy w pliku `plugins\KeyHolder.conf` w swoim folderze. Jeśli pliku lub kluczy nie ma, połączenie kończy się błędem.
+====
+
+=== Tekst kluczy
+
+`MakeKeys` zwraca tekst: jeden wiersz na klucz, wiersze są oddzielone znakiem nowego wiersza.
+
+[source]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,...,0x75,
+Password=Main my long pass phrase 2026
+----
+
+* `Key=<nazwa> <bajty>`: klucz w postaci szesnastkowej, 16, 24 lub 32 bajty.
+* `Password=<nazwa> <fraza>`: fraza hasła. Wtyczka oblicza z niej klucz.
+
+Nazwa klucza jest taka sama jak w poleceniu `ALTER DATABASE ENCRYPT ... KEY <nazwa>`. Zwracaj tylko te klucze, które są potrzebne temu stanowisku roboczemu: klient wysyła do serwera wszystkie otrzymane klucze.
+
+.Szczegóły: jakie znaki są dozwolone we frazie hasła
+[%collapsible]
+====
+Wtyczka analizuje tekst jak plik konfiguracyjny Firebird. We frazie hasła nie można używać znaków `#`, `"`, `{`, `}` ani sekwencji `$(`. Spacje na początku i na końcu frazy są usuwane. Fraza z takimi znakami daje inny klucz lub błąd analizy.
+
+Nawiasy klamrowe są szczególnie niebezpieczne: z frazą `a {b} c` w pliku `KeyHolder.conf` polecenie `ALTER DATABASE ENCRYPT` kończy się bez błędu, a baza danych pozostaje niezaszyfrowana. Tak zachowują się Firebird 3.0, 4.0 i 5.0. Po szyfrowaniu zawsze sprawdzaj `gstat -h`: w wierszu `Attributes` musi być słowo `encrypted`.
+
+Bez zmian przechodzą: litery, cyfry, spacja wewnątrz frazy, znaki `'`, `;`, `=`, `\` oraz cyrylica w UTF-8.
+====
+
+=== Cztery zasady
+
+.Życie biblioteki w procesie aplikacji
+image::closed-gui/dll-life.svg[pdfwidth=100%]
+
+. Przypnij bibliotekę w procesie w pierwszym wierszu `MakeKeys`. W przeciwnym razie następuje wyciek pamięci.
+. Nie twórz wątków w bibliotece.
+. Odmowa musi być szybka. Po odmowie klient wywołuje `MakeKeys` jeszcze 5–9 razy.
+. Nie umieszczaj `KeySource.dll` stanowiska roboczego w folderze serwera. Serwerowy `KeyHolder` także ją wywoła.
+
+.Szczegóły: jak wtyczka wywołuje bibliotekę i jak ją przypiąć
+[%collapsible]
+====
+Wtyczka zachowuje się tak samo w Firebird 3.0, 4.0 i 5.0, przy zwykłym połączeniu i w trybie embedded:
+
+* `MakeKeys` jest wywoływana jeden raz na każde udane połączenie.
+* Jeśli `MakeKeys` zwróciła `NULL`, klient wywołuje ją ponownie dla tego samego połączenia: 9 razy w Firebird 3.0 i 4.0, 5 razy w Firebird 5.0. Dopiero potem aplikacja otrzymuje błąd. W trybie embedded i przy niepoprawnym kluczu jest jedno wywołanie.
+* Przed wywołaniem wtyczka ładuje `KeySource.dll`, po wywołaniu ją zwalnia. Zmienne globalne biblioteki nie są zachowywane między wywołaniami.
+* Zwolnienie biblioteki, w której działało kilka wątków, powoduje wyciek pamięci. Test obciążeniowy (8 wątków, 1000 połączeń, biblioteka w Free Pascal) pokazał wzrost pamięci procesu o 42 MB. Z przypiętą biblioteką wzrost wynosi 4,5 MB, jak w aplikacji z jednym wątkiem.
+* `MakeKeys` może być wywoływana z kilku wątków jednocześnie.
+* Wewnątrz `MakeKeys` można czekać. Oczekiwanie 90 sekund nie przerywa połączenia.
+
+Przypięcie biblioteki. Tak zrobiono we wszystkich czterech bibliotekach przykładu:
+
+[source,pascal]
+----
+GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN or GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+  @SomeFunctionOfTheLibrary, Module);
+----
+
+Po tym wywołaniu biblioteka pozostaje w procesie do jego zakończenia. Pamięć nie wycieka, zmienne globalne są zachowywane. Dlatego wariant „d” może przechowywać pamięć podręczną.
+
+Szybka odmowa. Biblioteka, która czeka na sieć lub użytkownika, powinna zapamiętać odmowę na kilka sekund i przy ponownych wywołaniach od razu zwracać `NULL`. W przeciwnym razie użytkownik czeka na błąd 5–9 razy dłużej i widzi to samo okno kilka razy. Tak zrobiono w wariantach „c” i „d”.
+====
+
+=== Gdzie wtyczka szuka biblioteki
+
+Wtyczka ładuje `KeySource.dll` według pełnej ścieżki z folderu, w którym znajduje się `fbclient.dll`. Nie można podmienić biblioteki przez zmienną `PATH`.
+
+[WARNING]
+====
+Jeśli na stanowisku roboczym jest ustawiona zmienna środowiskowa `FIREBIRD`, klient szuka `firebird.conf`, `plugins` i `KeySource.dll` w jej folderze. Klucz nie zostaje znaleziony. Usuń tę zmienną.
+====
+
+.Szczegóły: wspólny moduł przykładu i budowanie
+[%collapsible]
+====
+Wszystkie biblioteki przykładu używają modułu `keysource\common\keysourcecommon.pas`:
+
+[cols="2,5", options="header"]
+|===
+| Funkcja | Przeznaczenie
+| `ReturnKeys` | Kopiuje tekst kluczy do pamięci wtyczki. Pusty tekst daje `NULL`.
+| `CleanKeys` | Pozostawia tylko wiersze `Key=` i `Password=`. Usuwa komentarze, puste wiersze, BOM.
+| `Setting` | Czyta ustawienie z `KeySource.ini` obok biblioteki, sekcja `[KeySource]`.
+| `LogLine` | Zapisuje wiersz do `KeySource.log`, jeśli w ustawieniach jest `Log=1`. Wartość klucza nie trafia do dziennika.
+| `PinLibrary` | Przypina bibliotekę w procesie. Jest wywoływana na początku każdej `MakeKeys`.
+|===
+
+Budowanie jednej biblioteki:
+
+[source,cmd]
+----
+fpc -O2 -Fu..\common KeySource.lpr
+----
+====
+
+[[closed-gui-variants]]
+== Cztery warianty KeySource
+
+Skrypty `40-deploy-remote.ps1` i `41-deploy-embedded.ps1` przyjmują parametr `-KeySource` o wartości `a`, `b`, `c` lub `d`. Umieszczają one w folderze aplikacji właściwą bibliotekę i plik `KeySource.ini`.
+
+[cols="1,3,3", options="header"]
+|===
+| Wariant | Gdzie jest klucz | Polecenie
+| „a” | w kodzie biblioteki | `.\40-deploy-remote.ps1 -Version 5 -KeySource a`
+| „b” | w pliku, na przykład na dysku wymiennym | `.\40-deploy-remote.ps1 -Version 5 -KeySource b`
+| „c” | w pamięci programu w zasobniku systemowym; wpisuje go człowiek | `.\40-deploy-remote.ps1 -Version 5 -KeySource c`
+| „d” | w usłudze kluczy w sieci | `.\40-deploy-remote.ps1 -Version 5 -KeySource d`
+|===
+
+Po wykonaniu polecenia uruchom `..\work\fb5\remote\EmployeeRemote.exe`.
+
+=== Wariant „a”: klucz w bibliotece
+
+.Warianty „a” i „b”
+image::closed-gui/variants-ab.svg[pdfwidth=100%]
+
+Klucz jest zapisany jako stała w kodzie źródłowym `keysource\a-static\KeySource.lpr`. Zastąp klucz `Red` własnym i zbuduj bibliotekę.
+
+* Kiedy używać: ochrona przed kradzieżą pliku bazy danych i kopii zapasowych. Najprostszy wariant.
+* Ryzyka: kto skopiował `KeySource.dll`, może wydobyć klucz. Ogranicz uprawnienia do folderu aplikacji.
+
+.Szczegóły: kod źródłowy
+[%collapsible]
+====
+[source,pascal]
+----
+const
+  Keys: AnsiString =
+    'Key=Red 0xec,0xa1,0x52,0xf6,...,0xdc,0x75,'#10;
+
+function MakeKeys(Alloc: TAllocator; var Size: Cardinal): PAnsiChar; cdecl;
+begin
+  PinLibrary;
+  Result := ReturnKeys(Alloc, Keys, Size);
+end;
+----
+
+W stałej można też zapisać wiersz `Password=<nazwa> <fraza>`. Skrypty przykładu instalują wariant „a” tylko dla bazy danych z kluczem `Red`.
+====
+
+=== Wariant „b”: klucz w pliku
+
+Biblioteka czyta plik klucza przy każdym połączeniu. Ścieżka do pliku jest podana w `KeySource.ini`:
+
+[source,ini]
+----
+[KeySource]
+KeyFile=E:\keys\employee.key
+----
+
+* Kiedy używać: klucz jest przechowywany oddzielnie od programu. Na przykład na dysku wymiennym, który użytkownik zabiera ze sobą, lub w folderze z uprawnieniami dla grupy użytkowników.
+* Ryzyka: plik klucza można skopiować. Gdy dysk jest wyjęty, nowe połączenia są niemożliwe, ale już otwarte nadal działają.
+
+.Szczegóły: format pliku i sprawdzenie
+[%collapsible]
+====
+Kod źródłowy: `keysource\b-file\KeySource.lpr`.
+
+Plik klucza ma format `KeyHolder.conf`, kodowanie UTF-8. Zawiera wiersz klucza lub wiersz frazy hasła:
+
+[source]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,...,0xdc,0x75,
+----
+
+W ścieżce można używać zmiennych środowiskowych, na przykład `%USERPROFILE%\keys\employee.key`. Bez parametru `KeyFile` biblioteka czyta `KeySource.key` ze swojego folderu. Parametr `Log=1` włącza dziennik.
+
+W przykładzie rolę dysku wymiennego pełni folder `work\fb5\keyfile`. Zmień jego nazwę i naciśnij btn:[Connect] jeszcze raz: aplikacja pokaże błąd klucza.
+====
+
+[[closed-gui-variant-c]]
+=== Wariant „c”: dostawca klucza
+
+Klucza nie ma na dysku. Człowiek wpisuje frazę hasła lub klucz jeden raz na sesję pracy. Przechowuje go w pamięci osobny program `KeyProvider.exe` w zasobniku systemowym Windows.
+
+.Żądanie klucza od dostawcy klucza
+image::closed-gui/seq-provider.svg[pdfwidth=100%]
+
+Jak to wygląda:
+
+. Użytkownik uruchamia aplikację i naciska btn:[Connect].
+. W zasobniku systemowym Windows pojawia się ikona dostawcy klucza, a na ekranie okno wprowadzania.
+. Użytkownik wpisuje frazę hasła. Aplikacja się łączy.
+. Przy kolejnych połączeniach okna nie ma: dostawca przekazuje klucz z pamięci. W ten sam sposób klucz otrzymują inne aplikacje tego użytkownika.
+
+.Okno wprowadzania klucza
+image::closed-gui/provider-ask.png[pdfwidth=60%]
+
+Co wpisać w przykładzie: frazę, którą zaszyfrowano bazę danych. Dla bazy z kluczem testowym `Red` należy wpisać tekst po nazwie klucza z pliku `work\fb5\db-key.conf`: `0xec,0xa1,…,0x75,`.
+
+* Kiedy używać: klucz nie może znajdować się na dysku stanowiska roboczego. Frazę hasła zna człowiek.
+* Ryzyka: klucz znajduje się w pamięci `KeyProvider.exe`, dopóki program działa. Każdy program tego samego użytkownika może go zażądać. Krótką frazę można odgadnąć.
+
+.Szczegóły: okno dostawcy, menu, niepoprawne dane
+[%collapsible]
+====
+Biblioteka: `keysource\c-provider\KeySource.lpr`. Dostawca klucza: `keyprovider\`.
+
+.Okno dostawcy klucza z dziennikiem żądań
+image::closed-gui/provider-window.png[pdfwidth=70%]
+
+Menu ikony w zasobniku systemowym: pokaż okno, wpisz klucz ponownie, zapomnij klucz, czas przechowywania klucza (do wyjścia, 15 minut, 1 godzina), wyjście.
+
+Dostawca sam rozpoznaje rodzaj wpisanych danych. Tekst postaci `0x..,0x..,` o długości 16, 24 lub 32 bajtów staje się wierszem `Key=<nazwa> …`. Każdy inny tekst staje się wierszem `Password=<nazwa> <fraza>` w UTF-8.
+
+Jeśli użytkownik wpisał niepoprawną frazę, serwer zwróci błąd klucza. Wybierz w menu „Forget the key” i połącz się ponownie.
+
+Jeśli użytkownik nacisnął btn:[Cancel], dostawca przez 15 sekund odpowiada odmową bez nowego okna. Powód: klient Firebird powtarza żądanie klucza kilka razy.
+====
+
+.Szczegóły: ustawienia
+[%collapsible]
+====
+Plik `KeySource.ini`:
+
+[source,ini]
+----
+[KeySource]
+ProviderExe=C:\Program Files\MyApp\keyprovider\KeyProvider.exe
+TimeoutMs=120000
+Log=0
+----
+
+[cols="1,4", options="header"]
+|===
+| Parametr | Znaczenie
+| `ProviderExe` | Pełna ścieżka do `KeyProvider.exe`. Biblioteka uruchamia program, jeśli nie znajdzie potoku, i sprawdza, czy potok należy do tego programu.
+| `TimeoutMs` | Jak długo czekać na odpowiedź. W tym czasie użytkownik wpisuje klucz.
+| `Pipe` | Nazwa potoku. Domyślnie `FbKeyProvider-<nazwa użytkownika>`.
+|===
+
+Plik `KeyProvider.ini` obok `KeyProvider.exe`:
+
+[source,ini]
+----
+[KeyProvider]
+KeyName=Red
+KeepMinutes=0
+----
+
+`KeyName` określa nazwę klucza: taką samą jak w poleceniu `ALTER DATABASE ENCRYPT`. Skrypt `40` zapisuje tu nazwę klucza bazy danych przykładu. `KeepMinutes` określa czas przechowywania; zero oznacza „do wyjścia z programu”.
+====
+
+.Szczegóły: protokół i ochrona potoku
+[%collapsible]
+====
+Potok nazwany `\\.\pipe\FbKeyProvider-<nazwa użytkownika>`. Jedno żądanie na jedno połączenie. Po odpowiedzi dostawca zamyka połączenie.
+
+[source]
+----
+żądanie     GETKEYS 1 <numer procesu> <nazwa programu>\n
+odpowiedź   OK\n<wiersze Key=... lub Password=...>
+            ERROR <tekst>\n
+----
+
+Ochrona potoku:
+
+* Lista kontroli dostępu potoku zezwala na dostęp tylko bieżącemu użytkownikowi Windows.
+* Połączenia z sieci są zabronione (`PIPE_REJECT_REMOTE_CLIENTS`).
+* Dostawca tworzy potok z flagą `FILE_FLAG_FIRST_PIPE_INSTANCE`. Jeśli nazwa jest już zajęta przez inny program, dostawca się nie uruchamia.
+* Biblioteka sprawdza, czy właścicielem potoku jest program z parametru `ProviderExe`.
+* Biblioteka otwiera potok z poziomem `SECURITY_IDENTIFICATION`. Program po drugiej stronie potoku nie może działać w imieniu aplikacji.
+* Numer procesu klienta dostawca pobiera od Windows, a nie z tekstu żądania.
+====
+
+=== Wariant „d”: usługa kluczy REST
+
+Klucz wydaje usługa w sieci. Stanowisko robocze przechowuje tylko adres usługi i token dostępu.
+
+.Żądanie klucza od usługi REST
+image::closed-gui/seq-rest.svg[pdfwidth=100%]
+
+Sprawdzenie. W pierwszym oknie PowerShell uruchom demonstracyjny serwer kluczy:
+
+[source,powershell]
+----
+..\restserver\key-server.ps1 -KeysFile ..\work\fb5\db-key.conf
+----
+
+W drugim oknie:
+
+[source,powershell]
+----
+.\40-deploy-remote.ps1 -Version 5 -KeySource d
+..\work\fb5\remote\EmployeeRemote.exe
+----
+
+* Kiedy używać: wiele stanowisk roboczych, potrzebna jest centralna kontrola. Dostęp stanowiska roboczego można zablokować bez zmiany klucza bazy danych.
+* Ryzyka: bez sieci nowe połączenia są niemożliwe. Token na stanowisku roboczym należy chronić tak samo jak klucz: za pomocą tokenu można uzyskać klucz.
+
+.Szczegóły: ustawienia
+[%collapsible]
+====
+Biblioteka: `keysource\d-rest\KeySource.lpr`. Używa WinHTTP, części Windows. Inne biblioteki dll nie są potrzebne.
+
+Plik `KeySource.ini`:
+
+[source,ini]
+----
+[KeySource]
+Url=https://keys.example.com/keys/Red
+TokenFile=%USERPROFILE%\keys\token.txt
+TimeoutMs=5000
+CacheSeconds=300
+RetrySeconds=10
+Log=0
+----
+
+[cols="1,4", options="header"]
+|===
+| Parametr | Znaczenie
+| `Url` | Adres żądania. Przy `https` certyfikat serwera sprawdza Windows.
+| `Token` | Token dostępu bezpośrednio w pliku ustawień. Tylko do sprawdzenia.
+| `TokenFile` | Plik z tokenem. Ogranicz uprawnienia do tego pliku.
+| `TimeoutMs` | Limit czasu żądania.
+| `CacheSeconds` | Ile sekund klucz jest przechowywany w pamięci procesu. Zero: żądanie przy każdym połączeniu.
+| `RetrySeconds` | Po nieudanym żądaniu biblioteka przez tyle sekund nie odwołuje się do usługi. Domyślnie 10.
+|===
+====
+
+.Szczegóły: żądanie, odpowiedź i pamięć podręczna
+[%collapsible]
+====
+[source,http]
+----
+GET /keys/Red HTTP/1.1
+Authorization: Bearer <token>
+X-Workstation: <komputer>\<użytkownik>
+----
+
+Odpowiedź z kodem 200 zawiera tekst kluczy: wiersz `Key=<nazwa> 0x..,` lub `Password=<nazwa> <fraza>`. Każdy inny kod biblioteka traktuje jako odmowę i zwraca `NULL`.
+
+Pamięć podręczna. Jedno połączenie z Firebird zajmuje 65–120 ms. Żądanie REST przy każdym połączeniu dodałoby swój czas i obciążenie usługi. Dlatego po pierwszej udanej odpowiedzi biblioteka przechowuje klucz w pamięci przez `CacheSeconds` sekund. Pamięć podręczna jest zachowywana między połączeniami, ponieważ biblioteka jest przypięta w procesie. Przy 1000 połączeń jednego procesu usługa otrzymuje jedno żądanie.
+
+Nieudane żądanie biblioteka także zapamiętuje, na `RetrySeconds` sekund. Bez tego przy zatrzymanej usłudze błąd pojawiał się po 37 sekundach; z tym po 5 sekundach.
+====
+
+.Szczegóły: serwer demonstracyjny i wymagania wobec prawdziwej usługi
+[%collapsible]
+====
+Skrypt `restserver\key-server.ps1` jest potrzebny tylko do sprawdzenia przykładu. Adres `http://localhost:8085`, token `test-token`. Parametr `-KeysFile` wskazuje plik kluczy; bez niego usługa wydaje klucze testowe z `examples\common\test-keys.conf`. Każde żądanie jest zapisywane w oknie i w dzienniku.
+
+Zatrzymaj serwer demonstracyjny i uruchom aplikację ponownie: pokaże ona błąd klucza.
+
+Wymagania wobec prawdziwej usługi kluczy:
+
+* Tylko HTTPS.
+* Osobny token dla każdego stanowiska roboczego. Token można unieważnić.
+* Dziennik wszystkich żądań: czas, stanowisko robocze, nazwa klucza, wynik.
+* Klucze w usłudze są przechowywane w chronionym magazynie.
+* Usługa wydaje stanowisku roboczemu tylko jego klucze.
+====
+
+== Sposób bez biblioteki: parametr Prompt
+
+Wtyczka `KeyHolder` potrafi sama zapytać użytkownika o klucz lub frazę hasła. Biblioteka `KeySource.dll` nie jest do tego potrzebna. W folderze stanowiska roboczego utwórz plik `plugins\KeyHolder.conf`:
+
+[source,conf]
+----
+Prompt = Enter key %k for database %d
+----
+
+.Okno wprowadzania klucza wtyczki KeyHolder
+image::closed-gui/prompt.png[pdfwidth=60%]
+
+Sposób działa tylko dla zwykłego połączenia. W trybie embedded używaj `KeySource.dll`.
+
+.Szczegóły: jak to działa i czym różni się od wariantu „c”
+[%collapsible]
+====
+`%k` jest zastępowane nazwą klucza, `%d` nazwą bazy danych.
+
+. Aplikacja się łączy. Klucza nie ma, serwer zwraca błąd klucza.
+. Kliencki `KeyHolder` pokazuje okno wprowadzania.
+. Użytkownik wpisuje klucz `0x..,` lub frazę hasła. Klient powtarza połączenie.
+. Po udanym połączeniu klucz jest przechowywany w pamięci aplikacji do jej zakończenia.
+
+Okno pojawia się przy zwykłym połączeniu: w narzędziu `isql` (Firebird 3.0, 4.0, 5.0) i w aplikacji przykładowej (Firebird 5.0). W trybie embedded z ustawieniem `Providers = Engine13` okna nie ma: ani w `isql`, ani w aplikacji przykładowej.
+
+[cols="2,3,3", options="header"]
+|===
+| | `Prompt` | Wariant „c”
+| Co trzeba zainstalować | jeden wiersz w `KeyHolder.conf` | `KeySource.dll` i `KeyProvider.exe`
+| Gdzie jest przechowywany klucz | w pamięci każdej aplikacji | w pamięci jednego programu
+| Kilka aplikacji | każda pyta o klucz | klucz jest wpisywany jeden raz
+| Czas przechowywania, „zapomnij klucz” | nie | tak
+| Własna logika (karta inteligentna, sprawdzenie) | nie | można dopisać
+|===
+====
+
+== Porównanie wariantów
+
+.Gdzie znajduje się klucz
+image::closed-gui/key-location.svg[pdfwidth=100%]
+
+Jak wybrać:
+
+* Trzeba szybko usunąć ryzyko kradzieży pliku bazy danych: wariant „a”.
+* Klucz ma opuszczać stanowisko robocze razem z człowiekiem: wariant „b” z dyskiem wymiennym lub wariant „c” z frazą hasła.
+* Klucza nie może być na dysku: wariant „c” lub `Prompt`.
+* Wiele stanowisk roboczych i potrzebne jest unieważnianie dostępu: wariant „d”.
+
+.Szczegóły: tabela porównania
+[%collapsible]
+====
+[cols="2,2,3,3", options="header"]
+|===
+| Wariant | Złożoność | Chroni przed | Nie chroni przed
+| „a” klucz w bibliotece | bardzo prosta | kradzieżą pliku bazy danych, serwera, kopii zapasowych | skopiowaniem folderu aplikacji
+| „b” klucz w pliku | prosta | tym samym; kradzieżą stanowiska roboczego bez dysku wymiennego | skopiowaniem pliku klucza
+| „c” dostawca klucza | średnia | tym samym; kradzieżą stanowiska roboczego; klucza nie ma na dysku | programami tego samego użytkownika, gdy klucz jest w pamięci
+| „d” usługa REST | wysoka: potrzebna usługa | tym samym; stanowisko robocze można odłączyć | kradzieżą tokenu, dopóki nie zostanie unieważniony
+| `Prompt` | bardzo prosta | tym samym co „c” | niewygodny: klucz jest wpisywany w każdej aplikacji
+|===
+
+Warianty można rozwijać. Moduł `keysourcecommon.pas` i cztery przykłady stanowią podstawę dla własnej biblioteki: klucz z karty inteligentnej, z magazynu Windows, z usługi katalogowej.
+====
+
+[[closed-gui-everyone]]
+== Klucz jest potrzebny każdemu połączeniu
+
+Serwer nie dzieli klucza między połączeniami. Klucz jest potrzebny wszystkim, którzy łączą się z bazą danych: stanowiskom roboczym, administratorowi z `isql`, zadaniom tworzenia kopii zapasowych, programom wymiany danych i raportów. Klient bez klucza otrzymuje błąd, nawet gdy inny klient w tym samym czasie pracuje z bazą danych.
+
+Narzędzia z folderu stanowiska roboczego otrzymują klucz tak samo jak aplikacja: przez tę samą `fbclient.dll` i tę samą `KeySource.dll`.
+
+[source,cmd]
+----
+isql -user SYSDBA -password masterkey localhost/30055:crypt_employee
+----
+
+Tworzenie kopii zapasowych wymaga osobnej konfiguracji. Jest ona opisana w następnym rozdziale.
+
+[[closed-gui-backup]]
+== Kopia zapasowa: także zaszyfrowana
+
+Narzędzie `gbak` otrzymuje od serwera dane już odszyfrowane. Bez odpowiedniej konfiguracji plik kopii zapasowej zawiera dane w postaci jawnej. Taka kopia obok zaszyfrowanej bazy danych niweczy całą ochronę.
+
+.Droga danych przy tworzeniu kopii zapasowej
+image::closed-gui/backup.svg[pdfwidth=100%]
+
+Aby kopia była zaszyfrowana, potrzebne są trzy warunki:
+
+. Narzędzie `gbak` z archiwum wtyczki.
+. W folderze narzędzia znajdują się `plugins\keyholder.dll`, `plugins\dbcrypt.dll`, licencja `plugins\DbCrypt.conf` i `KeySource.dll`. Narzędzie samo szyfruje plik, dlatego potrzebuje wtyczki `DbCrypt` i licencji.
+. Firebird 4.0 i 5.0: przełącznik `-KEYHOLDER KeyHolder` w poleceniu. Firebird 3.0: wiersz `KeyHolderPlugin = KeyHolder` w pliku `firebird.conf` w folderze narzędzia.
+
+=== Przykład
+
+Serwer przykładu musi działać. Skrypt tworzy folder narzędzi `work\fb5\backup-tools`, wykonuje kopię, sprawdza ją i odtwarza do próbnej bazy danych:
+
+[source,powershell]
+----
+.\50-backup.ps1 -Version 5
+----
+
+[source]
+----
+== Backup: gbak -b -KEYHOLDER KeyHolder localhost/30055:crypt_employee
+   ...\work\fb5\backup\employee-20261124-165733.fbk: 87040 bytes, no readable names of tables
+== Test restore: gbak -rep -KEYHOLDER KeyHolder to ...\work\fb5\db\RESTORE-TEST.FDB
+   Attributes encrypted, plugin DbCrypt
+   the restored database is readable: 15 rows in CUSTOMER
+Done. Encrypted backup: ...\work\fb5\backup\employee-20261124-165733.fbk
+----
+
+Skrypt działa z kluczem `Red` i z frazą hasła: klucz pobiera od `KeySource.dll` wariantu „b”.
+
+=== Polecenia
+
+Polecenia są wykonywane w folderze `work\fb<N>\backup-tools`. Firebird 4.0 i 5.0:
+
+[source,cmd]
+----
+gbak -b -KEYHOLDER KeyHolder -user SYSDBA -password masterkey localhost/30055:crypt_employee D:\backup\employee.fbk
+gbak -c -KEYHOLDER KeyHolder -user SYSDBA -password masterkey D:\backup\employee.fbk localhost/30055:D:\db\restored.fdb
+----
+
+Firebird 3.0, przełącznika nie ma:
+
+[source,cmd]
+----
+gbak -b -user SYSDBA -password masterkey localhost/30053:crypt_employee D:\backup\employee.fbk
+gbak -c -user SYSDBA -password masterkey D:\backup\employee.fbk localhost/30053:D:\db\restored.fdb
+----
+
+* Klucza w poleceniu nie ma. Przekazuje go `KeySource.dll`: serwerowi do połączenia i narzędziu do szyfrowania pliku.
+* Kopia jest szyfrowana tym samym kluczem co baza danych.
+* Odtworzona baza danych jest od razu zaszyfrowana, tym samym kluczem.
+* Bez klucza kopii nie można odtworzyć.
+
+[WARNING]
+====
+Firebird 4.0 i 5.0: bez przełącznika `-KEYHOLDER` polecenie `gbak -b` kończy się bez błędu i zapisuje *niezaszyfrowany* plik. Po każdej zmianie polecenia lub folderu narzędzi sprawdź, czy kopia jest zaszyfrowana.
+====
+
+.Szczegóły: co się dzieje w różnych przypadkach
+[%collapsible]
+====
+[cols="4,3,3", options="header"]
+|===
+| Folder narzędzia i polecenie | Firebird 3.0 | Firebird 4.0 i 5.0
+| Folder stanowiska roboczego (brak `dbcrypt.dll`), `gbak -b` | błąd `Crypt plugin DbCrypt failed to load` | kopia *niezaszyfrowana*
+| Folder stanowiska roboczego, `gbak -b -KEYHOLDER KeyHolder` | takiego przełącznika nie ma | błąd `Crypt plugin DbCrypt failed to load`
+| Folder z `dbcrypt.dll` i licencją, `gbak -b` | kopia zaszyfrowana | kopia *niezaszyfrowana*
+| Folder z `dbcrypt.dll` i licencją, `gbak -b -KEYHOLDER KeyHolder` | takiego przełącznika nie ma | kopia zaszyfrowana
+| Odtwarzanie zaszyfrowanej kopii bez `KeySource.dll` | błąd `Unknown key name RED - key can't be found` | ten sam błąd
+|===
+====
+
+.Szczegóły: zawartość folderu narzędzi
+[%collapsible]
+====
+[source]
+----
+gbak.exe, isql.exe, nbackup.exe ...   narzędzia z archiwum wtyczki, folder Client\64bit
+fbclient.dll, ICU, OpenSSL            pozostałe pliki tego samego folderu
+plugins\keyholder.dll                 wtyczka KeyHolder: pobiera klucz od KeySource.dll
+plugins\dbcrypt.dll                   wtyczka DbCrypt: szyfruje plik kopii zapasowej
+plugins\DbCrypt.conf                  licencja
+KeySource.dll, KeySource.ini          biblioteka z kluczem i jej ustawienia
+firebird.conf                         Providers = Remote, KeyHolderPlugin = KeyHolder
+----
+
+Od folderu stanowiska roboczego różni się on dwoma plikami: `plugins\dbcrypt.dll` i `plugins\DbCrypt.conf`.
+
+Trzymaj folder narzędzi oddzielnie od folderu serwera Firebird. Serwerowy `KeyHolder` nie może znaleźć `KeySource.dll`.
+====
+
+.Szczegóły: jak sprawdzić, czy kopia jest zaszyfrowana
+[%collapsible]
+====
+* W niezaszyfrowanej kopii nazwy tabel są zapisane zwykłym tekstem. Polecenie `findstr /m CUSTOMER employee.fbk` wypisuje nazwę pliku, jeśli znalazło w nim słowo `CUSTOMER`. Dla zaszyfrowanej kopii nie wypisuje niczego. Podstaw nazwę tabeli ze swojej bazy danych.
+* Odtwarzanie z folderu bez `KeySource.dll` kończy się błędem `Unknown key name`.
+* Wykonuj próbne odtwarzanie według harmonogramu. Skrypt `50-backup.ps1` wykonuje je przy każdym uruchomieniu: odtwarza kopię, sprawdza `gstat -h` i czyta tabelę.
+====
+
+.Szczegóły: zadanie według harmonogramu i przechowywanie klucza
+[%collapsible]
+====
+* Zadanie działa bez udziału człowieka. Nadają się do niego warianty „b” i „d”. Wariant „c” i parametr `Prompt` czekają na wpisanie z klawiatury.
+* Wariant „b”: nadaj prawo odczytu pliku klucza tylko kontu zadania. Nie przechowuj pliku klucza na dysku z bazą danych ani na dysku z kopiami.
+* Kopia jest zaszyfrowana tym samym kluczem co baza danych. Utrata klucza oznacza utratę wszystkich kopii.
+* Po zmianie klucza bazy danych stare kopie można odczytać tylko starym kluczem. Przechowuj stary klucz, dopóki te kopie są potrzebne.
+* Inny klucz dla kopii określa przełącznik `-KEYNAME` (Firebird 4.0 i 5.0). Jest on opisany w głównym przewodniku, w rozdziale „Obsługa w narzędziach konsolowych Firebird”. Tam opisano też wtyczkę `KeyHolderStdin`: pobiera ona klucz ze standardowego wejścia.
+====
+
+.Szczegóły: kopia fizyczna nbackup
+[%collapsible]
+====
+Narzędzie `nbackup` kopiuje strony bazy danych bez zmian. Kopia pozostaje zaszyfrowana tym samym kluczem. Klucz jest potrzebny narzędziu tylko do połączenia. Polecenie jest wykonywane na serwerze, w folderze narzędzi. Firebird 4.0 i 5.0:
+
+[source,cmd]
+----
+nbackup -b 0 localhost/30055:D:\db\EMPLOYEE.FDB D:\backup\employee-nbackup.fdb -KEYHOLDER KeyHolder -user SYSDBA -password masterkey
+----
+
+Firebird 3.0: to samo polecenie bez przełącznika `-KEYHOLDER`.
+
+Polecenie `gstat -h` dla pliku kopii pokazuje `Attributes encrypted, plugin DbCrypt` i tę samą nazwę klucza co dla bazy danych.
+====
+
+== Przeniesienie na własną aplikację
+
+Lista kontrolna:
+
+. *Architektura.* Pliki klienckie i `KeySource.dll` mają tę samą architekturę (32 lub 64 bity) co aplikacja.
+. *Biblioteka kliencka.* Zastąp `fbclient.dll` lub `gds32.dll` aplikacji biblioteką z archiwum wtyczki.
+. *Pliki obok niej.* Wszystkie pliki folderu `Client\64bit`, `plugins\keyholder.dll`, Twoja `KeySource.dll` i `firebird.conf` z wierszem `KeyHolderPlugin = KeyHolder`.
+. *Wersja.* Archiwum wtyczki w tej samej wersji co serwer: 3.0, 4.0 lub 5.0.
+. *Zmienna `FIREBIRD`.* Na stanowisku roboczym nie może jej być.
+. *Embedded.* Dodaj `plugins\dbcrypt.dll` i licencję `plugins\DbCrypt.conf`.
+. *Serwer.* Wiersz `KeyHolderPlugin = KeyHolder` w `firebird.conf`, wtyczki i licencja w `plugins`. Na serwerze nie ma kluczy: ani pliku `plugins\KeyHolder.conf` z kluczami, ani `KeySource.dll`.
+. *Sprawdzenie.* Zainstaluj bibliotekę diagnostyczną: `.\40-deploy-remote.ps1 -Version 5 -KeySource probe`.
+. *Aktualizacja.* Serwer i stanowiska robocze aktualizuj z jednego archiwum wtyczki.
+
+.Szczegóły do punktów listy
+[%collapsible]
+====
+* *Architektura.* Ważna jest architektura aplikacji, a nie Windows. Dla aplikacji 32-bitowej weź folder `Client\32bit` z archiwum wtyczki i zbuduj `KeySource.dll` kompilatorem 32-bitowym. Programy przykładu są zbudowane tylko dla 64 bitów.
+* *Biblioteka kliencka.* Znajdź plik, którego używa aplikacja. Zwykle znajduje się on obok pliku exe. Jeśli aplikacja szuka `gds32.dll`, skopiuj `fbclient.dll` pod tą nazwą. Jeśli aplikacja ładuje bibliotekę z folderu `System32`, obok niej nie ma ani `plugins`, ani `KeySource.dll`: umieść pliki klienckie w folderze aplikacji.
+* *Sprawdzenie.* Biblioteka diagnostyczna `keysource\probe` zwraca klucz bazy danych i zapisuje w `KeySource.log` każde załadowanie i każde wywołanie. Jeśli dziennik jest pusty, aplikacja używa innej biblioteki klienckiej lub innego `firebird.conf`.
+====
+
+.Szczegóły: Firebird 3.0 obok usługi Firebird 3.0
+[%collapsible]
+====
+Osobny serwer Firebird 3.0 uruchomiony jako program nie otwiera bazy danych, jeśli na tym samym komputerze działa usługa Firebird 3.0. W `firebird.log` pojawia się komunikat:
+
+[source]
+----
+MappingIpc: Cannot initialize the shared memory region
+----
+
+Rozwiązanie: ustawić serwerowi własny folder blokad w zmiennej środowiskowej `FIREBIRD_LOCK`. Skrypty przykładu robią to same. Aplikacja embedded musi używać tego samego folderu, gdy działa jednocześnie z takim serwerem. W tym celu skrypt `41` tworzy plik uruchomieniowy `EmployeeEmbedded.cmd`.
+
+Dla Firebird 4.0 i 5.0 zmiennej `FIREBIRD_LOCK` nie trzeba ustawiać.
+====
+
+== Zmiana klucza, utrata klucza, kopie zapasowe
+
+* *Zmiana klucza.* Firebird nie zmienia klucza jednym poleceniem. Należy odszyfrować bazę danych i zaszyfrować ją nowym kluczem albo odtworzyć kopię zapasową z nowym kluczem. Nadawaj nowemu kluczowi nową nazwę.
+* *Utrata klucza.* Bez klucza lub frazy hasła bazy danych i zaszyfrowanych kopii zapasowych nie można odczytać. Nie można ich odzyskać. Przechowuj kopię klucza oddzielnie od bazy danych i od stanowisk roboczych: w sejfie, u dwóch odpowiedzialnych osób.
+* *Kopie zapasowe.* Niezaszyfrowana kopia zapasowa obok zaszyfrowanej bazy danych niweczy całą ochronę. Zob. <<closed-gui-backup>>.
+
+.Szczegóły: co zrobić na stanowiskach roboczych po zmianie klucza
+[%collapsible]
+====
+* wariant „a”: zbuduj i rozpowszechnij nową `KeySource.dll`;
+* wariant „b”: zastąp plik klucza;
+* wariant „c”: użytkownicy wpisują nową frazę; w `KeyProvider.ini` zapisz nową nazwę klucza;
+* wariant „d”: zastąp klucz w usłudze kluczy. Stanowiska robocze otrzymają go po upływie `CacheSeconds` lub po ponownym uruchomieniu aplikacji.
+
+W wariantach „a”, „b” i „d” biblioteka może przez pewien czas zwracać oba klucze: stary i nowy.
+
+Sprawdź, czym jest zaszyfrowana każda kopia zapasowa i gdzie znajduje się jej klucz.
+
+Główny przewodnik: rozdziały „Szyfrowanie, odszyfrowanie i zmiana klucza” oraz „Obsługa w narzędziach konsolowych Firebird”.
+====
+
+== Diagnostyka
+
+. Włącz dziennik biblioteki: wiersz `Log=1` w `KeySource.ini`. Dziennik `KeySource.log` pojawia się obok biblioteki. W przykładzie dziennik jest włączony.
+. Dziennika nie ma: klient nie wywołuje biblioteki. Sprawdź wiersz `KeyHolderPlugin = KeyHolder` w `firebird.conf` obok `fbclient.dll`, zmienną `FIREBIRD` i wersję `fbclient.dll` (dla 3.0 tylko z archiwum wtyczki).
+. Dziennik jest: znajdź komunikat w tabelach poniżej.
+
+.Szczegóły: komunikaty o błędach Firebird i wtyczki
+[%collapsible]
+====
+[cols="3,4,4", options="header"]
+|===
+| Komunikat | Przyczyna | Co zrobić
+| `Invalid crypt key RED` +
+`Key not set`
+| Serwer nie otrzymał klucza. Biblioteka nie została znaleziona, zwróciła `NULL` albo klient nie załadował `KeyHolder`.
+| Sprawdź `KeySource.log`. Jeśli dziennika nie ma, zob. krok 2.
+
+| `Invalid crypt key RED` bez wiersza `Key not set`
+| Klucz o nazwie `RED` został otrzymany, ale jego wartość jest niepoprawna.
+| Sprawdź wartość klucza lub frazę hasła.
+
+| `Missing database encryption key for your attachment` +
+`Missing correct crypt key`
+| To samo co `Key not set`, ale baza danych jest już otwarta przez inne połączenie.
+| Te same działania.
+
+| `Bad key or password passed from external source`
+| `MakeKeys` zwróciła wiersz w niepoprawnym formacie: brak wartości po nazwie klucza.
+| Popraw tekst kluczy. Format: `Key=<nazwa> <wartość>`.
+
+| `Crypt plugin DbCrypt failed to load` w narzędziu `gbak`
+| W folderze narzędzia nie ma `plugins\dbcrypt.dll` lub licencji `plugins\DbCrypt.conf`.
+| Utwórz folder narzędzi, zob. <<closed-gui-backup>>.
+
+| `Unknown key name RED - key can't be found` w narzędziu `gbak`
+| Kopia jest zaszyfrowana, a narzędzie nie otrzymało klucza: brak `KeySource.dll` lub brak przełącznika `-KEYHOLDER KeyHolder`.
+| Uruchom `gbak` z folderu narzędzi z przełącznikiem.
+
+| `Unknown key name … - key can't be found in external source`
+| `MakeKeys` zwróciła klucze, ale nie ma wśród nich klucza o potrzebnej nazwie.
+| Sprawdź nazwę klucza: `gstat -h` pokazuje ją w wierszu `Encryption key name`.
+
+| `text stream: illegal line`
+| W tekście kluczy jest znak, który psuje analizę, na przykład cudzysłów.
+| Usuń znaki `#`, `"`, `{`, `}`, `$(` z frazy hasła.
+
+| `License is incorrect`, błędy licencji
+| Brak pliku `plugins\DbCrypt.conf` albo licencja nie jest dla tej wersji, albo upłynął jej termin ważności.
+| Sprawdź licencję. Licencja próbna z archiwum jest ważna do końca miesiąca.
+
+| `MappingIpc: Cannot initialize the shared memory region` w `firebird.log`
+| Firebird 3.0: działa inna usługa Firebird 3.0.
+| Ustaw serwerowi własny `FIREBIRD_LOCK`.
+
+| `Wrong file for memory mapping`
+| Dwie instancje Firebird tej samej wersji używają różnych folderów `FIREBIRD_LOCK` w jednej sesji Windows.
+| Ustaw im jeden folder lub zatrzymaj jedną z nich.
+
+| `can't format message … firebird.msg not found`
+| Klient szuka swoich plików w złym miejscu. Zwykle jest ustawiona zmienna `FIREBIRD`.
+| Usuń zmienną `FIREBIRD`.
+|===
+
+Ogólne błędy wtyczki są opisane w głównym przewodniku, w rozdziale „Diagnostyka błędów”.
+====
+
+.Szczegóły: komunikaty w `KeySource.log`
+[%collapsible]
+====
+[cols="4,5", options="header"]
+|===
+| Komunikat | Znaczenie
+| `cannot read the file of keys …, error N` | Wariant „b”: pliku nie ma lub brak uprawnień. `N` to kod błędu Windows.
+| `no lines "Key=" or "Password=" in the file` | Wariant „b”: plik został odczytany, ale nie ma w nim kluczy.
+| `the key provider is not running` | Wariant „c”: nie znaleziono potoku, parametr `ProviderExe` nie jest ustawiony.
+| `cannot start the key provider` | Wariant „c”: niepoprawna ścieżka w `ProviderExe`.
+| `the pipe does not belong to the key provider from the settings` | Wariant „c”: nazwa potoku jest zajęta przez inny program.
+| `the key provider answered: ERROR the user did not enter the key` | Wariant „c”: użytkownik zamknął okno wprowadzania.
+| `the key service does not answer, error N` | Wariant „d”: brak sieci, niepoprawny adres, usługa zatrzymana.
+| `the last request failed a moment ago; no new request` | Wariant „d”: ponowne wywołanie w czasie `RetrySeconds` po odmowie.
+| `the key service answered with the status 401` | Wariant „d”: niepoprawny token.
+|===
+====
+
+== Sprawdzenie przykładu
+
+Skrypt `tests\run-matrix.ps1` sprawdza wszystkie kombinacje: 3 wersje Firebird × 2 tryby × 4 warianty `KeySource`.
+
+[source,powershell]
+----
+cd ..\tests
+.\run-matrix.ps1 -Negative -Load -Backup
+----
+
+Sprawdzenie z 24.11.2026 zakończyło się sukcesem: z kluczem testowym `Red` i z frazami hasła, w Firebird 3.0, 4.0 i 5.0.
+
+.Szczegóły: co sprawdza skrypt i wyniki
+[%collapsible]
+====
+Dla każdej kombinacji skrypt tworzy folder aplikacji i wykonuje dwa sprawdzenia:
+
+* `isql` z tego folderu czyta tabelę `CUSTOMER`;
+* aplikacja z przełącznikiem `/selftest` łączy się, zmienia wiersz, łączy się ponownie i czyta go.
+
+Klucz bazy danych skrypt pobiera z pliku `work\fb<N>\db-key.conf`. W wariancie „c” skrypt sam wpisuje klucz lub frazę w oknie dostawcy i sprawdza, czy okno pojawiło się jeden raz. W wariancie „d” skrypt uruchamia serwer demonstracyjny i liczy żądania. Jeśli baza danych nie jest zaszyfrowana kluczem `Red`, wariant „a” jest pomijany.
+
+[cols="4,2", options="header"]
+|===
+| Sprawdzenie | Wynik
+| Klucz `Red`. 24 kombinacje: wersje 3.0, 4.0, 5.0; zwykłe połączenie i embedded; warianty „a”, „b”, „c”, „d” | zaliczone
+| Fraza hasła. 18 kombinacji: wersje 3.0, 4.0, 5.0; zwykłe połączenie i embedded; warianty „b”, „c”, „d”. Frazy ze spacjami, znakami `'`, `;`, `=`, `\` i z cyrylicą | zaliczone
+| 9 sprawdzeń, które muszą zakończyć się błędem: brak biblioteki, niepoprawny klucz, błąd formatu, brak pliku, odmowa użytkownika (jedno okno), brak dostawcy, brak usługi (błąd po 5 sekundach), niepoprawny token. Z kluczem `Red` i z frazą hasła | zaliczone
+| Serwer bez pliku `plugins\KeyHolder.conf`: wszystkie sprawdzenia powyżej | zaliczone
+| Szyfrowanie nowej bazy danych przez sieć ze stanowiska roboczego, klucz od `KeySource.dll`, wersje 3.0, 4.0, 5.0 | zaliczone
+| Zaszyfrowana kopia zapasowa `gbak` i próbne odtwarzanie: wersje 3.0, 4.0, 5.0; klucz `Red` i frazy hasła. Kopia `nbackup` pozostaje zaszyfrowana | zaliczone
+| Obciążenie: 1000 połączeń z rzędu i 8 wątków po 125 połączeń, każdy wariant, Firebird 5.0. Brak błędów, wzrost pamięci 3,5–5 MB | zaliczone
+| Wariant „d”: jedno żądanie do usługi na proces przy 1000 połączeń | zaliczone
+|===
+
+Środowisko sprawdzenia: Windows 11 x64, oficjalne kompilacje Firebird 3.0.14, 4.0.7, 5.0.4, archiwa wtyczki z 01.10.2026, Lazarus 4.8 z Free Pascal 3.2.2.
+====
+
+Nie sprawdzono: kompilacji 32-bitowych, serwera Firebird jako usługi Windows, Linuksa, Delphi i innych narzędzi programistycznych, prawdziwej usługi kluczy z HTTPS.
+

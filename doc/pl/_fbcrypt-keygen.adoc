@@ -1,0 +1,285 @@
+[[fbcrypt-keygen]]
+= Generowanie klucza
+
+Do generowania kluczy, których można używać do szyfrowania, opracowaliśmy narzędzie `aesKeyGen`. Generuje ono klucze dla algorytmu szyfrowania AES256. Użycie narzędzia jest proste
+
+[source,cmd]
+----
+aesKeyGen.exe
+----
+
+w systemie Linux polecenie wygląda tak:
+
+[source,bash]
+----
+./aesKeyGen
+----
+
+Wynik działania narzędzia będzie taki:
+
+[listing]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+};
+----
+
+Narzędzie pobiera 32 losowe bajty z generatora kryptograficznego biblioteki OpenSSL. Każde uruchomienie daje nowy klucz.
+
+Jeśli narzędzie `aesKeyGen` nie jest dostępne, klucz w tym samym formacie można otrzymać za pomocą `openssl`:
+
+[source,bash]
+----
+openssl rand -hex 32 | sed 's/../0x&,/g'
+----
+
+[IMPORTANT]
+====
+Zapisz kopię klucza w bezpiecznym miejscu *poza* serwerem bazy danych. Utraconego klucza nie można odzyskać: dane w bazie danych i w zaszyfrowanych kopiach zapasowych będą niedostępne.
+====
+
+[[fbcrypt-keygen-format]]
+== Format klucza
+
+Tekstowy zapis klucza jest używany w pliku `KeyHolder.conf`, w bibliotece `KeySource`, w strumieniu wejściowym wtyczki `KeyHolderStdin` oraz we właściwościach połączenia Java i .NET.
+
+[source]
+----
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Zasady:
+
+* Każdy bajt zapisuje się dokładnie pięcioma znakami: `0x`, dwie cyfry szesnastkowe i przecinek.
+* Spacje między bajtami są niedozwolone.
+* Przecinek po ostatnim bajcie jest dozwolony. Narzędzie `aesKeyGen` wyświetla klucz z takim przecinkiem i nie trzeba go usuwać.
+* Długość klucza to 16, 24 lub 32 bajty (AES-128, AES-192, AES-256). Klucz o innej długości powoduje błąd `Invalid key length`.
+* Nazwa klucza nie zawiera spacji. Wielkość liter w nazwie nie ma znaczenia.
+
+== Jak używać tego klucza?
+
+=== W pliku `KeyHolder.conf`
+
+Tego pliku można używać tylko do debugowania.
+
+Format zapisu klucza jest następujący:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Każdy klucz ma nazwę, którą zapisuje się po `Key=`. Dalej, po spacji, znajduje się sam klucz. Plik może zawierać kilka wierszy `Key=`.
+
+Przykład:
+
+[source,conf]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+----
+
+W systemie Linux ogranicz dostęp do pliku:
+
+[source,bash]
+----
+chown root:firebird /opt/firebird/plugins/KeyHolder.conf
+chmod 640 /opt/firebird/plugins/KeyHolder.conf
+----
+
+[[fbcrypt-keygen-password]]
+=== Fraza hasła zamiast klucza
+
+Zamiast klucza binarnego można podać frazę hasła. Służy do tego parametr `Password`:
+
+[source,conf]
+----
+Password=<KeyName> <passphrase>
+----
+
+Wtyczka oblicza z frazy klucz o długości 32 bajtów funkcją PBKDF2 (HMAC-SHA256, 10000 iteracji). Ta sama fraza zawsze daje ten sam klucz.
+
+Wiersza `Password=` można używać tam, gdzie wiersza `Key=`: w pliku `KeyHolder.conf`, w bibliotece `KeySource` i w strumieniu wejściowym wtyczki `KeyHolderStdin`.
+
+Wtyczka odczytuje wiersz jak plik konfiguracyjny Firebird. Dlatego nie wszystkie znaki są dozwolone we frazie:
+
+[cols="2,5", options="header"]
+|===
+| Znak | Co się dzieje
+| `"` | Wiersz nie jest analizowany. Błąd `illegal line`.
+| `#` | Wtyczka otrzymuje inną frazę. Klucz nie pasuje: `Invalid crypt key`.
+| `{` i `}` | Wtyczka nie otrzymuje klucza. Z biblioteki `KeySource`: błąd `Invalid crypt key`. Z pliku `KeyHolder.conf`: instrukcja `ALTER DATABASE ENCRYPT` kończy się bez błędu, ale baza danych pozostaje niezaszyfrowana.
+| `$(` | Początek podstawienia. Wtyczka otrzymuje inną frazę lub nie analizuje wiersza.
+| spacje na początku i na końcu | Są usuwane.
+|===
+
+Bez zmian przechodzą litery, cyfry, spacje wewnątrz frazy, znaki `'`, `;`, `=`, `\` oraz litery alfabetów narodowych. Plik z taką frazą zapisuj w kodowaniu UTF-8 bez BOM.
+
+[NOTE]
+====
+Siła takiego klucza jest równa sile frazy. Losowy klucz o długości 32 bajtów jest bezpieczniejszy. Jeśli wybierasz ten sposób, używaj długiej frazy.
+====
+
+=== W narzędziach wiersza poleceń z wtyczką KeyHolderStdin
+
+Ogólny format wywołania narzędzi wiersza poleceń z wtyczką `KeyHolderStdin` jest następujący (Firebird 4.0 i 5.0; dla wersji 3.0 patrz <<fbcrypt-utils-fb3>>):
+
+[source,cmd]
+----
+echo Key=<KeyName> <key_value> | <utils> -KeyHolder KeyHolderStdin ...
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Więcej informacji: patrz <<fbcrypt-utils>>.
+
+=== W aplikacji w C/C++
+
+Wygenerowany klucz można użyć bez zmian, po usunięciu końcowego przecinka.
+
+[source,cpp]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1
+};
+----
+
+=== W aplikacji w Delphi i Lazarus
+
+Tutaj wszystko jest proste: wystarczy zastąpić wszystkie znaki `0x` w kluczu znakiem `$` i usunąć końcowy przecinek.
+
+[source,delphi]
+----
+const keyRed: array [0..31] of byte  = ($d6,$d8,$8d,$07,$09,$70,$fe,$8c,$2e,$fd,$a2,$ee,$cd,$84,$ab,$d3,$89,$48,$29,$a1,$2b,$f0,$b9,$81,$65,$2c,$b2,$92,$ad,$22,$b6,$e1);
+----
+
+=== W aplikacji w Java i .NET
+
+Sterowniki Jaybird i Firebird .NET otrzymują klucz w postaci tekstowej. Nazwę klucza i wartość zapisuje się rozdzielone dwukropkiem:
+
+[source]
+----
+MyKey:0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+----
+
+Więcej informacji: patrz <<fbcrypt-client-java>> i <<fbcrypt-client-net>>.
+
+[[fbcrypt-keygen-clientkeys]]
+== Indywidualne klucze klientów
+
+W niektórych systemach ten sam klucz bazy danych otrzymuje wielu klientów (oddziały, stanowiska robocze, partnerzy). Narzędzie `ClientKeygen` pozwala wydać każdemu klientowi własny klucz i widzieć w dzienniku serwera, jakim kluczem wykonano połączenie.
+
+[NOTE]
+====
+Indywidualne klucze klientów obsługuje tylko wtyczka dla Firebird 5.0 (HQbird 5). W wersjach dla Firebird 3.0 i 4.0 tej funkcji nie ma. Narzędzie `ClientKeygen` nie wchodzi w skład wszystkich pakietów. Jeśli nie ma go w twoim pakiecie, skontaktuj się z pomocą techniczną IBSurgeon.
+====
+
+=== Jak to działa
+
+. Narzędzie `ClientKeygen` pobiera klucz bazy danych i tworzy klucz klienta o długości 64 bajtów. Klucz klienta zawiera dane losowe, numer klucza i klucz bazy danych. Narzędzie szyfruje go wartością parametru `License` z pliku `DbCrypt.conf`.
+. Klient przekazuje serwerowi klucz klienta zamiast klucza bazy danych. Nazwa klucza pozostaje taka sama.
+. Wtyczka `DbCrypt` na serwerze odszyfrowuje klucz klienta swoją licencją. Otrzymuje klucz bazy danych i numer klucza klienta.
+
+Wynika z tego, że:
+
+* Nie trzeba ponownie szyfrować bazy danych. Wszystkie klucze klientów otwierają tę samą bazę danych.
+* Klucz klienta działa tylko na serwerze z tą samą wartością `License`, jaką miało narzędzie `ClientKeygen`.
+* Klucz bazy danych musi mieć długość 32 bajtów.
+* Zwykły klucz bazy danych nadal działa. Przechowuj go tylko u administratora.
+
+=== Tworzenie kluczy
+
+Składnia:
+
+[source]
+----
+ClientKeygen {keyname} {keycount} [starting]
+----
+
+[cols="1,3", options="header"]
+|===
+| Parametr | Wartość
+| `keyname` | nazwa klucza bazy danych w pliku `KeyHolder.conf`
+| `keycount` | ile kluczy klientów utworzyć
+| `starting` | numer pierwszego klucza (domyślnie `1`)
+|===
+
+Narzędzie odczytuje klucz bazy danych z pliku `KeyHolder.conf` i licencję z pliku `DbCrypt.conf`. Oba pliki muszą znajdować się w bieżącym folderze lub w folderze `../plugins`. Wynik narzędzie zapisuje w bieżącym folderze.
+
+Kolejność działań:
+
+. Na komputerze administratora utwórz pusty folder.
+. Skopiuj do niego plik `DbCrypt.conf` serwera.
+. Utwórz w nim plik `KeyHolder.conf` z wierszem `Key=<nazwa> <wartość>` dla klucza bazy danych.
+. Uruchom narzędzie w tym folderze:
++
+[source,bash]
+----
+ClientKeygen Red 20 1
+----
++
+Narzędzie utworzy 20 plików: `KeyHolder.conf.1`, `KeyHolder.conf.2`, ... `KeyHolder.conf.20`. Każdy plik zawiera jeden wiersz `Key=Red <key_value>` z wartością o długości 64 bajtów.
+. Przekaż każdemu klientowi jego plik chronionym kanałem. Zapisz, jaki numer klucza otrzymał każdy klient.
+. Usuń folder. Znajduje się w nim klucz bazy danych.
+
+Aby później dodać klientów, uruchom narzędzie z trzecim parametrem. Na przykład `ClientKeygen Red 5 21` utworzy klucze o numerach od 21 do 25.
+
+=== Użycie na kliencie
+
+Klucza klienta używa się tak samo jak zwykłego klucza. Nazwa klucza jest ta sama, długość wartości wynosi 64 bajty.
+
+[cols="2,4", options="header"]
+|===
+| Sposób przekazania klucza | Co zrobić
+| Biblioteka `fbcrypt`
+| Przekaż wartość do `fbcrypt_key` z długością 64.
+
+| Kliencka wtyczka `KeyHolder`
+| Zapisz plik `KeyHolder.conf.<numer>` pod nazwą `plugins/KeyHolder.conf` w folderze biblioteki klienckiej. W klienckim `firebird.conf` ustaw `KeyHolderPlugin = KeyHolder`.
+
+| Biblioteka `KeySource`
+| Zwróć wiersz z pliku w funkcji `MakeKeys`.
+
+| Wtyczka `KeyHolderStdin`
+| Przekaż wiersz z pliku do strumienia wejściowego narzędzia.
+
+| Właściwość sterownika (Jaybird, .NET)
+| Użyj wartości w zapisie `<nazwa>:0x..,0x..,`. Potrzebny jest parametr `UnsafeClient = true`.
+|===
+
+=== Dziennik połączeń
+
+Aby serwer zapisywał w `firebird.log`, jakiego klucza klienta użyto, dodaj do pliku `plugins/DbCrypt.conf` serwera parametr i uruchom ponownie Firebird:
+
+[source,conf]
+----
+Logger = true
+----
+
+Komunikat w dzienniku wygląda tak:
+
+[listing]
+----
+DbCrypt login from 192.168.1.15/54907 using key 7
+----
+
+Tutaj `192.168.1.15/54907` to adres i port klienta, a `7` to numer klucza klienta.
+
+Cechy dziennika:
+
+* Wpis jest tworzony dla każdego połączenia z kluczem klienta.
+* Połączenia ze zwykłym kluczem bazy danych nie trafiają do dziennika.
+* Wpis jest tworzony przed sprawdzeniem klucza. Próba połączenia z uszkodzonym kluczem klienta również trafia do dziennika.
+
+=== Wymiana klucza klienta
+
+Wtyczka nie ma listy unieważnionych kluczy. Nie można wyłączyć jednego klucza klienta.
+
+Aby zablokować dostęp klientowi, który ma klucz:
+
+. Odszyfruj bazę danych i zaszyfruj ją nowym kluczem (patrz <<fbcrypt-usage>>).
+. Utwórz nowe klucze klientów dla nowego klucza bazy danych.
+. Wydaj nowe klucze pozostałym klientom.
+
+Przykład pracy z kluczami klientów znajduje się w folderze `examples/clientkeygen` repozytorium https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

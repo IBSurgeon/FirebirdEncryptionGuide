@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="663" viewBox="0 0 1000 663">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker><marker id="arrowkey" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0,0 L14,6 L0,12 z" fill="#b45309"/></marker></defs>
+<rect x="0" y="0" width="1000" height="663" fill="#ffffff"/>
+<text x="20" y="34" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="start" fill="#1f2933" font-weight="bold">Skąd: cztery źródła plików</text>
+<rect x="20.0" y="48" width="230" height="76" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="135.0" y="72" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Oficjalny Firebird</text>
+<text x="135.0" y="92" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">github.com/FirebirdSQL/firebird</text>
+<text x="135.0" y="110" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">skrypt 01</text>
+<rect x="263.3" y="48" width="230" height="76" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="378.3" y="72" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Archiwum wtyczki</text>
+<text x="378.3" y="92" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">cc.ib-aid.com, z licencją próbną</text>
+<text x="378.3" y="110" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">skrypty 02 i 03</text>
+<rect x="506.6" y="48" width="230" height="76" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="621.6" y="72" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Programy przykładu</text>
+<text x="621.6" y="92" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">wydanie na GitHub lub kompilacja</text>
+<text x="621.6" y="110" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">w Lazarus; skrypty 05 lub 30</text>
+<rect x="749.9000000000001" y="48" width="230" height="76" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="864.9000000000001" y="72" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Tworzy je skrypt</text>
+<text x="864.9000000000001" y="92" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">pliki ustawień,</text>
+<text x="864.9000000000001" y="110" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">zaszyfrowana baza danych</text>
+<text x="20" y="160" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="start" fill="#1f2933" font-weight="bold">Dokąd: trzy foldery. Kolor wiersza pokazuje źródło pliku</text>
+<rect x="20" y="174" width="310" height="62" rx="6" fill="#ffffff" stroke="#1f2933" stroke-width="1.6"/>
+<text x="175" y="198" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#1f2933" font-weight="bold">Serwer</text>
+<text x="175" y="220" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">work\fb&lt;N&gt;\server · skrypty 10 i 20</text>
+<rect x="20" y="244" width="310" height="52" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="175.0" y="264.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">Cały Firebird: firebird.exe,</text>
+<text x="175.0" y="283.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">silnik, narzędzia, przykłady</text>
+<rect x="20" y="302" width="310" height="52" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="175.0" y="322.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">Server\*: fbclient.dll, fbcrypt.dll,</text>
+<text x="175.0" y="341.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">OpenSSL</text>
+<rect x="20" y="360" width="310" height="52" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="175.0" y="380.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\dbcrypt.dll</text>
+<text x="175.0" y="399.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\keyholder.dll</text>
+<rect x="20" y="418" width="310" height="33" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="175.0" y="438.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\DbCrypt.conf: licencja</text>
+<rect x="20" y="457" width="310" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="175.0" y="477.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">firebird.conf:</text>
+<text x="175.0" y="496.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeyHolderPlugin = KeyHolder</text>
+<rect x="20" y="515" width="310" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="175.0" y="535.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">db\EMPLOYEE.FDB: zaszyfrowana</text>
+<text x="175.0" y="554.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">skryptem 20</text>
+<rect x="20" y="573" width="310" height="52" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="175.0" y="593.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">Nie ma kluczy: brak KeyHolder.conf,</text>
+<text x="175.0" y="612.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">brak KeySource.dll</text>
+<rect x="345" y="174" width="310" height="62" rx="6" fill="#ffffff" stroke="#1f2933" stroke-width="1.6"/>
+<text x="500" y="198" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#1f2933" font-weight="bold">Stanowisko robocze</text>
+<text x="500" y="220" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">work\fb&lt;N&gt;\remote · skrypt 40</text>
+<rect x="345" y="244" width="310" height="52" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="500.0" y="264.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">Client\64bit\*: fbclient.dll, ICU,</text>
+<text x="500.0" y="283.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">OpenSSL, isql, gbak</text>
+<rect x="345" y="302" width="310" height="33" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="500.0" y="322.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\keyholder.dll</text>
+<rect x="345" y="341" width="310" height="33" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="500.0" y="361.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeySource.dll: wariant a, b, c lub d</text>
+<rect x="345" y="380" width="310" height="33" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="500.0" y="400.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">EmployeeRemote.exe</text>
+<rect x="345" y="419" width="310" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="500.0" y="439.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">firebird.conf: Providers = Remote,</text>
+<text x="500.0" y="458.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeyHolderPlugin = KeyHolder</text>
+<rect x="345" y="477" width="310" height="33" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="500.0" y="497.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeySource.ini, EmployeeApp.ini</text>
+<rect x="345" y="516" width="310" height="33" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="500.0" y="536.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">DbCrypt i licencja nie są potrzebne</text>
+<rect x="670" y="174" width="310" height="62" rx="6" fill="#ffffff" stroke="#1f2933" stroke-width="1.6"/>
+<text x="825" y="198" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="15" text-anchor="middle" fill="#1f2933" font-weight="bold">Folder embedded</text>
+<text x="825" y="220" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">work\fb&lt;N&gt;\embedded · skrypt 41</text>
+<rect x="670" y="244" width="310" height="52" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="825.0" y="264.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">Client\64bit\*: fbclient.dll, ICU,</text>
+<text x="825.0" y="283.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">OpenSSL, isql, gbak</text>
+<rect x="670" y="302" width="310" height="52" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="825.0" y="322.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\keyholder.dll</text>
+<text x="825.0" y="341.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\dbcrypt.dll</text>
+<rect x="670" y="360" width="310" height="33" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="825.0" y="380.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\DbCrypt.conf: licencja</text>
+<rect x="670" y="399" width="310" height="52" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="825.0" y="419.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">plugins\engine13.dll (3.0: engine12.dll),</text>
+<text x="825.0" y="438.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">intl\*</text>
+<rect x="670" y="457" width="310" height="33" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="825.0" y="477.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeySource.dll, EmployeeEmbedded.exe</text>
+<rect x="670" y="496" width="310" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="825.0" y="516.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">firebird.conf: Providers = Engine13,</text>
+<text x="825.0" y="535.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeyHolderPlugin = KeyHolder</text>
+<rect x="670" y="554" width="310" height="52" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="825.0" y="574.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">EMPLOYEE.FDB: własna zaszyfrowana</text>
+<text x="825.0" y="593.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">kopia; KeySource.ini, EmployeeApp.ini</text>
+</svg>

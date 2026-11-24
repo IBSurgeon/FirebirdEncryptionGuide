@@ -1,0 +1,262 @@
+[[fbcrypt-server]]
+= Jak działa szyfrowanie bazy danych Firebird po stronie serwera
+
+Omówmy wewnętrzne szczegóły szyfrowania bazy danych Firebird. Zaczniemy od części serwerowej.
+
+== Która część bazy danych jest szyfrowana?
+
+Najpierw należy ustalić, która część bazy danych jest szyfrowana. Jak zapewne wiesz, baza danych Firebird składa się z części o jednakowym rozmiarze, nazywanych "`stronami bazy danych`". Istnieje kilka typów takich stron. Każdy typ służy określonemu celowi.
+
+Poniżej znajduje się rysunek z głównymi typami stron:
+
+.Typy stron bazy danych
+image::1_firebird_database_data_pages.png[]
+
+Niektóre strony służą do przechowywania danych użytkowników, a inne są potrzebne do przechowywania informacji systemowych, na przykład strony transakcji i strony inwentarza stron (więcej informacji o stronach bazy danych https://ib-aid.com/en/articles/database-physical-structure-interbase-and-firebird/[znajduje się tutaj]).
+
+Podczas szyfrowania bazy danych Firebird szyfrowane są tylko strony z danymi użytkowników: strony danych, indeksów, generatorów i obiektów BLOB.
+
+.Szyfrowanie dotyczy tylko stron bazy danych, które zawierają dane użytkowników
+image::2_firebird_encrypted_pages.png[]
+
+Należy zwrócić uwagę, że metadane bazy danych (procedury składowane, tabele, widoki, nazwy wyzwalaczy, generatorów itp.) nie różnią się od "`danych użytkowników`" w tej części mechanizmu, która odpowiada za szyfrowanie. Dlatego metadane również są szyfrowane.
+
+Dlaczego strony systemowe nie są szyfrowane? Głównie ze względu na wydajność oraz dlatego, że nie zawierają poufnych danych, które wymagają ochrony.
+
+Strona nagłówka bazy danych nie jest szyfrowana, ponieważ zawiera informacje potrzebne do szyfrowania (na przykład nazwę klucza).
+
+== Kiedy strony danych są szyfrowane?
+
+Gdy użytkownik wykonuje zapytanie SELECT do zaszyfrowanej bazy danych, dane są odczytywane z zaszyfrowanego pliku, ale trafiają do aplikacji w zbiorze wynikowym w postaci niezaszyfrowanej.
+
+Omówmy szczegóły tego procesu:
+
+.Kiedy strony bazy danych są szyfrowane?
+image::3_when_pages_encrypted.png[]
+
+Zwykle proces zaczyna się od serii odczytów stron bazy danych z pliku bazy danych. Strony te trafiają do pamięci podręcznej plików systemu operacyjnego.
+
+Firebird można też skonfigurować tak, aby pomijał pamięć podręczną plików i używał tylko własnej pamięci podręcznej. Domyślnie jednak używana jest pamięć podręczna plików.
+
+Następnie Firebird odczytuje strony i umieszcza je w pamięci podręcznej stron Firebird (jej rozmiar określa parametr `DefaultDBCachePages` w `firebird.conf` i/lub `databases.conf` albo strona nagłówka bazy danych).
+
+Potem strony z pamięci podręcznej są wybierane do zbioru wynikowego konkretnego zapytania SQL (w naszym przykładzie `SELECT`).
+
+Szczegóły pokazuje rysunek poniżej:
+
+.Strony są szyfrowane między pamięcią podręczną Firebird a pamięcią podręczną plików systemu operacyjnego
+image::4_pages_encrypted_between_caches.png[]
+
+Zatem strony bazy danych są zaszyfrowane w pamięci podręcznej plików systemu operacyjnego, ale trafiają do pamięci podręcznej stron Firebird w postaci niezaszyfrowanej. W drugą stronę jest tak samo.
+
+[IMPORTANT]
+====
+Szyfrowanie bazy danych chroni dane na dysku: plik bazy danych, jego kopie i zaszyfrowane kopie zapasowe. Nie szyfruje danych w pamięci serwera ani danych przesyłanych przez sieć. Do ochrony ruchu sieciowego należy używać szyfrowania protokołu (`WireCrypt` w `firebird.conf`).
+====
+
+Część oprogramowania Firebird, która odpowiada za szyfrowanie i odszyfrowywanie, nazywa się "`wtyczką szyfrowania`". Większość znanych autorom implementacji wtyczek nosi nazwę `DbCrypt`, dlatego będziemy ją nazywać `DbCrypt`.
+
+Na rysunku poniżej widać warianty dla systemów Windows (`DbCrypt.dll`) i Linux (`libDbCrypt.so`):
+
+.Wtyczka szyfrowania (DbCrypt) wykonuje szyfrowanie i odszyfrowywanie
+image::6_firebird_dbcrypt.png[]
+
+=== Algorytm szyfrowania
+
+Wtyczka `DbCrypt` firmy IBSurgeon szyfruje strony algorytmem AES. Długość klucza określa wariant algorytmu:
+
+[cols="1,1", options="header"]
+|===
+| Długość klucza | Algorytm
+| 16 bajtów | AES-128
+| 24 bajty | AES-192
+| 32 bajty | AES-256 (zalecany)
+|===
+
+Narzędzie `aesKeyGen` (patrz <<fbcrypt-keygen>>) tworzy klucze o długości 32 bajtów.
+
+Funkcje kryptograficzne wtyczka pobiera z biblioteki OpenSSL (`libcrypto`). Ta biblioteka musi być dostępna zarówno dla serwera, jak i dla narzędzi klienckich (patrz <<fbcrypt-config-openssl>>).
+
+== Zarządzanie kluczami
+
+Jeśli dłużej przyjrzysz się poprzedniemu rysunkowi, szybko pojawi się następne pytanie: jak `DbCrypt` otrzymuje właściwy klucz do szyfrowania i odszyfrowywania stron bazy danych?
+
+Odpowiedź: istnieje inna wtyczka, która zarządza kluczami.
+
+Zwykle do zarządzania kluczami używa się wtyczki o nazwie `KeyHolder`. Służy ona do przechowywania kluczy i zarządzania nimi dla wtyczki szyfrowania (`DbCrypt`). `KeyHolder` implementuje interfejs zarządzania kluczami, którego używa `DbCrypt`.
+
+[NOTE]
+====
+Wtyczka szyfrowania (jeśli jej kod napisano odpowiednio) może też sama wczytać klucz, na przykład z zewnętrznej pamięci flash USB. Ten dokument nie omawia tego wariantu.
+====
+
+.DbCrypt i KeyHolder
+image::7_dbcrypt_and_keyholder.png[]
+
+*Co oznacza "`zarządzanie kluczami`"?*
+
+W najprostszym przypadku `KeyHolder` odczytuje klucze z pliku na serwerze i przekazuje je wtyczce `DbCrypt`. We wtyczkach IBSurgeon jest to plik tekstowy `KeyHolder.conf` w folderze `plugins`.
+
+Plik kluczy może zawierać kilka kluczy, przechowywanych dla wygody w postaci listy nazwanej. Może on wyglądać tak (poniższy przykład pochodzi z frameworka wtyczek szyfrowania IBSurgeon):
+
+[listing]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74,
+----
+
+Gdy baza danych jest zaszyfrowana, jej nagłówek (strona zerowa) pozostaje niezaszyfrowany. Przechowuje on między innymi informacje o wtyczce szyfrowania i nazwie klucza. Nagłówek jest chroniony zaszyfrowanymi skrótami (hashami), które uniemożliwiają próby odszyfrowania bazy danych przez zmianę jego stanu. Te informacje można wyświetlić poleceniem `gstat -h databasename`:
+
+[listing]
+----
+Database header page information:
+....
+Creation date    Jan 11, 2017 15:12:20
+Attributes       force write, encrypted, plugin DBCRYPT
+
+Variable header data:
+ Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+ Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+ Encryption key name:    RED
+ Sweep interval:         0
+*END*
+----
+
+`DbCrypt` może przetwarzać strony kilku baz danych z użyciem kilku kluczy:
+
+.Kilka kluczy dla kilku baz danych na jednym serwerze (na przykład w jednej instancji Firebird)
+image::10_multi_database_keys.png[]
+
+=== Wybór właściwego klucza
+
+Programiści często pytają: "`Jak wtyczka ustala, który klucz należy do której bazy danych?`" Odpowiedź jest prosta: według nazwy klucza, która jest zapisana na stronie nagłówka bazy danych.
+
+[NOTE]
+====
+Wtyczka `KeyHolder` porównuje nazwy kluczy bez uwzględniania wielkości liter. Nazwy `Red`, `RED` i `red` oznaczają ten sam klucz. Jeśli nazwę klucza w instrukcji `ALTER DATABASE ENCRYPT` zapisano bez cudzysłowów, Firebird zapisuje ją w nagłówku wielkimi literami (`RED`).
+====
+
+Rzadsze, ale nadal ważne pytanie: co się stanie, jeśli nazwa klucza jest zgodna z nazwą w nagłówku, ale wartość klucza jest inna? Firebird chroni się przed tym dwiema kontrolami:
+
+* *Key hash.* Podczas szyfrowania bazy danych Firebird prosi wtyczkę `DbCrypt` o zaszyfrowanie sekwencji testowej (`0123456789ABCDEF`) i zapisuje skrót wyniku w nagłówku. Przy każdym połączeniu Firebird powtarza tę operację z otrzymanym kluczem i porównuje skrót z zapisanym. Jeśli wartości się różnią, połączenie kończy się błędem i żadna strona nie jest odczytywana z niewłaściwym kluczem.
+
+* *Crypt checksum.* Pola nagłówka związane z szyfrowaniem (znaczniki "`zaszyfrowana`" i "`trwa szyfrowanie`", numer bieżącej strony szyfrowania, nazwa wtyczki, nazwa klucza i skrót klucza) są szyfrowane kluczem bazy danych i zapisywane jako suma kontrolna. Nie można zmienić tych pól bez klucza tak, aby nie naruszyć sumy kontrolnej.
+
+=== Skąd KeyHolder otrzymuje klucze
+
+Wtyczka `KeyHolder` firmy IBSurgeon może otrzymać klucze z trzech źródeł:
+
+[cols="2,3,3", options="header"]
+|===
+| Źródło | Jak skonfigurować | Kiedy używać
+| Aplikacja kliencka (przez sieć)
+| Aplikacja przekazuje klucz podczas połączenia: przez `fbcrypt`, `KeySource`, `KeyHolderStdin` lub właściwość sterownika. Patrz <<fbcrypt-client-app>>.
+| System produkcyjny. Na serwerze nie ma klucza.
+
+| Biblioteka `KeySource` na serwerze
+| Biblioteka `KeySource.dll` / `libKeySource.so` w folderze bibliotek Firebird. Patrz <<fbcrypt-keysource>>.
+| Klucz jest potrzebny serwerowi bez udziału klientów, ale nie może leżeć w pliku tekstowym.
+
+| Plik `plugins/KeyHolder.conf`
+| Wiersze `Key=<nazwa> <wartość>` lub `Password=<nazwa> <hasło>`. Patrz <<fbcrypt-config-keyholder>>.
+| Debugowanie, testowanie, pierwsze szyfrowanie.
+|===
+
+Plik `KeyHolder.conf` nie jest obowiązkowy. Serwer produkcyjny, który otrzymuje klucze od klientów, działa bez niego.
+
+Jeśli klient przekazał klucz o tej samej nazwie co klucz z pliku `KeyHolder.conf`, używany jest klucz klienta.
+
+Podejście, w którym klucze znajdują się na serwerze, jest proste i wygodne do debugowania, testów wydajności itp. Szyfrowanie działa wtedy w sposób przezroczysty: aplikacje klienckie i narzędzia programistów nie wiedzą, że baza danych jest zaszyfrowana.
+
+W rzeczywistości jednak należy ograniczyć dostęp aplikacji do bazy danych: tylko aplikacja kliencka, która ma klucz, powinna móc połączyć się z zaszyfrowaną bazą danych.
+
+W tym celu wtyczka `KeyHolder` pozwala otrzymać klucz od aplikacji klienckiej (która zwykle znajduje się na innym komputerze) przez protokół sieciowy Firebird.
+
+[IMPORTANT]
+====
+Wtyczka `KeyHolder` firmy IBSurgeon nie udostępnia kluczy między połączeniami. Jeśli na serwerze nie ma klucza, *każde* połączenie musi samo przekazać właściwy klucz. Połączenie bez klucza otrzyma błąd, nawet jeśli w tym czasie z bazą danych pracuje inne połączenie z kluczem.
+
+Dotyczy to również połączeń serwisowych: `gbak`, `gfix`, `nbackup`, `isql`, narzędzi administratora, replikacji. Patrz <<fbcrypt-utils>>.
+====
+
+== Jak chronić przekazywanie kluczy?
+
+Może być potrzebna ochrona bazy danych w sytuacji, gdy klient postanawia uzyskać bezpośredni dostęp do zaszyfrowanej bazy danych z pominięciem autoryzowanych aplikacji (wielu dostawców chce ograniczyć dostęp do danych i zezwolić tylko na dostęp z dedykowanej aplikacji).
+
+Jest to równoważne sytuacji, w której atakujący ma dostęp do serwera, ale nie ma kluczy.
+
+Rozważmy następujące scenariusze ataku, których celem jest przechwycenie kluczy po stronie serwera:
+
+. Atakujący tworzy fałszywą wtyczkę szyfrowania (`DBCrypt.dll`) i umieszcza ją na serwerze. Gdy `KeyHolder` przekazuje klucz, fałszywy `DbCrypt` zapisuje zrzut klucza:
++
+.Atak z użyciem fałszywego pliku DbCrypt.dll
+image::11_attack_with_fake_dbcrypt.png[]
+
+. Atakujący tworzy fałszywy plik `firebird.exe` i za jego pomocą zapisuje zrzut:
++
+.Atak z użyciem fałszywego firebird.exe
+image::12_attack_with_fake_firebird.png[]
+
+Aby chronić się przed takimi atakami, dobra implementacja wtyczek szyfrowania i przechowywania kluczy musi zapewniać ochronę wymiany kluczy.
+
+Wymianę kluczy można chronić szyfrowaniem asymetrycznym z użyciem pary kluczy publicznego i prywatnego.
+
+Te klucze są generowane podczas kompilacji i wbudowywane w konkretną parę wtyczek szyfrowania i przechowywania kluczy. Aby uzyskać najlepszą ochronę, należy używać specjalnie utworzonych par `DbCrypt`/`KeyHolder`.
+
+image::13_key_exchange.png[]
+
+We wtyczkach IBSurgeon klucz przechodzi przez dwa odcinki: od aplikacji klienckiej do `KeyHolder` i od `KeyHolder` do `DbCrypt`. Na każdym odcinku używany jest ten sam protokół, ale własna wbudowana para kluczy RSA. Oznaczmy strony jako "`odbiorca`" (ten, kto potrzebuje klucza bazy danych) i "`nadawca`" (ten, kto ma ten klucz):
+
+[listing]
+----
+Odbiorca → Nadawca:
+	Żądanie rozpoczęcia wymiany
+Nadawca → Odbiorca:
+	Losowa sekwencja (nowa dla każdej wymiany)
+Odbiorca:
+	Tworzy jednorazową parę kluczy RSA
+	Podpisuje wbudowanym kluczem prywatnym
+		(losową sekwencję + jednorazowy klucz publiczny)
+	Wysyła jednorazowy klucz publiczny i podpis
+Nadawca:
+	Sprawdza podpis wbudowanym kluczem publicznym
+	Jeśli podpis jest nieprawidłowy - nie wysyła klucza
+	Szyfruje klucze bazy danych jednorazowym kluczem publicznym
+	Wysyła zaszyfrowane klucze (w razie potrzeby - w częściach)
+Odbiorca:
+	Odszyfrowuje klucze jednorazowym kluczem prywatnym
+	Gotowy do pracy
+----
+
+Taka wymiana ma następujące właściwości:
+
+* Klucz bazy danych nigdy nie jest przesyłany w postaci jawnej.
+* Nadawca przekazuje klucz tylko "`swojemu`" odbiorcy: fałszywa wtyczka bez wbudowanego klucza prywatnego nie może utworzyć prawidłowego podpisu.
+* Przechwyconej wymiany nie można powtórzyć: losowa sekwencja i jednorazowa para RSA są nowe dla każdego połączenia.
+
+Implementacja ochrony wymiany kluczy we wtyczce IBSurgeon chroni też dane przesyłane przez nieprzyjazną sieć rozległą. Dotyczy to również przypadków, gdy klucz musi zostać przekazany kanałem, który nie jest jeszcze gotowy do szyfrowania wszystkich danych standardowym sposobem Firebird. Taka sytuacja występuje przy użyciu self security database.
+
+[IMPORTANT]
+====
+Należy pamiętać, że szyfrowanie i poprawność przekazywanych kluczy zależą od implementacji wtyczki. Silnik Firebird udostępnia tylko podstawową, niskopoziomową usługę przekazywania: "`wyślij N bajtów z tej instancji wtyczki do instancji wtyczki z pary`".
+====
+
+[NOTE]
+====
+Biblioteka kliencka `fbcrypt` oraz wtyczki `KeyHolder`, `KeyHolderStdin` i `DbCrypt` muszą pochodzić z jednego pakietu. Biblioteki z różnych kompilacji mogą mieć różne wbudowane pary kluczy i wtedy nie mogą wymienić klucza.
+====
+
+[discrete]
+== Krótki opis serwerowej części szyfrowania
+
+* Szyfrowanie i odszyfrowywanie wykonuje wtyczka szyfrowania bazy danych (`DbCrypt`) strona po stronie, podczas wymiany danych między pamięcią podręczną plików systemu operacyjnego a pamięcią podręczną stron Firebird.
+
+* Szyfrowane są strony danych, indeksów, BLOB i generatorów. Nagłówek i strony systemowe nie są szyfrowane.
+
+* Kluczami zarządza wtyczka `KeyHolder`. Otrzymuje ona klucze od aplikacji klienckiej, z biblioteki `KeySource` lub z pliku `KeyHolder.conf`.
+
+* Klucz jest przekazywany między aplikacją, `KeyHolder` i `DbCrypt` tylko w postaci zaszyfrowanej.
+
+* Jeśli na serwerze nie ma klucza, musi go przekazać każde połączenie.
+
+Teraz omówmy, jak aplikacje klienckie pracują z zaszyfrowanymi bazami danych.

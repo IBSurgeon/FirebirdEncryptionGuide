@@ -1,0 +1,33 @@
+:sectnums!:
+
+[preface]
+= Do czego potrzebne jest szyfrowanie baz danych (i kiedy nie jest potrzebne)?
+
+Szyfrowanie baz danych w Firebird wprowadzono w wersji Firebird 3.0 (razem z szyfrowaniem protokołu sieciowego, które często myli się z omawianym tematem). Znacznie rozszerzyło ono możliwości ochrony danych przed nieuprawnionym dostępem. Nie jest to jednak rozwiązanie wszystkich problemów. Aby używać go poprawnie, należy rozumieć jego mocne i słabe strony. W tym artykule omawiamy wewnętrzną budowę szyfrowania baz danych na poziomie podstawowym. Celem jest lepsze zrozumienie działania szyfrowania baz danych przez twórców aplikacji Firebird.
+
+== Do czego potrzebne jest szyfrowanie baz danych?
+
+. Do ochrony baz danych z poufnymi lub cennymi danymi przed "`fizyczną`" kradzieżą. Jeśli atakujący ukradnie dysk z kopią zaszyfrowanej bazy danych lub w inny sposób uzyska kopię pliku bazy danych, to bez odpowiedniego klucza nie będzie mógł odczytać z niego danych. Nie będzie też mógł użyć do wyodrębnienia danych oprogramowania do naprawy, takiego jak https://ib-aid.com/en/ibsurgeon-firstaid/[FirstAID]. Oczywiście zależy to od algorytmu szyfrowania i mocy obliczeniowej, ale złamanie AES256 wymaga zbyt dużo czasu lub zbyt dużych zasobów obliczeniowych.
+
+. Do ochrony bazy danych przed dostępem nieautoryzowanych aplikacji bez kluczy szyfrowania. Przykłady:
+bezpośredni dostęp osoby nieuprawnionej za pomocą narzędzi programistycznych w celu zmiany poufnych informacji (na przykład transakcji pieniężnych), zmiana lub kradzież logiki biznesowej (teksty procedur składowanych i wyzwalaczy).
+
+. Ochrona baz danych z wstępnie wypełnionymi danymi przed eksportem lub dostępem nieautoryzowanych aplikacji.
+
+. W ostatnich latach rządy wprowadziły przepisy o ochronie danych (GDPR/DSGVO w Europie, LGPD w Brazylii i inne). Wymagają one między innymi wyższego poziomu ochrony danych osobowych i innych danych poufnych. Szyfrowanie jest wymieniane jako jeden z odpowiednich środków ochrony.
+
+== Kiedy szyfrowanie bazy danych nie ma sensu?
+
+W niektórych przypadkach lepiej jest użyć funkcji bezpieczeństwa i ustawień Firebird zamiast szyfrowania bazy danych:
+
+. Aby chronić bazę danych przed fizycznym dostępem przez sieć, należy skonfigurować dostęp sieciowy. To znaczy: należy zamknąć sieciowe foldery udostępnione, ponieważ Firebird nie wymaga sieciowego dostępu do plików bazy danych, oraz zaostrzyć prawa dostępu (na przykład w systemie Linux pliki bazy danych powinny mieć prawo odczytu i zapisu tylko dla użytkownika i grupy "`firebird`").
+
+. Aby ograniczyć dostęp do konkretnej bazy danych dla określonej grupy użytkowników, prostszym rozwiązaniem jest skonfigurowanie osobnej bazy danych bezpieczeństwa.
+
+. Aby ograniczyć dostęp do obiektów bazy danych (tabel, procedur składowanych), należy używać mechanizmów bezpieczeństwa Firebird: użytkowników, ról itp.
+
+Oczywiście obie powyższe listy są niepełne. Dają jednak pewne wyobrażenie o tym, kiedy szyfrowanie bazy danych jest potrzebne, a kiedy nie.
+
+NOTE: Ten dokument jest tłumaczeniem rosyjskiego oryginału (doc/ru). Jeśli teksty się różnią, prawidłowy jest tekst rosyjski.
+
+:sectnums:

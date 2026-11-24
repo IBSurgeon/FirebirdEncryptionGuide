@@ -1,0 +1,359 @@
+[[fbcrypt-utils]]
+= Obsługa w narzędziach konsolowych Firebird
+
+Jak opisano powyżej, główny problem przy pracy z zaszyfrowanymi bazami danych polega na tym, jak przechowywać klucze szyfrowania. W idealnym przypadku klucz szyfrowania powinna znać tylko aplikacja kliencka, aby nie można go było ukraść. Ten problem jest szczególnie ważny dla aplikacji, które używają połączeń embedded, gdy baza danych i aplikacja kliencka znajdują się na tym samym komputerze. Jak jednak w tym przypadku pracować z narzędziami konsolowymi Firebird, które potrzebują połączenia z bazą danych, takimi jak `gbak`, `nbackup` i inne?
+
+Aby używać wbudowanych narzędzi Firebird i nie przechowywać klucza na serwerze, zmodyfikowaliśmy narzędzia `gbak`, `nbackup`, `isql` i `gfix`. Zmodyfikowane narzędzia pozwalają wskazać alternatywną wtyczkę do przechowywania klucza (`KeyHolder`). Opracowano też wtyczkę `KeyHolderStdin`, która pozwala odczytać klucz szyfrowania ze strumienia wejściowego konsoli.
+
+Zmodyfikowane narzędzia wchodzą w skład pakietu klienckiego wtyczki szyfrowania (`Client\32bit`, `Client\64bit`) oraz HQbird.
+
+[[fbcrypt-utils-versions]]
+== Różnice między wersjami Firebird
+
+Zestaw przełączników zależy od wersji Firebird i od pochodzenia narzędzia: standardowe ("vanilla") lub z pakietu wtyczki.
+
+.Jakie przełączniki mają narzędzia
+[cols="2,2,3,3", options="header"]
+|===
+| Narzędzie | Wersja | Standardowy Firebird | Pakiet wtyczki i HQbird
+| `gbak` | 3.0 | brak | `-KEYFILE`, `-KEYNAME`, `-KEY`
+| `gbak` | 4.0, 5.0 | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT` | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT`
+| `gfix`, `isql`, `nbackup` | 3.0 | brak | brak (klucz przez `firebird.conf`, patrz <<fbcrypt-utils-fb3>>)
+| `gfix`, `isql`, `nbackup` | 4.0, 5.0 | brak | `-KEYHOLDER`
+| `gstat` | 3.0, 4.0, 5.0 | `-e` | `-e`
+|===
+
+Główne wnioski z tabeli:
+
+* W Firebird 4.0 i 5.0 zaszyfrowaną kopię zapasową można wykonać także standardowym `gbak`.
+* Dla `gfix`, `isql` i `nbackup` przełącznik `-KEYHOLDER` jest dostępny tylko w narzędziach z pakietu wtyczki i HQbird, od wersji 4.0.
+* W Firebird 3.0 narzędzia mają inne przełączniki. Polecenia z sekcji dla wersji 4.0 i 5.0 nie działają w wersji 3.0.
+
+Między wersjami 4.0 i 5.0 nie ma różnic w przełącznikach.
+
+== Firebird 4.0 i 5.0
+
+=== Przełączniki
+
+[cols="1,2,4", options="header"]
+|===
+| Narzędzie | Przełącznik | Przeznaczenie
+| `gbak` | `-KEYHOLDER <wtyczka>` | Wtyczka przechowywania kluczy po stronie narzędzia. Włącza szyfrowanie pliku kopii zapasowej.
+| `gbak` | `-KEYNAME <nazwa>` | Nazwa klucza do szyfrowania kopii zapasowej lub odtworzonej bazy danych.
+| `gbak` | `-CRYPT <wtyczka>` | Nazwa wtyczki szyfrowania.
+| `gfix` | `-KEYHOLDER <wtyczka>` | Wtyczka przechowywania kluczy po stronie narzędzia.
+| `isql` | `-KEYHOLDER <wtyczka>` | Wtyczka przechowywania kluczy po stronie narzędzia.
+| `nbackup` | `-KEYHOLDER <wtyczka>` | Wtyczka przechowywania kluczy po stronie narzędzia.
+| `gstat` | `-e` | Statystyka szyfrowania stron (patrz <<fbcrypt-monitoring>>).
+|===
+
+Wielkość liter w przełącznikach nie ma znaczenia. Skróty: `-KEYH`, `-KEYN`, `-CRY`.
+
+Przełącznik `-KEYHOLDER` ustawia dla narzędzia parametr `KeyHolderPlugin`. Narzędzie ładuje wskazaną wtyczkę ze swojego folderu `plugins` i przez nią przekazuje klucz serwerowi chronionym protokołem.
+
+[IMPORTANT]
+====
+Obok narzędzia muszą znajdować się folder `plugins` z wtyczkami `KeyHolderStdin`, `KeyHolder` i `DbCrypt`, plik licencji `DbCrypt.conf` oraz biblioteka OpenSSL.
+
+Wtyczka `DbCrypt` i licencja są potrzebne narzędziu `gbak`: samo szyfruje ono i odszyfrowuje plik kopii zapasowej. Bez nich `gbak` kończy się błędem `Crypt plugin DbCrypt failed to load`.
+
+W pakiecie klienckim dla systemu Windows plik `keyholderstdin.dll` znajduje się w folderze `key-plugins`. Skopiuj go do folderu `plugins`. W przeciwnym razie narzędzie zgłasza `Key holder plugin KeyHolderStdin failed to load`.
+====
+
+[[fbcrypt-utils-stdin]]
+=== Wtyczka KeyHolderStdin
+
+Wtyczka `KeyHolderStdin` odczytuje klucz ze standardowego strumienia wejściowego narzędzia.
+
+Oto przykład pracy `gbak` z wtyczką `KeyHolderStdin`:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gbak -b localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb" "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fbk" -KeyHolder KeyHolderStdin
+----
+
+Tutaj klucz jest przekazywany ze strumienia wejściowego. Format przekazania klucza jest następujący:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Tutaj `<KeyName>` to nazwa klucza. Musi być zgodna z nazwą klucza użytą przy szyfrowaniu bazy danych.
+
+Zamiast klucza można przekazać frazę hasła (patrz <<fbcrypt-keygen-password>>):
+
+[source,cmd]
+----
+Password=<KeyName> <passphrase>
+----
+
+Proces generowania kluczy opisano w <<fbcrypt-keygen>>.
+
+Cechy wtyczki:
+
+* Wtyczka przyjmuje *jeden* klucz. Cały strumień wejściowy jest odczytywany jako jeden wiersz `Key=` lub `Password=`.
+* Jeśli strumień wejściowy jest pusty, narzędzie kończy się błędem `No input`.
+* Strumień wejściowy jest zajęty przez klucz. Dlatego polecenia dla `isql` przekazuj w pliku za pomocą przełącznika `-i`, a nie przez strumień wejściowy.
+
+==== Klucz z pliku
+
+Polecenie `echo` z kluczem pozostaje w historii poleceń i jest widoczne na liście procesów. Bezpieczniej jest przechowywać wiersz z kluczem w pliku z ograniczonym dostępem.
+
+Windows:
+
+[source,cmd]
+----
+type C:\Secure\dbkey.txt | gbak -b localhost:D:\DB\app.fdb E:\Backup\app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password ********
+----
+
+Linux:
+
+[source,bash]
+----
+gbak -b localhost:/data/app.fdb /backup/app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password '********' < /secure/dbkey.txt
+----
+
+Plik `dbkey.txt` zawiera jeden wiersz:
+
+[source]
+----
+Key=MyKey 0x35,0xa1,...,0x1e,
+----
+
+Zalecenia dla uruchamiania według harmonogramu:
+
+* Uruchamiaj zadanie z osobnego konta usługowego.
+* Nadaj prawo odczytu pliku z kluczem tylko temu kontu.
+* Regularnie sprawdzaj odtwarzanie z kopii zapasowej na serwerze testowym.
+
+==== Klucz z programu
+
+Aplikacja może uruchomić narzędzie jako proces potomny i zapisać klucz do jego strumienia wejściowego. Wtedy klucz nie jest przechowywany w pliku. Przykład w C dla systemu Linux:
+
+[source,c]
+----
+#include <stdio.h>
+
+int main()
+{
+	FILE* f = popen("./gbak -b -KeyHolder KeyHolderStdin /mnt/db/stdin.fdb std.fbk", "w");
+	const char* key = "Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,"
+					  "0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,";
+
+	if (f)
+	{
+		fputs(key, f);
+		int x = pclose(f);
+		if (x)
+			printf("gbak error, code %d\n", x >> 8);
+	}
+	else
+		perror("popen gbak");
+}
+----
+
+[[fbcrypt-utils-gbak]]
+=== Kopia zapasowa i odtwarzanie (gbak)
+
+[WARNING]
+====
+Narzędzie `gbak` szyfruje plik kopii zapasowej tylko wtedy, gdy podano przełącznik `-KEYHOLDER`.
+
+Jeśli `gbak -b` uruchomiono bez tego przełącznika i narzędzie mogło połączyć się z bazą danych (klucz jest na serwerze w pliku `KeyHolder.conf` lub przekazała go biblioteka `KeySource` klienta), plik `.fbk` będzie *niezaszyfrowany*. Dane leżą w nim w postaci jawnej.
+====
+
+Podczas tworzenia kopii zapasowej z przełącznikiem `-KEYHOLDER` narzędzie pobiera nazwę klucza i nazwę wtyczki szyfrowania z bazy danych. Przełączniki `-KEYNAME` i `-CRYPT` są potrzebne tylko wtedy, gdy chcesz podać inne wartości.
+
+.Zaszyfrowana kopia zapasowa
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -b localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+.Odtwarzanie do zaszyfrowanej bazy danych
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -c C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+Podczas odtwarzania `gbak` odczytuje nazwę klucza i wtyczki z nagłówka pliku kopii zapasowej. Nowa baza danych jest szyfrowana zaraz po utworzeniu. Aby zaszyfrować ją innym kluczem, podaj `-KEYNAME <nowa nazwa>` (klucz o tej nazwie musi być dostępny dla narzędzia i serwera).
+
+Jeśli klucze znajdują się na serwerze w pliku `KeyHolder.conf`, zamiast `KeyHolderStdin` można użyć wtyczki `KeyHolder`. W tym przypadku `gbak` jest uruchamiany na serwerze i odczytuje ten sam plik. Tak działa również standardowy `gbak` Firebird 4.0 i 5.0:
+
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -crypt DbCrypt localhost:employee /backup/employee.fbk
+----
+
+==== Klucz z biblioteki KeySource
+
+Wtyczka `KeyHolder` w folderze narzędzia pobiera klucz od biblioteki `KeySource`, która znajduje się obok `fbclient` (patrz <<fbcrypt-keysource>>). Klucza nie ma ani w poleceniu, ani w strumieniu wejściowym:
+
+[source,cmd]
+----
+gbak -b -KeyHolder KeyHolder -user SYSDBA -password masterkey localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+gbak -c -KeyHolder KeyHolder -user SYSDBA -password masterkey C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb
+----
+
+Wynik `gbak -b` zależy od polecenia i od plików w folderze `plugins` narzędzia:
+
+[cols="3,3,3", options="header"]
+|===
+| W folderze `plugins` narzędzia | Polecenie | Wynik
+| tylko `keyholder.dll` | `gbak -b` | kopia *niezaszyfrowana*
+| tylko `keyholder.dll` | `gbak -b -KeyHolder KeyHolder` | błąd `Crypt plugin DbCrypt failed to load`
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b` | kopia *niezaszyfrowana*
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b -KeyHolder KeyHolder` | kopia zaszyfrowana
+|===
+
+Odtwarzanie zaszyfrowanej kopii bez klucza kończy się błędem `Unknown key name <nazwa> - key can't be found`.
+
+Gotowy przykład z próbnym odtwarzaniem: skrypt `examples/closed-gui/deploy/50-backup.ps1` w repozytorium https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+==== Jak upewnić się, że kopia jest zaszyfrowana
+
+* W niezaszyfrowanej kopii nazwy tabel są zapisane zwykłym tekstem. Polecenie `findstr /m CUSTOMER emp-crypted.fbk` (Linux: `grep -l CUSTOMER emp-crypted.fbk`) wyświetla nazwę pliku, jeśli znalazło w nim słowo. Dla zaszyfrowanej kopii nie wyświetla niczego. Użyj nazwy tabeli ze swojej bazy danych.
+* Odtwarzanie bez klucza musi zakończyć się błędem.
+* Regularnie odtwarzaj kopię na serwerze testowym.
+
+[NOTE]
+====
+Aby odtworzyć kopię do nowego pliku, parametr `KeyHolderPlugin` musi być ustawiony w `firebird.conf`. Ustawienie w `databases.conf` działa tylko dla swojego aliasu i nie obejmuje nowego pliku.
+====
+
+=== nbackup
+
+Narzędzie `nbackup` kopiuje strony bazy danych bez zmian. Kopia pozostaje zaszyfrowana tym samym kluczem co baza danych. Narzędzie potrzebuje klucza do połączenia z bazą danych:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | nbackup -b 0 localhost:C:\db\emp-crypted.fdb C:\db\emp-nbackup.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+Polecenie `gstat -h` dla pliku kopii pokazuje atrybut `encrypted` i tę samą nazwę klucza co baza danych. Jeśli klucz dostarcza biblioteka `KeySource`, podaj `-KeyHolder KeyHolder` i nie przekazuj niczego do strumienia wejściowego.
+
+=== gfix
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full -KeyHolder KeyHolderStdin localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+=== isql
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | isql -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey -i script.sql localhost:C:\db\emp-crypted.fdb
+----
+
+W ten sposób można zaszyfrować bazę danych bez zapisywania klucza w pliku na serwerze. Plik `script.sql`:
+
+[source,sql]
+----
+alter database encrypt with "DbCrypt" key Green;
+commit;
+show database;
+----
+
+Tę samą instrukcję można wykonać z folderu klienta, w którym znajduje się biblioteka `KeySource`, a plik `firebird.conf` zawiera wiersz `KeyHolderPlugin = KeyHolder`. Wtedy nie są potrzebne ani przełącznik, ani strumień wejściowy. Ten sposób działa także w wersji 3.0.
+
+[[fbcrypt-utils-fb3]]
+== Firebird 3.0
+
+Standardowe narzędzia Firebird 3.0 nie mają przełączników dla kluczy. Używaj narzędzi z pakietu klienckiego wtyczki szyfrowania dla Firebird 3.0 lub z HQbird 3.
+
+=== gbak
+
+[cols="2,4", options="header"]
+|===
+| Przełącznik | Przeznaczenie
+| `-KEYFILE <plik>` | Plik z kluczami. Format wierszy jest taki sam jak w `KeyHolder.conf`: `Key=<nazwa> <wartość>`. Można podać sam plik `KeyHolder.conf`.
+| `-KEY <wartość>` | Wartość klucza w zapisie `0x..,0x..,`. Wymaga `-KEYNAME`. Nie można używać razem z `-KEYFILE`.
+| `-KEYNAME <nazwa>` | Nazwa klucza. Wymaga `-KEYFILE` lub `-KEY`. Jeśli nazwy nie podano, przy tworzeniu kopii zapasowej jest pobierana z bazy danych.
+|===
+
+Skróty: `-KEYF`, `-KEYN`. W wersji 3.0 nie ma przełączników `-KEYHOLDER` i `-CRYPT`. Nazwa wtyczki szyfrowania to zawsze `DbCrypt`.
+
+Jeśli podano `-KEYFILE` lub `-KEY`, narzędzie przekazuje klucz serwerowi do połączenia i szyfruje plik kopii zapasowej.
+
+.Zaszyfrowana kopia zapasowa, klucz z pliku
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red localhost:employee /backup/employee.fbk
+----
+
+.Zaszyfrowana kopia zapasowa, klucz w wierszu poleceń
+[source,cmd]
+----
+gbak -b -user SYSDBA -password masterkey -key 0xec,0xa1,...,0x75, -keyname Red localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+----
+
+.Odtwarzanie do zaszyfrowanej bazy danych
+[source,bash]
+----
+gbak -c -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red /backup/employee.fbk localhost:/data/employee_restored.fdb
+----
+
+[WARNING]
+====
+Klucz w przełączniku `-KEY` jest widoczny na liście procesów i pozostaje w historii poleceń. Wybieraj `-KEYFILE` z plikiem, do którego dostęp jest ograniczony.
+
+Jeśli `gbak -b` uruchomiono bez `-KEYFILE` i `-KEY`, a klucz jest na serwerze, plik `.fbk` będzie *niezaszyfrowany*.
+====
+
+W systemie Linux narzędzie `gbak` z pakietu klienckiego 3.0 potrzebuje dowiązania `libcrypto.so` do OpenSSL 1.1 w swoim folderze `lib`:
+
+[source,bash]
+----
+cp -r /root/crypt/Client /opt/fbcrypt-client
+ln -sf /usr/lib64/libcrypto.so.1.1 /opt/fbcrypt-client/lib/libcrypto.so
+----
+
+=== gfix, isql, nbackup i wtyczka KeyHolderStdin
+
+W wersji 3.0 te narzędzia nie mają przełącznika `-KEYHOLDER`. Wtyczkę przechowywania kluczy ustawia się dla nich w pliku `firebird.conf`, który znajduje się w folderze narzędzia (folderze pakietu klienckiego):
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolderStdin
+----
+
+Następnie klucz przekazuje się przez strumień wejściowy, jak w wersjach 4.0 i 5.0, ale bez przełącznika:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+Można też ustawić `KeyHolderPlugin = KeyHolder`. Wtedy narzędzie pobiera klucze z pliku `plugins/KeyHolder.conf` lub z biblioteki `KeySource` w swoim folderze.
+
+Narzędzie `gbak` 3.0 bez `-KEYFILE` i `-KEY` również używa wtyczki z `firebird.conf`. Jeśli wtyczka przekazała klucz, plik kopii zapasowej jest szyfrowany. Z wtyczką `KeyHolder` klucz dostarcza biblioteka `KeySource`, a z wtyczką `KeyHolderStdin` strumień wejściowy.
+
+W tym celu w folderze `plugins` narzędzia potrzebne są `dbcrypt.dll` i licencja `DbCrypt.conf`. Bez nich `gbak` 3.0 nie tworzy pliku i kończy się błędem `Crypt plugin DbCrypt failed to load`.
+
+W pakiecie klienckim dla systemu Windows plik `keyholderstdin.dll` znajduje się w folderze `key-plugins`. Skopiuj go do folderu `plugins`. W przeciwnym razie narzędzie w wersji 3.0 zgłasza `Key not set`.
+
+[NOTE]
+====
+Parametr `KeyHolderPlugin` w `firebird.conf` działa na wszystkie programy, które używają biblioteki klienckiej z tego folderu. Z wtyczką `KeyHolderStdin` każdy z nich będzie odczytywać strumień wejściowy podczas połączenia. Trzymaj narzędzia serwisowe w osobnym folderze.
+====
+
+== Narzędzie decrypt
+
+W pakiecie serwerowym dla systemu Windows jest narzędzie `decrypt`. Odszyfrowuje ono plik bazy danych bezpośrednio, bez serwera Firebird:
+
+[source,cmd]
+----
+decrypt <plik bazy danych>
+----
+
+Narzędzie odczytuje nazwę klucza z nagłówka bazy danych i pobiera klucz z pliku `plugins/KeyHolder.conf`. Przed uruchomieniem:
+
+. Zakończ wszystkie połączenia z bazą danych.
+. Wykonaj kopię pliku bazy danych. Narzędzie zmienia plik w miejscu.
+. Zapisz klucz w `KeyHolder.conf`.
+
+Zwykły sposób odszyfrowania to instrukcja `ALTER DATABASE DECRYPT` (patrz <<fbcrypt-usage>>). Narzędzie `decrypt` jest potrzebne w szczególnych przypadkach, na przykład do pracy z uszkodzoną bazą danych.

@@ -1,0 +1,97 @@
+[[fbcrypt-usage]]
+= Szyfrowanie, odszyfrowanie i zmiana klucza
+
+Ten rozdział opisuje podstawowe operacje na zaszyfrowanej bazie danych.
+
+== Przed rozpoczęciem
+
+Sprawdź następujące elementy:
+
+. Wykonano kopię zapasową bazy danych. Pierwsze próby wykonuj tylko na kopii.
+. Wtyczka jest zainstalowana, plik licencji `DbCrypt.conf` znajduje się w folderze `plugins` (patrz <<fbcrypt-install>>).
+. W `firebird.conf` lub w `databases.conf` ustawiono parametr `KeyHolderPlugin = KeyHolder`.
+. Klucz jest utworzony, a jego kopia jest zapisana poza serwerem (patrz <<fbcrypt-keygen>>).
+. Klucz jest dostępny dla serwera. Są trzy sposoby:
+** tymczasowo zapisać klucz w pliku `plugins/KeyHolder.conf`;
+** przekazać klucz z klienta narzędziem `isql` z wtyczką `KeyHolderStdin` (patrz <<fbcrypt-utils>>);
+** wykonać instrukcję narzędziem `isql` z folderu klienta, w którym znajduje się biblioteka `KeySource` (patrz <<fbcrypt-keysource>>). Klucz przekazuje serwerowi kliencka wtyczka `KeyHolder`, plik na serwerze nie jest potrzebny.
+
+Łącz się przez TCP/IP (`localhost:` lub `inet://`), a nie przez ścieżkę lokalną bez nazwy serwera.
+
+== Szyfrowanie bazy danych
+
+[source,sql]
+----
+ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY Red;
+COMMIT;
+----
+
+[cols="1,3", options="header"]
+|===
+| Element | Uwaga
+| `"DbCrypt"`
+| Nazwa wtyczki szyfrowania. W systemie Linux wielkość liter w nazwie ma znaczenie, dlatego zapisuj ją w podwójnych cudzysłowach. W systemie Windows cudzysłowy nie są obowiązkowe.
+
+| `Red`
+| Nazwa klucza. Bez cudzysłowów nazwa jest zapisywana wielkimi literami (`RED`). Wtyczka `KeyHolder` porównuje nazwy bez uwzględniania wielkości liter.
+|===
+
+Instrukcja tylko uruchamia szyfrowanie. Strony szyfruje wątek serwera działający w tle:
+
+* Szyfrowanie trwa, dopóki z bazą danych jest co najmniej jedno połączenie. Dla dużej bazy danych utrzymuj połączenie otwarte do końca szyfrowania.
+* Z bazą danych można pracować w trakcie szyfrowania.
+* Jeśli serwer został zatrzymany, szyfrowanie będzie kontynuowane przy następnym połączeniu z kluczem.
+
+Jak sprawdzić, czy szyfrowanie się zakończyło, opisano w <<fbcrypt-monitoring>>.
+
+[WARNING]
+====
+Po szyfrowaniu wykonaj `gstat -h`: w wierszu `Attributes` musi być słowo `encrypted`.
+
+Instrukcja `ALTER DATABASE ENCRYPT` może zakończyć się bez błędu i nie zaszyfrować bazy danych. Dzieje się tak w Firebird 3.0, 4.0 i 5.0, gdy klucz ustawiono w pliku `KeyHolder.conf` frazą hasła z nawiasami klamrowymi. Dozwolone znaki frazy wymieniono w <<fbcrypt-keygen-password>>.
+====
+
+Po zakończeniu szyfrowania:
+
+. Jeśli klucz zapisano w `plugins/KeyHolder.conf` tylko na czas szyfrowania, usuń ten plik lub zmień jego nazwę i uruchom ponownie Firebird. Serwer działa bez pliku `KeyHolder.conf`: plik jest potrzebny tylko do parametrów wtyczki (patrz <<fbcrypt-config-keyholder>>).
+. Sprawdź, że bez klucza nie można się połączyć.
+. Sprawdź działanie aplikacji i tworzenie kopii zapasowych.
+
+== Odszyfrowanie bazy danych
+
+[source,sql]
+----
+ALTER DATABASE DECRYPT;
+COMMIT;
+----
+
+Odszyfrowanie również odbywa się w wątku w tle. Nie usuwaj klucza ani parametru `KeyHolderPlugin`, dopóki `gstat -h` pokazuje atrybut `encrypted`.
+
+== Zmiana klucza
+
+Firebird nie potrafi zastąpić klucza zaszyfrowanej bazy danych jednym poleceniem. Próba wykonania `ALTER DATABASE ENCRYPT` dla już zaszyfrowanej bazy danych kończy się błędem. Są dwa sposoby zmiany klucza.
+
+*Sposób 1. Odszyfrować i zaszyfrować ponownie.*
+
+. Wykonaj `ALTER DATABASE DECRYPT` i poczekaj na zakończenie.
+. Wykonaj `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <nowa nazwa>`.
+
+Między krokami baza danych leży na dysku w postaci jawnej. Obie operacje odczytują i zapisują wszystkie strony.
+
+*Sposób 2. Kopia zapasowa i odtwarzanie.*
+
+. Wykonaj kopię zapasową narzędziem `gbak`.
+. Odtwórz ją do nowej bazy danych z parametrem `-KEYNAME <nowa nazwa>`.
+
+Patrz <<fbcrypt-utils-gbak>>.
+
+[TIP]
+====
+Nadawaj nowemu kluczowi nową nazwę. Po nazwie klucza w nagłówku (`gstat -h`) zawsze widać, jakim kluczem zaszyfrowano bazę danych lub jej kopię.
+====
+
+== Kto może szyfrować bazę danych
+
+Instrukcje `ALTER DATABASE ENCRYPT` i `ALTER DATABASE DECRYPT` może wykonać właściciel bazy danych, administrator (`SYSDBA`, rola `RDB$ADMIN`) lub użytkownik z uprawnieniem `ALTER DATABASE`.
+
+Szyfrowanie nie zastępuje kontroli uprawnień. Użytkownik, który połączył się z właściwym kluczem, widzi dane zgodnie ze swoimi uprawnieniami SQL.

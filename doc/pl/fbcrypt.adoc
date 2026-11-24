@@ -1,0 +1,56 @@
+[[hqbird]]
+= Firebird Encryption plugin
+1.2.0, 24.11.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 3
+:outlinelevels: 6:0
+:icons: font
+:experimental:
+:imagesdir: images
+include::../../attributes-pl.adoc[opts=optional]
+
+toc::[]
+
+include::_fbcrypt-preface.adoc[leveloffset=1]
+
+include::_fbcrypt-server.adoc[leveloffset=1]
+
+include::_fbcrypt-client-app.adoc[leveloffset=1]
+
+include::_fbcrypt-keygen.adoc[leveloffset=1]
+
+include::_fbcrypt-install.adoc[leveloffset=1]
+
+include::_fbcrypt-usage.adoc[leveloffset=1]
+
+include::_fbcrypt-utils.adoc[leveloffset=1]
+
+include::_fbcrypt-monitoring.adoc[leveloffset=1]
+
+include::_fbcrypt-config.adoc[leveloffset=1]
+
+include::_fbcrypt-troubleshooting.adoc[leveloffset=1]
+
+== Podsumowanie
+
+. Szyfrowanie baz danych Firebird to skuteczna funkcja ochrony informacji w bazach danych przed nieuprawnionym dostępem.
+. Proces szyfrowania wymaga serwerowej biblioteki dynamicznej — wtyczki szyfrowania (zwykle nazywanej `DbCrypt`) oraz, w zdecydowanej większości przypadków, wtyczki przechowywania kluczy (zwykle nazywanej `KeyHolder`).
+. Bezpieczna i niezawodna implementacja wtyczek `DbCrypt` i `KeyHolder` musi uwzględniać najczęstsze rodzaje ataków.
+. Aby pracować z zaszyfrowaną bazą danych, aplikacje klienckie muszą przekazywać klucz szyfrowania. Klucz musi przekazać każde połączenie.
+. Instalacja i konfiguracja wtyczki szyfrowania po stronie serwera jest prosta: wymaga 1 parametru w `firebird.conf`/`databases.conf` i kilku plików.
+. Proces szyfrowania może trwać długo. Jest wykonywany w osobnym wątku w tle. Jego postęp można śledzić za pomocą tabeli `MON$DATABASE` lub narzędzia `gstat`.
+. Kopia zapasowa `gbak` jest zaszyfrowana tylko wtedy, gdy narzędziu wskazano wtyczkę przechowywania kluczy (`-KeyHolder`; w Firebird 3.0 -- `-KeyFile` lub `-Key`). Przełączniki narzędzi w wersji 3.0 różnią się od przełączników w wersjach 4.0 i 5.0. Narzędzie potrzebuje wtyczki `DbCrypt` i licencji w swoim folderze `plugins`.
+. Utraconego klucza nie można odzyskać. Przechowuj kopię klucza oddzielnie od serwera i od kopii zapasowych.
+
+[discrete]
+=== Co dalej?
+
+Pracujemy nad szczegółowymi testami wydajności szyfrowania baz danych Firebird. Ogólnie wydajność spada o 4-8%, ale zależy to od sprzętu i ustawień Firebird. Śledź aktualizacje!
+
+[appendix]
+== Kontakt
+
+Prosimy o przesyłanie propozycji, poprawek literówek, błędów itp., a także wszelkich pytań pocztą elektroniczną: mailto:support@ib-aid.com[support@ib-aid.com]
