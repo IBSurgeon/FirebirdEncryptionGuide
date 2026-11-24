@@ -519,6 +519,41 @@ def key_location() -> None:
     svg.save("key-location.svg")
 
 
+# --------------------------------------------------------------------------- 10. backup
+def backup() -> None:
+    svg = Svg(1000, 432)
+    svg.card(20, 96, 170, 76, "EMPLOYEE.FDB", ["страницы", "зашифрованы"], GREY, GREY_EDGE)
+    svg.card(232, 96, 200, 76, "Сервер Firebird", ["DbCrypt расшифровывает", "страницы"], GREEN, GREEN_EDGE)
+    svg.card(474, 96, 200, 76, "gbak.exe -b", ["получает от сервера", "расшифрованные данные"], BLUE, BLUE_EDGE)
+    svg.line(190, 134, 230, 134)
+    svg.badge(210, 116, 2)
+    svg.line(432, 134, 472, 134)
+    svg.badge(452, 116, 3)
+
+    svg.card(716, 20, 264, 94, "employee.fbk зашифрован", ["gbak шифрует файл плагином DbCrypt", "4.0, 5.0: -KEYHOLDER KeyHolder",
+                                                           "3.0: KeyHolderPlugin в firebird.conf"], GREEN, GREEN_EDGE, size=12)
+    svg.card(716, 150, 264, 76, "employee.fbk НЕ зашифрован", ["Firebird 4.0 и 5.0", "без переключателя -KEYHOLDER"],
+             RED, RED_EDGE, size=12)
+    svg.line(674, 120, 714, 80)
+    svg.badge(684, 88, 4)
+    svg.line(674, 150, 714, 182, dash=True)
+
+    svg.card(474, 226, 200, 76, "KeySource.dll", ["и plugins\\keyholder.dll", "в каталоге gbak"], YELLOW, YELLOW_EDGE)
+    svg.line(574, 226, 574, 175, key=True)
+    svg.badge(598, 200, 1)
+
+    steps = [
+        "gbak берёт ключ у KeySource.dll и отправляет его серверу.",
+        "Сервер открывает базу данных и расшифровывает страницы.",
+        "gbak получает от сервера расшифрованные данные.",
+        "gbak шифрует файл копии тем же ключом. Для этого в его каталоге нужны dbcrypt.dll и лицензия.",
+    ]
+    for i, text in enumerate(steps):
+        svg.badge(40, 336 + i * 26, i + 1)
+        svg.text(60, 341 + i * 26, text, size=14, anchor="start")
+    svg.save("backup.svg")
+
+
 if __name__ == "__main__":
     components()
     seq_remote()
@@ -529,3 +564,4 @@ if __name__ == "__main__":
     seq_rest()
     deploy()
     key_location()
+    backup()
