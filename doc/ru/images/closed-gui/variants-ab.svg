@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="330" viewBox="0 0 940 330">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker></defs>
+<rect x="0" y="0" width="940" height="330" fill="#ffffff"/>
+<rect x="20" y="20" width="400" height="290" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="220" y="48" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">а) ключ в библиотеке</text>
+<rect x="60" y="80" width="320" height="150" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="220" y="106" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeySource.dll</text>
+<rect x="90" y="126" width="260" height="70" rx="6" fill="#ffffff" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="220.0" y="156.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">константа в коде:</text>
+<text x="220.0" y="175.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Key=Red 0xec,0xa1,…</text>
+<text x="220" y="262" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Настроек нет. Ключ можно</text>
+<text x="220" y="281" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">прочитать из файла dll</text>
+<rect x="480" y="20" width="440" height="290" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="700" y="48" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">б) ключ в файле</text>
+<rect x="500" y="80" width="170" height="60" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="585.0" y="114.9" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeySource.dll</text>
+<rect x="500" y="180" width="170" height="76" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="585.0" y="203.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeySource.ini</text>
+<text x="585.0" y="222.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">KeyFile=E:\keys\</text>
+<text x="585.0" y="241.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">employee.key</text>
+<rect x="730" y="100" width="170" height="110" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="815.0" y="140.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">employee.key</text>
+<text x="815.0" y="159.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933"></text>
+<text x="815.0" y="178.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Key=Red 0xec,…</text>
+<line x1="585" y1="140" x2="585" y2="178" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="596" y="164" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="start" fill="#1f2933">путь</text>
+<line x1="670" y1="112" x2="728" y2="140" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="700" y="104" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">читает</text>
+<text x="815" y="236" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">съёмный диск или</text>
+<text x="815" y="255" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">папка с правами доступа</text>
+<text x="700" y="296" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Файл читается при каждом подключении</text>
+</svg>

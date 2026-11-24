@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker></defs>
+<rect x="0" y="0" width="1000" height="560" fill="#ffffff"/>
+<text x="190" y="30" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">Откуда</text>
+<text x="750" y="30" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">Куда</text>
+<rect x="20" y="50" width="340" height="79" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="190.0" y="75.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">github.com/FirebirdSQL/firebird</text>
+<text x="190.0" y="94.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Firebird-&lt;версия&gt;-x64.zip</text>
+<text x="190.0" y="113.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">скрипт 01</text>
+<rect x="20" y="200" width="340" height="117" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="190.0" y="225.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">cc.ib-aid.com</text>
+<text x="190.0" y="244.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">CryptPlugin-FB_&lt;NN&gt;_WINDOWS_64bit.zip</text>
+<text x="190.0" y="263.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">каталоги Server и Client\64bit,</text>
+<text x="190.0" y="282.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">пробная лицензия DbCrypt.conf</text>
+<text x="190.0" y="301.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">скрипты 02 и 03</text>
+<rect x="20" y="400" width="340" height="98" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="190.0" y="425.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Программы примера: work\build</text>
+<text x="190.0" y="444.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">EmployeeRemote.exe, EmployeeEmbedded.exe,</text>
+<text x="190.0" y="463.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">KeySource.dll, KeyProvider.exe</text>
+<text x="190.0" y="482.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">скрипт 30 или 05</text>
+<rect x="540" y="50" width="440" height="98" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="760.0" y="75.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Сервер: work\fb&lt;N&gt;\server  (скрипт 10)</text>
+<text x="760.0" y="94.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Firebird целиком + Server\*</text>
+<text x="760.0" y="113.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">+ plugins\DbCrypt.conf</text>
+<text x="760.0" y="132.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">ключей нет</text>
+<rect x="540" y="210" width="440" height="98" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="760.0" y="235.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Рабочее место: work\fb&lt;N&gt;\remote  (скрипт 40)</text>
+<text x="760.0" y="254.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Client\64bit\* + plugins\keyholder.dll</text>
+<text x="760.0" y="273.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">+ KeySource.dll + EmployeeRemote.exe</text>
+<text x="760.0" y="292.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">firebird.conf: KeyHolderPlugin = KeyHolder</text>
+<rect x="540" y="380" width="440" height="117" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="760.0" y="405.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Embedded: work\fb&lt;N&gt;\embedded  (скрипт 41)</text>
+<text x="760.0" y="424.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">Client\64bit\* + keyholder.dll + dbcrypt.dll</text>
+<text x="760.0" y="443.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">+ engine12/13.dll + intl + DbCrypt.conf</text>
+<text x="760.0" y="462.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">+ KeySource.dll + EmployeeEmbedded.exe</text>
+<text x="760.0" y="481.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">+ своя копия базы</text>
+<line x1="360" y1="89.5" x2="538" y2="99.0" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="89.5" x2="538" y2="438.5" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="258.5" x2="538" y2="99.0" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="258.5" x2="538" y2="259.0" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="258.5" x2="538" y2="438.5" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="449.0" x2="538" y2="259.0" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="360" y1="449.0" x2="538" y2="438.5" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+</svg>

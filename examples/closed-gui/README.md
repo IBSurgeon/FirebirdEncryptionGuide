@@ -1,0 +1,67 @@
+# Шифрование для GUI-приложения без исходных кодов
+
+Полный пример для Windows и Firebird 3.0, 4.0, 5.0. Приложение не меняется: ключ шифрования передаёт библиотека `KeySource.dll`, которая лежит рядом с `fbclient.dll`.
+
+Руководство с диаграммами: [fbcrypt-closed-gui.pdf](https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/fbcrypt-closed-gui.pdf). Исходный текст: [doc/ru/fbcrypt-closed-gui.adoc](../../doc/ru/fbcrypt-closed-gui.adoc).
+
+![Передача ключа при подключении к серверу](../../doc/ru/images/closed-gui/seq-remote.svg)
+
+## Быстрый старт
+
+PowerShell, права администратора не нужны. Установленные экземпляры Firebird не меняются.
+
+```powershell
+cd deploy
+Set-ExecutionPolicy -Scope Process Bypass
+.\05-download-example.ps1
+.\run-all.ps1 -Version 5
+..\work\fb5\remote\EmployeeRemote.exe
+```
+
+Шаг `05-download-example.ps1` скачивает готовые программы. Если у вас есть Lazarus, пропустите его: `run-all.ps1 -LazarusDir <каталог Lazarus>` соберёт программы сам.
+
+Скрипт `run-all.ps1`:
+
+1. скачивает Firebird с `github.com/FirebirdSQL/firebird` и плагин с пробной лицензией с `cc.ib-aid.com`;
+2. ставит отдельный сервер в `work\fb5\server`, порт 30055;
+3. шифрует копию базы `employee` тестовым ключом `Red`;
+4. собирает каталог рабочего места `work\fb5\remote` и каталог embedded `work\fb5\embedded`.
+
+Другие версии и варианты: `-Version 3|4|5`, `-KeySource a|b|c|d`.
+
+## Состав
+
+| Каталог | Что в нём |
+|---|---|
+| [app/EmployeeApp](app/EmployeeApp) | Приложение Lazarus (SQLdb) без кода шифрования. Режимы сборки `Remote` и `Embedded` |
+| [keysource/a-static](keysource/a-static) | `KeySource.dll`: ключ записан в библиотеке |
+| [keysource/b-file](keysource/b-file) | `KeySource.dll`: ключ читается из файла |
+| [keysource/c-provider](keysource/c-provider) | `KeySource.dll`: ключ даёт программа `KeyProvider.exe` через именованный канал |
+| [keysource/d-rest](keysource/d-rest) | `KeySource.dll`: ключ даёт служба REST; кэш в памяти |
+| [keysource/probe](keysource/probe) | Диагностическая библиотека: пишет в журнал каждую загрузку и каждый вызов |
+| [keysource/common](keysource/common) | Общий модуль библиотек |
+| [keyprovider](keyprovider) | Поставщик ключа: программа в трее Windows, спрашивает ключ и хранит его в памяти |
+| [restserver](restserver) | Демо-сервер ключей на PowerShell |
+| [deploy](deploy) | Скрипты скачивания, установки, шифрования, сборки каталогов |
+| [tests](tests) | Автоматическая проверка всех сочетаний |
+
+## Проверка
+
+```powershell
+cd tests
+.\run-matrix.ps1 -Negative -Load
+```
+
+Проверено 24.11.2026 на Windows 11 x64 с официальными сборками Firebird 3.0.14, 4.0.7, 5.0.4:
+
+- 24 сочетания: 3 версии × обычное подключение и embedded × 4 варианта `KeySource`;
+- 9 проверок, которые должны закончиться ошибкой;
+- нагрузка: 1000 подключений подряд и 8 потоков для каждого варианта (Firebird 5.0).
+
+Не проверено: 32-битные сборки, сервер как служба Windows, Linux, Delphi.
+
+## Важно
+
+- Ключ `Red`, пароль `masterkey` и токен `test-token` открыты всем. Не используйте их для настоящих данных.
+- Пробная лицензия из архива плагина действует до конца текущего месяца. Новый архив: `.\02-download-plugin.ps1 -Version 5 -Force`.
+- Файлы Firebird, плагина и лицензии скрипты кладут в каталог `work`. В репозиторий они не попадают.

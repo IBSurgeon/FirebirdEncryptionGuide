@@ -3,6 +3,7 @@
 Documentation and examples for the Firebird encryption plugin.
 
 * Description of the encryption plugin in PDF format (in Russian): [fbcrypt.pdf](https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/fbcrypt.pdf)
+* Guide for a closed-source GUI application, with a complete example for Firebird 3.0, 4.0, 5.0 (in Russian): [fbcrypt-closed-gui.pdf](https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/fbcrypt-closed-gui.pdf). Example: [examples/closed-gui](examples/closed-gui/README.md)
 * Source of the guide: [doc/ru](doc/ru). To build the PDF, run `asciidoctor-pdf fbcrypt.adoc` in that folder.
 * Examples for Python, Java, PHP, .NET, Free Pascal and C++: [examples](examples/README.md)
 

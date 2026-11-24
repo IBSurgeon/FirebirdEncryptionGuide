@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker></defs>
+<rect x="0" y="0" width="1100" height="780" fill="#ffffff"/>
+<line x1="80.0" y1="66" x2="80.0" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="10.0" y="16" width="140" height="50" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="80.0" y="45.9" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Приложение</text>
+<line x1="236.66666666666666" y1="66" x2="236.66666666666666" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="166.66666666666666" y="16" width="140" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="236.66666666666666" y="45.9" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">fbclient.dll</text>
+<line x1="393.3333333333333" y1="66" x2="393.3333333333333" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="323.3333333333333" y="16" width="140" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="393.3333333333333" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeyHolder</text>
+<text x="393.3333333333333" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">клиента</text>
+<line x1="550.0" y1="66" x2="550.0" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="480.0" y="16" width="140" height="50" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="550.0" y="45.9" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeySource.dll</text>
+<line x1="706.6666666666666" y1="66" x2="706.6666666666666" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="636.6666666666666" y="16" width="140" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="706.6666666666666" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Сервер</text>
+<text x="706.6666666666666" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Firebird</text>
+<line x1="863.3333333333334" y1="66" x2="863.3333333333334" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="793.3333333333334" y="16" width="140" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="863.3333333333334" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeyHolder</text>
+<text x="863.3333333333334" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">сервера</text>
+<line x1="1020.0" y1="66" x2="1020.0" y2="768" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="950.0" y="16" width="140" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="1020.0" y="45.9" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">DbCrypt</text>
+<rect x="10.0" y="96" width="610.0" height="31" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="315.0" y="116.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">Рабочее место: один процесс приложения</text>
+<text x="158.33333333333331" y="155" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">1. подключение</text>
+<line x1="84.0" y1="166" x2="232.66666666666666" y2="166" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="471.66666666666663" y="198" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">2. подключение, проверка пользователя</text>
+<line x1="240.66666666666666" y1="209" x2="702.6666666666666" y2="209" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="785.0" y="241" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">3. база зашифрована:</text>
+<text x="785.0" y="260" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">нужен ключ Red</text>
+<line x1="710.6666666666666" y1="271" x2="859.3333333333334" y2="271" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="471.66666666666663" y="303" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">4. запрос ключа у клиента (op_crypt_key_callback)</text>
+<line x1="702.6666666666666" y1="314" x2="240.66666666666666" y2="314" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<text x="315.0" y="346" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">5. создать плагин</text>
+<line x1="240.66666666666666" y1="357" x2="389.3333333333333" y2="357" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="471.66666666666663" y="389" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">6. LoadLibrary,</text>
+<text x="471.66666666666663" y="408" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">MakeKeys()</text>
+<line x1="397.3333333333333" y1="419" x2="546.0" y2="419" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="471.66666666666663" y="451" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">7. Key=Red 0x..,</text>
+<line x1="546.0" y1="462" x2="397.3333333333333" y2="462" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<rect x="407.3333333333333" y="482" width="300" height="48" rx="6" fill="#ffffff" stroke="#52606d" stroke-width="1.2"/>
+<text x="557.3333333333333" y="501.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">8. FreeLibrary: KeySource.dll</text>
+<text x="557.3333333333333" y="520.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">выгружена из процесса</text>
+<text x="628.3333333333334" y="560" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">9. ключи в зашифрованном виде (через fbclient.dll и сервер)</text>
+<line x1="397.3333333333333" y1="571" x2="859.3333333333334" y2="571" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="941.6666666666667" y="603" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">10. ключ Red,</text>
+<text x="941.6666666666667" y="622" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">защищённо</text>
+<line x1="867.3333333333334" y1="633" x2="1016.0" y2="633" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<rect x="706.0" y="653" width="300" height="48" rx="6" fill="#ffffff" stroke="#52606d" stroke-width="1.2"/>
+<text x="856.0" y="672.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">11. проверка ключа,</text>
+<text x="856.0" y="691.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">расшифровка страниц</text>
+<text x="393.3333333333333" y="731" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">12. подключение установлено</text>
+<line x1="702.6666666666666" y1="742" x2="84.0" y2="742" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+</svg>

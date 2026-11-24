@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="428" viewBox="0 0 960 428">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker></defs>
+<rect x="0" y="0" width="960" height="428" fill="#ffffff"/>
+<rect x="220" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Диск</text>
+<text x="310.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">рабочего места</text>
+<rect x="400" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Память</text>
+<text x="490.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">приложения</text>
+<rect x="580" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Другая программа</text>
+<text x="670.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">или компьютер</text>
+<rect x="760" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="53.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Сеть</text>
+<rect x="20" y="78" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">а) ключ в библиотеке</text>
+<rect x="220" y="78" width="180" height="58" rx="6" fill="#fee2e2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">да: внутри dll</text>
+<rect x="400" y="78" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="102.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">на время</text>
+<text x="490.0" y="121.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">подключения</text>
+<rect x="580" y="78" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="760" y="78" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="20" y="136" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="169.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">б) ключ в файле</text>
+<rect x="220" y="136" width="180" height="58" rx="6" fill="#fee2e2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="169.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">да: в файле ключа</text>
+<rect x="400" y="136" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="160.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">на время</text>
+<text x="490.0" y="179.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">подключения</text>
+<rect x="580" y="136" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="169.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="760" y="136" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="160.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">если файл</text>
+<text x="850.0" y="179.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">в сетевой папке</text>
+<rect x="20" y="194" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">в) поставщик ключа</text>
+<rect x="220" y="194" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="400" y="194" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="218.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">на время</text>
+<text x="490.0" y="237.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">подключения</text>
+<rect x="580" y="194" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="218.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">память</text>
+<text x="670.0" y="237.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">KeyProvider.exe</text>
+<rect x="760" y="194" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="20" y="252" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">г) служба REST</text>
+<rect x="220" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">только токен</text>
+<rect x="400" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="276.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">кэш в dll:</text>
+<text x="490.0" y="295.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">CacheSeconds</text>
+<rect x="580" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">служба ключей</text>
+<rect x="760" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="276.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">HTTPS до службы</text>
+<text x="850.0" y="295.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">ключей</text>
+<rect x="20" y="310" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Prompt (без dll)</text>
+<rect x="220" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="400" y="310" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="334.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">до выхода</text>
+<text x="490.0" y="353.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">из приложения</text>
+<rect x="580" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<rect x="760" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">нет</text>
+<text x="20" y="394" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Во всех вариантах ключ идёт к серверу базы данных в зашифрованном виде</text>
+<text x="20" y="413" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">и находится в памяти сервера, пока открыто подключение.</text>
+</svg>
