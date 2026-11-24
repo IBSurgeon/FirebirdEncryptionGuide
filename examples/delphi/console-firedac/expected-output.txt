@@ -1,0 +1,7 @@
+S1 connect with key Red: Hello from crypt_red
+S3 two keys, database crypt_red: Hello from crypt_red
+S3 two keys, database crypt_green: Hello from crypt_green
+S2 no key: error, as expected
+S2 wrong key value: error, as expected
+S2 wrong key name: error, as expected
+S1 connect again with key Red: Hello from crypt_red

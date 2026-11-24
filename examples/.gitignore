@@ -10,3 +10,10 @@ lib/
 *.exe
 *.o
 *.ppu
+# Delphi: compiler and IDE output
+*.dcu
+*.dsk
+*.local
+*.identcache
+__history/
+__recovery/

@@ -1,0 +1,5 @@
+Thread with RegisterForThread: Hello from crypt_red
+Thread without RegisterForThread: error, as expected
+4 threads: 4 correct answers
+Pool, 4 threads with RegisterForThread: 4 correct answers
+Pool, thread without RegisterForThread takes an open connection: Hello from crypt_red

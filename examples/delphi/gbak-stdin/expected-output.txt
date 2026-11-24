@@ -1,0 +1,5 @@
+Backup without a key: error, as expected
+Backup with the key: OK
+Backup file is encrypted: yes
+Restore without a key: error, as expected
+Restore with the key: OK
