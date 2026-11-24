@@ -28,6 +28,4 @@ W niektórych przypadkach lepiej jest użyć funkcji bezpieczeństwa i ustawień
 
 Oczywiście obie powyższe listy są niepełne. Dają jednak pewne wyobrażenie o tym, kiedy szyfrowanie bazy danych jest potrzebne, a kiedy nie.
 
-NOTE: Ten dokument jest tłumaczeniem rosyjskiego oryginału (doc/ru). Jeśli teksty się różnią, prawidłowy jest tekst rosyjski.
-
 :sectnums:

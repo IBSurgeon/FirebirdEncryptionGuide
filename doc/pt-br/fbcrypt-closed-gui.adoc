@@ -79,8 +79,6 @@ O que é necessário para trabalhar com o exemplo:
 Código-fonte do exemplo: {repo}/tree/main/examples/closed-gui[pasta `examples/closed-gui`].
 ====
 
-NOTE: Este documento é uma tradução do original em russo (doc/ru). Se os textos forem diferentes, o texto em russo é o correto.
-
 == O problema: onde fica a chave
 
 O plugin `DbCrypt` criptografa as páginas do arquivo do banco de dados. Sem a chave, o arquivo não pode ser lido. Isso protege contra o roubo do arquivo, do disco, do servidor e do backup (cópia de segurança) do disco.

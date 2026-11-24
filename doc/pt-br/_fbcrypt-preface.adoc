@@ -28,6 +28,4 @@ Em alguns casos, é melhor usar os recursos de segurança e a configuração do 
 
 É claro que as duas listas acima não estão completas. Mas elas dão uma ideia de quando você precisa de criptografia do banco de dados e quando não precisa.
 
-NOTE: Este documento é uma tradução do original em russo (doc/ru). Se os textos forem diferentes, o texto em russo é o correto.
-
 :sectnums:

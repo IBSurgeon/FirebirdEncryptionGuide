@@ -28,6 +28,4 @@ In some cases it is better to use the security features and settings of Firebird
 
 Of course, both lists above are not complete. But they give some idea of when you need database encryption and when you do not need it.
 
-NOTE: This is a translation of the Russian original (doc/ru). If the texts differ, the Russian text is correct.
-
 :sectnums:

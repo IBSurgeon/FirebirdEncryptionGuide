@@ -60,8 +60,6 @@ Dokument zawiera gotowy przykład dla Firebird 3.0, 4.0 i 5.0. Zacznij od rozdzi
 
 Główny tekst jest krótki. Informacje szczegółowe znajdują się w blokach „Szczegóły”. W HTML i na GitHub blok rozwija się kliknięciem. W PDF wszystkie bloki są rozwinięte.
 
-NOTE: To jest tłumaczenie rosyjskiego oryginału (doc/ru). Jeśli teksty się różnią, obowiązuje tekst rosyjski.
-
 .Szczegóły: zawartość przykładu i co jest potrzebne do pracy
 [%collapsible]
 ====
