@@ -57,7 +57,7 @@
 
 Плагин `DbCrypt` и лицензия нужны утилите `gbak`: она сама шифрует и расшифровывает файл резервной копии. Без них `gbak` завершается ошибкой `Crypt plugin DbCrypt failed to load`.
 
-В клиентском пакете для Windows файл `keyholderstdin.dll` лежит в каталоге `key-plugins`. Скопируйте его в каталог `plugins`. Иначе утилита сообщает `Key holder plugin KeyHolderStdin failed to load`.
+В клиентском пакете для Windows файл `keyholderstdin.dll` лежит в каталоге `key-plugins`. Скопируйте его в каталог `plugins`. Иначе утилита сообщает `Key holder plugin KeyHolderStdin failed to load`. В HQbird этот файл уже лежит в каталоге `plugins`: копировать его не нужно.
 ====
 
 [[fbcrypt-utils-stdin]]

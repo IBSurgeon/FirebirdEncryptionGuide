@@ -220,6 +220,11 @@ Wartości kluczy muszą zostać ustawione przed nawiązaniem połączenia. Po po
 
 Co zrobić, jeśli chcesz używać szyfrowania bazy danych, ale nie masz kodu źródłowego aplikacji? Przewidzieliśmy taką sytuację. W tym przypadku należy utworzyć bibliotekę dynamiczną o nazwie `KeySource.dll` i umieścić ją obok `fbclient.dll`.
 
+[NOTE]
+====
+Pliki klienckie dla stanowiska roboczego są w archiwum wtyczki (folder `Client`) oraz w HQbird (folder `ClientLibs`). Jeśli masz HQbird, nie trzeba pobierać archiwum: zobacz <<fbcrypt-install-hqbird>>.
+====
+
 === Jak to działa
 
 . Aplikacja nie rejestruje wywołania zwrotnego do przekazania klucza.

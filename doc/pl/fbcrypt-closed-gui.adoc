@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Szyfrowanie bazy danych Firebird dla aplikacji bez kodu źródłowego
-1.3.1, 24.11.2026
+1.3.2, 24.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -44,6 +44,8 @@ Wymagany wynik:
 * Administrator wybiera, gdzie znajduje się klucz: w bibliotece, w pliku na dysku wymiennym, w pamięci człowieka (fraza hasła) lub w usłudze kluczy.
 
 Rozwiązanie: wtyczka szyfrowania IBSurgeon na serwerze i mała biblioteka `KeySource.dll` obok biblioteki klienckiej Firebird na stanowisku roboczym. Biblioteka przekazuje klucz szyfrowania przy każdym połączeniu.
+
+Jeśli masz zainstalowany HQbird, pliki wtyczki są już na serwerze i w folderze bibliotek klienckich. Nie trzeba pobierać archiwum wtyczki ani kopiować jego plików: zobacz <<closed-gui-hqbird>>.
 
 [discrete]
 === Zakres dokumentu
@@ -353,6 +355,8 @@ Skrypt `10-install-server.ps1` robi to samo, co należy zrobić na prawdziwym se
 KeyHolderPlugin = KeyHolder
 ----
 
+Jeśli na serwerze jest zainstalowany HQbird, nie trzeba kopiować wtyczki. Potrzebne są tylko licencja i wiersz `KeyHolderPlugin`: zobacz <<closed-gui-hqbird>>.
+
 Pliku `plugins\KeyHolder.conf` na serwerze nie ma. Serwer nie przechowuje kluczy, więc plik nie jest potrzebny.
 
 .Szczegóły: kroki instalacji serwera
@@ -449,7 +453,7 @@ Generowanie klucza, odszyfrowanie i zmiana klucza są opisane w głównym przewo
 
 === Folder stanowiska roboczego
 
-Skrypt `40-deploy-remote.ps1` tworzy folder `work\fb<N>\remote`: klient Firebird z archiwum wtyczki, wtyczkę `KeyHolder`, bibliotekę `KeySource.dll` i aplikację.
+Skrypt `40-deploy-remote.ps1` tworzy folder `work\fb<N>\remote`: klient Firebird z archiwum wtyczki, wtyczkę `KeyHolder`, bibliotekę `KeySource.dll` i aplikację. Jeśli masz HQbird, weź klienta Firebird i wtyczkę `KeyHolder` z folderu `ClientLibs`: zobacz <<closed-gui-hqbird>>.
 
 .Szczegóły: zawartość folderu
 [%collapsible]
@@ -1019,7 +1023,7 @@ image::closed-gui/backup.svg[pdfwidth=100%]
 
 Aby kopia była zaszyfrowana, potrzebne są trzy warunki:
 
-. Narzędzie `gbak` z archiwum wtyczki.
+. Narzędzie `gbak` z archiwum wtyczki lub z HQbird.
 . W folderze narzędzia znajdują się `plugins\keyholder.dll`, `plugins\dbcrypt.dll`, licencja `plugins\DbCrypt.conf` i `KeySource.dll`. Narzędzie samo szyfruje plik, dlatego potrzebuje wtyczki `DbCrypt` i licencji.
 . Firebird 4.0 i 5.0: przełącznik `-KEYHOLDER KeyHolder` w poleceniu. Firebird 3.0: wiersz `KeyHolderPlugin = KeyHolder` w pliku `firebird.conf` w folderze narzędzia.
 
@@ -1143,7 +1147,7 @@ Polecenie `gstat -h` dla pliku kopii pokazuje `Attributes encrypted, plugin DbCr
 Lista kontrolna:
 
 . *Architektura.* Pliki klienckie i `KeySource.dll` mają tę samą architekturę (32 lub 64 bity) co aplikacja.
-. *Biblioteka kliencka.* Zastąp `fbclient.dll` lub `gds32.dll` aplikacji biblioteką z archiwum wtyczki.
+. *Biblioteka kliencka.* Zastąp `fbclient.dll` lub `gds32.dll` aplikacji biblioteką z archiwum wtyczki lub z HQbird.
 . *Pliki obok niej.* Wszystkie pliki folderu `Client\64bit`, `plugins\keyholder.dll`, Twoja `KeySource.dll` i `firebird.conf` z wierszem `KeyHolderPlugin = KeyHolder`.
 . *Wersja.* Archiwum wtyczki w tej samej wersji co serwer: 3.0, 4.0 lub 5.0.
 . *Zmienna `FIREBIRD`.* Na stanowisku roboczym nie może jej być.
@@ -1173,6 +1177,54 @@ MappingIpc: Cannot initialize the shared memory region
 Rozwiązanie: ustawić serwerowi własny folder blokad w zmiennej środowiskowej `FIREBIRD_LOCK`. Skrypty przykładu robią to same. Aplikacja embedded musi używać tego samego folderu, gdy działa jednocześnie z takim serwerem. W tym celu skrypt `41` tworzy plik uruchomieniowy `EmployeeEmbedded.cmd`.
 
 Dla Firebird 4.0 i 5.0 zmiennej `FIREBIRD_LOCK` nie trzeba ustawiać.
+====
+
+[[closed-gui-hqbird]]
+=== Jeśli masz HQbird
+
+Przykład instaluje osobny serwer: pobiera oficjalny Firebird i archiwum wtyczki. We własnym systemie z HQbird nie trzeba tego robić. Pliki wtyczki są częścią HQbird.
+
+.Skąd wziąć pliki
+[cols="2,3,3", options="header"]
+|===
+| Co | Bez HQbird | Z HQbird
+
+| Serwer: `plugins\dbcrypt.dll`, `plugins\keyholder.dll`
+| skopiować folder `Server` z archiwum wtyczki
+| są już w `C:\HQbird\Firebird<NN>\plugins`
+
+| Stanowisko robocze: `fbclient.dll`, OpenSSL, `plugins\keyholder.dll`
+| folder `Client\64bit` z archiwum wtyczki
+| folder `C:\HQbird\ClientLibs\64\<wersja>`; dla aplikacji 32-bitowej `ClientLibs\32\<wersja>`
+
+| Narzędzia `gbak`, `nbackup`, `isql`
+| folder `Client\64bit` z archiwum wtyczki
+| są już w `C:\HQbird\Firebird<NN>`
+
+| Licencja `plugins\DbCrypt.conf`
+| własna licencja lub licencja próbna z archiwum
+| własna licencja
+
+| Biblioteka `KeySource.dll`
+| własna, według wzoru z przykładu
+| własna, według wzoru z przykładu
+|===
+
+Tutaj `C:\HQbird` to domyślny folder instalacji, `<NN>` to `30`, `40` lub `50`, a `<wersja>` to `3.0`, `4.0` lub `5.0`.
+
+Kolejność pracy:
+
+. *Serwer.* Umieść licencję `DbCrypt.conf` w folderze `plugins`. Ustaw `KeyHolderPlugin = KeyHolder` w pliku `firebird.conf`: w HQbird ten parametr jest wierszem komentarza. Uruchom ponownie Firebird.
+. *Baza danych.* Zaszyfruj ją: zobacz <<closed-gui-encrypt>>.
+. *Stanowisko robocze.* Skopiuj pliki folderu `ClientLibs\64\<wersja>` do folderu aplikacji. Dodaj własną `KeySource.dll` i plik `firebird.conf` z wierszami `Providers = Remote` i `KeyHolderPlugin = KeyHolder`.
+. *Sprawdzenie.* Przejdź listę kontrolną z tego rozdziału.
+
+.Szczegóły: nazwa biblioteki OpenSSL
+[%collapsible]
+====
+64-bitowa wtyczka `KeyHolder` potrzebuje biblioteki OpenSSL o nazwie `libcrypto-1_1-x64.dll` obok `fbclient.dll`. Jeśli w folderze `ClientLibs\64\5.0` nie ma tego pliku, skopiuj go z folderu `ClientLibs\64\4.0`.
+
+Objaw błędu: dziennik `KeySource.log` pokazuje, że biblioteka zwróciła klucz, a połączenie kończy się komunikatem `Key not set`.
 ====
 
 == Zmiana klucza, utrata klucza, kopie zapasowe
@@ -1313,6 +1365,7 @@ Klucz bazy danych skrypt pobiera z pliku `work\fb<N>\db-key.conf`. W wariancie �
 | Zaszyfrowana kopia zapasowa `gbak` i próbne odtwarzanie: wersje 3.0, 4.0, 5.0; klucz `Red` i frazy hasła. Kopia `nbackup` pozostaje zaszyfrowana | zaliczone
 | Obciążenie: 1000 połączeń z rzędu i 8 wątków po 125 połączeń, każdy wariant, Firebird 5.0. Brak błędów, wzrost pamięci 3,5–5 MB | zaliczone
 | Wariant „d”: jedno żądanie do usługi na proces przy 1000 połączeń | zaliczone
+| Pliki klienckie z HQbird (`ClientLibs\64`, kompilacje 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) z biblioteką wariantu „a”. Do folderu wersji 5.0 dodano plik `libcrypto-1_1-x64.dll` | zaliczone
 |===
 
 Środowisko sprawdzenia: Windows 11 x64, oficjalne kompilacje Firebird 3.0.14, 4.0.7, 5.0.4, archiwa wtyczki z 01.10.2026, Lazarus 4.8 z Free Pascal 3.2.2.

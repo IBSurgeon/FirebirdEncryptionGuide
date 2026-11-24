@@ -220,6 +220,11 @@ Os valores das chaves devem ser definidos antes de abrir a conexão. Depois da c
 
 E se você quiser usar a criptografia do banco de dados, mas não tiver o código-fonte da sua aplicação? Nós previmos essa situação. Nesse caso, crie uma biblioteca dinâmica chamada `KeySource.dll` e coloque-a junto da `fbclient.dll`.
 
+[NOTE]
+====
+Os arquivos do cliente para a estação de trabalho estão no pacote do plugin (pasta `Client`) e no HQbird (pasta `ClientLibs`). Se você tem o HQbird, não é necessário baixar o pacote: veja <<fbcrypt-install-hqbird>>.
+====
+
 === Como funciona
 
 . A aplicação não registra um callback para enviar a chave.

@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Firebird database encryption for a closed-source application
-1.3.1, 24.11.2026
+1.3.2, 24.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -43,6 +43,8 @@ Required result:
 * The administrator selects where the key is: in a library, in a file on a removable disk, in the memory of a person (pass phrase) or at a key service.
 
 Solution: the IBSurgeon encryption plugin on the server and a small library `KeySource.dll` near the Firebird client library on the workstation. The library gives the encryption key at each connection.
+
+If you have HQbird, the plugin files are already on the server and in the folder of client libraries. You do not need to download the plugin archive or copy its files: see <<closed-gui-hqbird>>.
 
 [discrete]
 === Scope of the document
@@ -352,6 +354,8 @@ The script `10-install-server.ps1` does the same as you must do on a real server
 KeyHolderPlugin = KeyHolder
 ----
 
+If HQbird is installed on the server, you do not need to copy the plugin. You need only the license and the line `KeyHolderPlugin`: see <<closed-gui-hqbird>>.
+
 There is no file `plugins\KeyHolder.conf` on the server. The server keeps no keys, so the file is not necessary.
 
 .Details: server installation steps
@@ -448,7 +452,7 @@ Key generation, decryption and key change are described in the main guide, chapt
 
 === Workstation folder
 
-The script `40-deploy-remote.ps1` makes the folder `work\fb<N>\remote`: the Firebird client from the plugin archive, the `KeyHolder` plugin, the library `KeySource.dll` and the application.
+The script `40-deploy-remote.ps1` makes the folder `work\fb<N>\remote`: the Firebird client from the plugin archive, the `KeyHolder` plugin, the library `KeySource.dll` and the application. If you have HQbird, take the Firebird client and the `KeyHolder` plugin from the folder `ClientLibs`: see <<closed-gui-hqbird>>.
 
 .Details: contents of the folder
 [%collapsible]
@@ -1018,7 +1022,7 @@ image::closed-gui/backup.svg[pdfwidth=100%]
 
 To get an encrypted backup, three conditions are necessary:
 
-. The utility `gbak` from the plugin archive.
+. The utility `gbak` from the plugin archive or from HQbird.
 . The folder of the utility contains `plugins\keyholder.dll`, `plugins\dbcrypt.dll`, the license `plugins\DbCrypt.conf` and `KeySource.dll`. The utility encrypts the file itself, so it needs the `DbCrypt` plugin and the license.
 . Firebird 4.0 and 5.0: the switch `-KEYHOLDER KeyHolder` in the command. Firebird 3.0: the line `KeyHolderPlugin = KeyHolder` in the file `firebird.conf` of the utility folder.
 
@@ -1142,7 +1146,7 @@ The command `gstat -h` for the backup file shows `Attributes encrypted, plugin D
 Checklist:
 
 . *Bitness.* The client files and `KeySource.dll` have the same bitness as the application.
-. *Client library.* Replace the `fbclient.dll` or `gds32.dll` of the application with the library from the plugin archive.
+. *Client library.* Replace the `fbclient.dll` or `gds32.dll` of the application with the library from the plugin archive or from HQbird.
 . *Files near it.* All files of the folder `Client\64bit`, `plugins\keyholder.dll`, your `KeySource.dll` and `firebird.conf` with the line `KeyHolderPlugin = KeyHolder`.
 . *Version.* The plugin archive has the same version as the server: 3.0, 4.0 or 5.0.
 . *The variable `FIREBIRD`.* It must not be set on the workstation.
@@ -1172,6 +1176,54 @@ MappingIpc: Cannot initialize the shared memory region
 Solution: give the server its own lock folder in the environment variable `FIREBIRD_LOCK`. The example scripts do this themselves. An embedded application must use the same folder when it works at the same time as such a server. For this, the script `41` creates the start file `EmployeeEmbedded.cmd`.
 
 For Firebird 4.0 and 5.0, it is not necessary to set the variable `FIREBIRD_LOCK`.
+====
+
+[[closed-gui-hqbird]]
+=== If you have HQbird
+
+The example installs a separate server: it downloads the official Firebird and the plugin archive. In your own system with HQbird you do not need to do this. The plugin files are a part of HQbird.
+
+.Where to take the files
+[cols="2,3,3", options="header"]
+|===
+| What | Without HQbird | With HQbird
+
+| Server: `plugins\dbcrypt.dll`, `plugins\keyholder.dll`
+| copy the folder `Server` from the plugin archive
+| already in `C:\HQbird\Firebird<NN>\plugins`
+
+| Workstation: `fbclient.dll`, OpenSSL, `plugins\keyholder.dll`
+| the folder `Client\64bit` from the plugin archive
+| the folder `C:\HQbird\ClientLibs\64\<version>`; for a 32-bit application `ClientLibs\32\<version>`
+
+| Utilities `gbak`, `nbackup`, `isql`
+| the folder `Client\64bit` from the plugin archive
+| already in `C:\HQbird\Firebird<NN>`
+
+| License `plugins\DbCrypt.conf`
+| your license or the trial license from the archive
+| your license
+
+| Library `KeySource.dll`
+| your library, made from the example
+| your library, made from the example
+|===
+
+Here `C:\HQbird` is the default installation folder, `<NN>` is `30`, `40` or `50`, and `<version>` is `3.0`, `4.0` or `5.0`.
+
+Procedure:
+
+. *Server.* Put the license `DbCrypt.conf` into the `plugins` folder. Set `KeyHolderPlugin = KeyHolder` in `firebird.conf`: in HQbird this parameter is a comment line. Restart Firebird.
+. *Database.* Encrypt it: see <<closed-gui-encrypt>>.
+. *Workstation.* Copy the files of the folder `ClientLibs\64\<version>` to the application folder. Add your `KeySource.dll` and a `firebird.conf` file with the lines `Providers = Remote` and `KeyHolderPlugin = KeyHolder`.
+. *Check.* Do the checklist of this chapter.
+
+.Details: the name of the OpenSSL library
+[%collapsible]
+====
+The 64-bit plugin `KeyHolder` needs the OpenSSL library with the name `libcrypto-1_1-x64.dll` near `fbclient.dll`. If the folder `ClientLibs\64\5.0` does not contain this file, copy it from the folder `ClientLibs\64\4.0`.
+
+The sign of this error: the log `KeySource.log` shows that the library returned the key, but the connection fails with the message `Key not set`.
 ====
 
 == Key change, key loss, backups
@@ -1312,6 +1364,7 @@ The script takes the database key from the file `work\fb<N>\db-key.conf`. In var
 | Encrypted `gbak` backup and test restore: versions 3.0, 4.0, 5.0; key `Red` and pass phrases. The `nbackup` backup stays encrypted | passed
 | Load: 1000 connections in sequence and 8 threads with 125 connections each, each variant, Firebird 5.0. No errors, memory growth 3.5–5 MB | passed
 | Variant d: one request to the service for each process at 1000 connections | passed
+| Client files from HQbird (`ClientLibs\64`, builds 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) with the library of variant a. The file `libcrypto-1_1-x64.dll` was added to the folder of version 5.0 | passed
 |===
 
 Test environment: Windows 11 x64, official Firebird builds 3.0.14, 4.0.7, 5.0.4, plugin archives of 01.10.2026, Lazarus 4.8 with Free Pascal 3.2.2.

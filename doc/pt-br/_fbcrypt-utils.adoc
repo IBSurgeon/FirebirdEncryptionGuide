@@ -57,7 +57,7 @@ Junto do utilitário devem estar a pasta `plugins` com os plugins `KeyHolderStdi
 
 O plugin `DbCrypt` e a licença são necessários para o utilitário `gbak`: ele mesmo criptografa e descriptografa o arquivo de backup. Sem eles, o `gbak` termina com o erro `Crypt plugin DbCrypt failed to load`.
 
-No pacote cliente para Windows, o arquivo `keyholderstdin.dll` está na pasta `key-plugins`. Copie-o para a pasta `plugins`. Caso contrário, o utilitário mostra `Key holder plugin KeyHolderStdin failed to load`.
+No pacote cliente para Windows, o arquivo `keyholderstdin.dll` está na pasta `key-plugins`. Copie-o para a pasta `plugins`. Caso contrário, o utilitário mostra `Key holder plugin KeyHolderStdin failed to load`. No HQbird, esse arquivo já está na pasta `plugins`: não é necessário copiá-lo.
 ====
 
 [[fbcrypt-utils-stdin]]

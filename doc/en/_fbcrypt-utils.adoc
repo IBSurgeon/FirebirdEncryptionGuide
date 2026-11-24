@@ -57,7 +57,7 @@ Near the utility, there must be the `plugins` folder with the `KeyHolderStdin`, 
 
 The `gbak` utility needs the `DbCrypt` plugin and the license: it encrypts and decrypts the backup file itself. Without them, `gbak` fails with the error `Crypt plugin DbCrypt failed to load`.
 
-In the client package for Windows, the `keyholderstdin.dll` file is in the `key-plugins` folder. Copy it to the `plugins` folder. Otherwise the utility reports `Key holder plugin KeyHolderStdin failed to load`.
+In the client package for Windows, the `keyholderstdin.dll` file is in the `key-plugins` folder. Copy it to the `plugins` folder. Otherwise the utility reports `Key holder plugin KeyHolderStdin failed to load`. In HQbird this file is already in the `plugins` folder: you do not need to copy it.
 ====
 
 [[fbcrypt-utils-stdin]]

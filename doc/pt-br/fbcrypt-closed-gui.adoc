@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Criptografia de banco de dados Firebird para uma aplicação sem código-fonte
-1.3.1, 24.11.2026
+1.3.2, 24.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -44,6 +44,8 @@ Resultado esperado:
 * O administrador escolhe onde a chave fica: em uma biblioteca, em um arquivo em um disco removível, na memória de uma pessoa (frase secreta) ou em um serviço de chaves.
 
 Solução: o plugin de criptografia da IBSurgeon no servidor e uma pequena biblioteca `KeySource.dll` junto à biblioteca cliente do Firebird na estação de trabalho. A biblioteca entrega a chave de criptografia a cada conexão.
+
+Se você tem o HQbird instalado, os arquivos do plugin já estão no servidor e na pasta de bibliotecas cliente. Não é necessário baixar o pacote do plugin nem copiar os arquivos dele: veja <<closed-gui-hqbird>>.
 
 [discrete]
 === Limites do documento
@@ -353,6 +355,8 @@ O script `10-install-server.ps1` faz o mesmo que deve ser feito em um servidor r
 KeyHolderPlugin = KeyHolder
 ----
 
+Se o HQbird está instalado no servidor, não é necessário copiar o plugin. São necessárias somente a licença e a linha `KeyHolderPlugin`: veja <<closed-gui-hqbird>>.
+
 No servidor não há arquivo `plugins\KeyHolder.conf`. O servidor não armazena chaves, por isso o arquivo não é necessário.
 
 .Detalhes: passos da instalação do servidor
@@ -449,7 +453,7 @@ A geração da chave, a descriptografia e a troca da chave estão descritas no g
 
 === Pasta da estação de trabalho
 
-O script `40-deploy-remote.ps1` monta a pasta `work\fb<N>\remote`: o cliente Firebird do pacote do plugin, o plugin `KeyHolder`, a biblioteca `KeySource.dll` e a aplicação.
+O script `40-deploy-remote.ps1` monta a pasta `work\fb<N>\remote`: o cliente Firebird do pacote do plugin, o plugin `KeyHolder`, a biblioteca `KeySource.dll` e a aplicação. Se você tem o HQbird, use o cliente Firebird e o plugin `KeyHolder` da pasta `ClientLibs`: veja <<closed-gui-hqbird>>.
 
 .Detalhes: conteúdo da pasta
 [%collapsible]
@@ -1019,7 +1023,7 @@ image::closed-gui/backup.svg[pdfwidth=100%]
 
 Para que a cópia seja criptografada, são necessárias três condições:
 
-. O utilitário `gbak` do pacote do plugin.
+. O utilitário `gbak` do pacote do plugin ou do HQbird.
 . Na pasta do utilitário ficam `plugins\keyholder.dll`, `plugins\dbcrypt.dll`, a licença `plugins\DbCrypt.conf` e a `KeySource.dll`. O próprio utilitário criptografa o arquivo, por isso ele precisa do plugin `DbCrypt` e da licença.
 . Firebird 4.0 e 5.0: a opção `-KEYHOLDER KeyHolder` no comando. Firebird 3.0: a linha `KeyHolderPlugin = KeyHolder` no arquivo `firebird.conf` da pasta do utilitário.
 
@@ -1143,7 +1147,7 @@ O comando `gstat -h` para o arquivo da cópia mostra `Attributes encrypted, plug
 Lista de verificação:
 
 . *Arquitetura.* Os arquivos do cliente e a `KeySource.dll` devem ter a mesma arquitetura (32 ou 64 bits) da aplicação.
-. *Biblioteca cliente.* Substitua a `fbclient.dll` ou a `gds32.dll` da aplicação pela biblioteca do pacote do plugin.
+. *Biblioteca cliente.* Substitua a `fbclient.dll` ou a `gds32.dll` da aplicação pela biblioteca do pacote do plugin ou do HQbird.
 . *Arquivos ao lado dela.* Todos os arquivos da pasta `Client\64bit`, `plugins\keyholder.dll`, a sua `KeySource.dll` e o `firebird.conf` com a linha `KeyHolderPlugin = KeyHolder`.
 . *Versão.* O pacote do plugin deve ser da mesma versão do servidor: 3.0, 4.0 ou 5.0.
 . *Variável `FIREBIRD`.* Ela não deve existir na estação de trabalho.
@@ -1173,6 +1177,54 @@ MappingIpc: Cannot initialize the shared memory region
 Solução: definir para o servidor uma pasta de bloqueios própria na variável de ambiente `FIREBIRD_LOCK`. Os scripts do exemplo fazem isso automaticamente. A aplicação embedded deve usar a mesma pasta quando funciona ao mesmo tempo que esse servidor. Para isso, o script `41` cria o arquivo de inicialização `EmployeeEmbedded.cmd`.
 
 Para Firebird 4.0 e 5.0, não é necessário definir a variável `FIREBIRD_LOCK`.
+====
+
+[[closed-gui-hqbird]]
+=== Se você tem o HQbird
+
+O exemplo instala um servidor separado: ele baixa o Firebird oficial e o pacote do plugin. No seu sistema com HQbird, isso não é necessário. Os arquivos do plugin fazem parte do HQbird.
+
+.De onde vêm os arquivos
+[cols="2,3,3", options="header"]
+|===
+| O quê | Sem HQbird | Com HQbird
+
+| Servidor: `plugins\dbcrypt.dll`, `plugins\keyholder.dll`
+| copiar a pasta `Server` do pacote do plugin
+| já estão em `C:\HQbird\Firebird<NN>\plugins`
+
+| Estação de trabalho: `fbclient.dll`, OpenSSL, `plugins\keyholder.dll`
+| a pasta `Client\64bit` do pacote do plugin
+| a pasta `C:\HQbird\ClientLibs\64\<versão>`; para uma aplicação de 32 bits, `ClientLibs\32\<versão>`
+
+| Utilitários `gbak`, `nbackup`, `isql`
+| a pasta `Client\64bit` do pacote do plugin
+| já estão em `C:\HQbird\Firebird<NN>`
+
+| Licença `plugins\DbCrypt.conf`
+| a sua licença ou a licença de avaliação do pacote
+| a sua licença
+
+| Biblioteca `KeySource.dll`
+| a sua, feita com base no exemplo
+| a sua, feita com base no exemplo
+|===
+
+Aqui, `C:\HQbird` é a pasta de instalação padrão, `<NN>` é `30`, `40` ou `50`, e `<versão>` é `3.0`, `4.0` ou `5.0`.
+
+Ordem do trabalho:
+
+. *Servidor.* Coloque a licença `DbCrypt.conf` na pasta `plugins`. Defina `KeyHolderPlugin = KeyHolder` em `firebird.conf`: no HQbird, esse parâmetro é uma linha de comentário. Reinicie o Firebird.
+. *Banco de dados.* Criptografe-o: veja <<closed-gui-encrypt>>.
+. *Estação de trabalho.* Copie os arquivos da pasta `ClientLibs\64\<versão>` para a pasta da aplicação. Adicione a sua `KeySource.dll` e um arquivo `firebird.conf` com as linhas `Providers = Remote` e `KeyHolderPlugin = KeyHolder`.
+. *Verificação.* Siga a lista de verificação deste capítulo.
+
+.Detalhes: o nome da biblioteca OpenSSL
+[%collapsible]
+====
+O plugin `KeyHolder` de 64 bits precisa da biblioteca OpenSSL com o nome `libcrypto-1_1-x64.dll` ao lado da `fbclient.dll`. Se a pasta `ClientLibs\64\5.0` não contém esse arquivo, copie-o da pasta `ClientLibs\64\4.0`.
+
+Sinal do erro: o log `KeySource.log` mostra que a biblioteca retornou a chave, mas a conexão termina com a mensagem `Key not set`.
 ====
 
 == Troca da chave, perda da chave, backups
@@ -1313,6 +1365,7 @@ O script obtém a chave do banco de dados do arquivo `work\fb<N>\db-key.conf`. N
 | Backup `gbak` criptografado e restauração de teste: versões 3.0, 4.0, 5.0; chave `Red` e frases secretas. A cópia `nbackup` continua criptografada | aprovado
 | Carga: 1000 conexões seguidas e 8 threads com 125 conexões cada, cada variante, Firebird 5.0. Sem erros, aumento de memória de 3,5–5 MB | aprovado
 | Variante “d”: um pedido ao serviço por processo em 1000 conexões | aprovado
+| Arquivos do cliente do HQbird (`ClientLibs\64`, compilações 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) com a biblioteca da variante “a”. O arquivo `libcrypto-1_1-x64.dll` foi adicionado à pasta da versão 5.0 | aprovado
 |===
 
 Ambiente da verificação: Windows 11 x64, builds oficiais do Firebird 3.0.14, 4.0.7, 5.0.4, pacotes do plugin de 01.10.2026, Lazarus 4.8 com Free Pascal 3.2.2.

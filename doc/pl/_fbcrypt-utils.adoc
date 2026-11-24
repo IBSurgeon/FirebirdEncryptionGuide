@@ -57,7 +57,7 @@ Obok narzędzia muszą znajdować się folder `plugins` z wtyczkami `KeyHolderSt
 
 Wtyczka `DbCrypt` i licencja są potrzebne narzędziu `gbak`: samo szyfruje ono i odszyfrowuje plik kopii zapasowej. Bez nich `gbak` kończy się błędem `Crypt plugin DbCrypt failed to load`.
 
-W pakiecie klienckim dla systemu Windows plik `keyholderstdin.dll` znajduje się w folderze `key-plugins`. Skopiuj go do folderu `plugins`. W przeciwnym razie narzędzie zgłasza `Key holder plugin KeyHolderStdin failed to load`.
+W pakiecie klienckim dla systemu Windows plik `keyholderstdin.dll` znajduje się w folderze `key-plugins`. Skopiuj go do folderu `plugins`. W przeciwnym razie narzędzie zgłasza `Key holder plugin KeyHolderStdin failed to load`. W HQbird ten plik jest już w folderze `plugins`: nie trzeba go kopiować.
 ====
 
 [[fbcrypt-utils-stdin]]

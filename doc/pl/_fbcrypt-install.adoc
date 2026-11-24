@@ -5,7 +5,7 @@ Obsługiwane są Firebird 3.0 (od wersji 3.0.3), 4.0 i 5.0. Firebird 2.5 nie jes
 
 [NOTE]
 ====
-HQbird zawiera już serwerowe pliki wtyczki szyfrowania (`DbCrypt`, `KeyHolder`). Dla HQbird nie trzeba uruchamiać skryptów instalacyjnych ani kopiować folderu `Server` z archiwum. Potrzebne są tylko plik licencji `DbCrypt.conf`, parametr `KeyHolderPlugin` oraz, dla aplikacji klienckich, folder `Client` z archiwum.
+Jeśli masz zainstalowany HQbird, nie trzeba pobierać archiwum wtyczki ani kopiować jego plików: HQbird już je zawiera. Potrzebne są tylko plik licencji `DbCrypt.conf` i parametr `KeyHolderPlugin`. Zobacz <<fbcrypt-install-hqbird>>.
 ====
 
 Instalacja składa się z tych samych kroków na wszystkich platformach:
@@ -15,6 +15,43 @@ Instalacja składa się z tych samych kroków na wszystkich platformach:
 . Ustawić parametr `KeyHolderPlugin = KeyHolder` w `firebird.conf` lub `databases.conf`.
 . Uruchomić ponownie Firebird.
 . Sprawdzić szyfrowanie na testowej bazie danych.
+
+[[fbcrypt-install-hqbird]]
+== Jeśli zainstalowany jest HQbird
+
+HQbird zawiera już pliki wtyczki szyfrowania dla serwera i dla stanowisk roboczych. Nie trzeba uruchamiać skryptów instalacyjnych. Nie trzeba pobierać archiwum wtyczki. Nie trzeba kopiować folderów `Server` i `Client` z archiwum.
+
+.Pliki wtyczki w HQbird dla systemu Windows
+[cols="1,1", options="header"]
+|===
+| Pliki | Folder
+
+| Wtyczki serwerowe `dbcrypt.dll`, `keyholder.dll`, `keyholderstdin.dll`
+| `C:\HQbird\Firebird<NN>\plugins`
+
+| Biblioteki `fbclient.dll` i `fbcrypt.dll`, narzędzia `gbak`, `nbackup`, `isql`, `gfix`
+| `C:\HQbird\Firebird<NN>`
+
+| Pliki klienckie dla stanowisk roboczych: `fbclient.dll`, `fbcrypt.dll`, OpenSSL, `plugins\keyholder.dll`, `plugins\keyholderstdin.dll`, `plugins\dbcrypt.dll`
+| `C:\HQbird\ClientLibs\<architektura>\<wersja>`, na przykład `C:\HQbird\ClientLibs\64\5.0`
+|===
+
+Tutaj `C:\HQbird` to domyślny folder instalacji, a `<NN>` to `30`, `40` lub `50`.
+
+Co trzeba zrobić:
+
+. Umieść plik licencji `DbCrypt.conf` w folderze `plugins` serwera.
+. Ustaw parametr `KeyHolderPlugin = KeyHolder` w pliku `firebird.conf` lub `databases.conf`. W pliku `firebird.conf` z HQbird ten parametr jest wierszem komentarza.
+. Uruchom ponownie Firebird.
+. Zaszyfruj bazę danych: zobacz <<fbcrypt-usage>>.
+. Dla stanowiska roboczego weź pliki z folderu `ClientLibs` o właściwej architekturze i wersji. W pliku `firebird.conf` obok `fbclient.dll` ustaw `KeyHolderPlugin = KeyHolder`.
+
+HQbird nie zawiera testowej biblioteki `KeySource.dll` ani skryptu `run-tests.ps1`. Są one tylko w archiwum wtyczki i są potrzebne tylko do testów.
+
+[NOTE]
+====
+64-bitowa wtyczka kliencka `KeyHolder` potrzebuje biblioteki OpenSSL o nazwie `libcrypto-1_1-x64.dll` obok `fbclient.dll`. Jeśli w folderze `ClientLibs\64\5.0` nie ma tego pliku, skopiuj go z folderu `ClientLibs\64\4.0`. Bez tego pliku połączenie kończy się błędem `Key not set`, nawet gdy biblioteka `KeySource.dll` zwróciła poprawny klucz.
+====
 
 == Windows
 

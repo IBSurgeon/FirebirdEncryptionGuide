@@ -220,6 +220,11 @@ Set the key values before the connection. After the connection, you cannot chang
 
 What if you want to use database encryption, but you do not have the source code of your application? We prepared for this situation. In this case you must create a dynamic library with the name `KeySource.dll` and put it near `fbclient.dll`.
 
+[NOTE]
+====
+The client files for a workstation are in the plugin archive (folder `Client`) and in HQbird (folder `ClientLibs`). If you have HQbird, you do not need to download the archive: see <<fbcrypt-install-hqbird>>.
+====
+
 === How it works
 
 . The application does not register a callback to send the key.
