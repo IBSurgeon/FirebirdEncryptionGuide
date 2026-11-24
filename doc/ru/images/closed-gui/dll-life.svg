@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400">
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker></defs>
 <rect x="0" y="0" width="960" height="400" fill="#ffffff"/>
-<text x="20" y="30" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933" font-weight="bold">Варианты «а», «б», «в»: библиотека загружается и выгружается при каждом подключении</text>
+<text x="20" y="30" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933" font-weight="bold">Без закрепления: плагин загружает и выгружает библиотеку при каждом подключении</text>
 <text x="170" y="62" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-style="italic">подключение 1</text>
 <rect x="20" y="72" width="92" height="44" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
 <text x="66.0" y="98.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">LoadLibrary</text>
@@ -23,27 +23,25 @@
 <text x="800.0" y="98.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys()</text>
 <rect x="860" y="72" width="90" height="44" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
 <text x="905.0" y="98.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">FreeLibrary</text>
-<text x="20" y="142" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Глобальные переменные библиотеки не сохраняются между вызовами.</text>
-<text x="20" y="196" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933" font-weight="bold">Вариант «г»: библиотека закрепляет себя в процессе и хранит кэш</text>
+<text x="20" y="142" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Переменные библиотеки не сохраняются. В многопоточном приложении теряется память.</text>
+<text x="20" y="196" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933" font-weight="bold">С закреплением (все библиотеки примера): PinLibrary в начале MakeKeys</text>
 <text x="170" y="228" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-style="italic">подключение 1</text>
 <rect x="20" y="238" width="92" height="62" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
 <text x="66.0" y="273.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">LoadLibrary</text>
 <rect x="118" y="238" width="190" height="62" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
 <text x="213.0" y="254.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys():</text>
-<text x="213.0" y="273.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">запрос к службе,</text>
-<text x="213.0" y="292.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">PinLibrary</text>
+<text x="213.0" y="273.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">PinLibrary,</text>
+<text x="213.0" y="292.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">получить ключ</text>
 <rect x="314" y="238" width="112" height="62" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
 <text x="370.0" y="263.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">FreeLibrary:</text>
 <text x="370.0" y="282.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">не выгружает</text>
 <text x="545" y="228" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-style="italic">подключение 2</text>
 <rect x="465" y="238" width="160" height="62" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
-<text x="545.0" y="263.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys():</text>
-<text x="545.0" y="282.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">ключ из кэша</text>
+<text x="545.0" y="273.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys()</text>
 <text x="765" y="228" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-style="italic">подключение 3</text>
 <rect x="685" y="238" width="160" height="62" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
-<text x="765.0" y="263.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys():</text>
-<text x="765.0" y="282.7" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">ключ из кэша</text>
+<text x="765.0" y="273.2" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#1f2933">MakeKeys()</text>
 <rect x="118" y="316" width="822" height="30" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
-<text x="529" y="336" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">KeySource.dll остаётся в памяти процесса до его завершения; кэш действует CacheSeconds</text>
-<text x="20" y="376" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Библиотека не создаёт потоков. Кэш защищён критической секцией.</text>
+<text x="529" y="336" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">KeySource.dll остаётся в памяти процесса до его завершения; переменные сохраняются</text>
+<text x="20" y="376" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Вариант «г» хранит в этой памяти кэш ключа. Кэш защищён критической секцией.</text>
 </svg>

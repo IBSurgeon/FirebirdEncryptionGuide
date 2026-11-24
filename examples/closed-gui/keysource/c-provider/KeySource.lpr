@@ -4,7 +4,7 @@ library KeySource;
 
   The library asks the key provider through a named pipe at each connection.
   The key provider asks the user once and keeps the key in its memory.
-  The library keeps nothing: the plugin unloads it after each call.
+  The library keeps no key: the key provider has the cache.
 
   KeySource.ini next to the library:
 
@@ -231,6 +231,7 @@ var
 begin
   Result := nil;
   Size := 0;
+  PinLibrary;   // stay in the process: see the rules in keysourcecommon.pas
   if not AskProvider(Keys, Error) then
   begin
     LogLine('MakeKeys: ' + Error);

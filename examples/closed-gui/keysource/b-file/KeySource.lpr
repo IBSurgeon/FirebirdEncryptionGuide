@@ -29,6 +29,7 @@ var
 begin
   Result := nil;
   Size := 0;
+  PinLibrary;   // stay in the process: see the rules in keysourcecommon.pas
   FileName := ExpandEnv(Setting('KeyFile', ''));
   if FileName = '' then
     FileName := LibraryDir + 'KeySource.key';

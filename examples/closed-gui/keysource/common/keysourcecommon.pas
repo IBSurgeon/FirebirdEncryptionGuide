@@ -6,8 +6,14 @@ unit keysourcecommon;
 
     * The plugin loads KeySource.dll, calls MakeKeys once and unloads the library.
       This happens for each connection. Global variables do not live between
-      the calls. A library that keeps a cache must call PinLibrary.
+      the calls.
     * MakeKeys can be called from several threads at the same time.
+    * Call PinLibrary at the start of MakeKeys. The library then stays in the
+      process. Reason: when a Free Pascal library is unloaded while several
+      threads worked in it, the memory of these threads is lost. The load test
+      (8 threads, 1000 connections) lost 42 MB without PinLibrary.
+    * When MakeKeys returns NULL, the client calls it again 5 to 9 times for
+      the same connection. A refusal must be fast.
     * The memory for the result comes only from the allocator of the plugin.
       allocator(n) gives n + 1 bytes. The plugin frees the memory.
     * If MakeKeys returns NULL, the plugin takes the keys from KeyHolder.conf.

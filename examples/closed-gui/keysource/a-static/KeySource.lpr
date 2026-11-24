@@ -19,6 +19,7 @@ const
 
 function MakeKeys(Alloc: TAllocator; var Size: Cardinal): PAnsiChar; cdecl;
 begin
+  PinLibrary;   // stay in the process: see the rules in keysourcecommon.pas
   Result := ReturnKeys(Alloc, Keys, Size);
   LogLine('MakeKeys: the key from the library is returned');
 end;

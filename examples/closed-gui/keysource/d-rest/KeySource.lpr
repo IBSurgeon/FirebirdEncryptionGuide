@@ -5,8 +5,8 @@ library KeySource;
   The library sends GET <Url> with the header "Authorization: Bearer <token>".
   The answer is plain text: lines "Key=<name> 0x..," or "Password=<name> <phrase>".
 
-  The plugin unloads KeySource.dll after each call, so after the first good
-  answer the library pins itself in the process and keeps the keys in memory.
+  The library pins itself in the process and keeps the keys in memory after the
+  first good answer.
   The next connections of this process do not use the network until the cache
   time is over.
 
@@ -242,6 +242,7 @@ begin
   Size := 0;
   CacheMs := QWord(SettingInt('CacheSeconds', 300)) * 1000;
   RetryMs := QWord(SettingInt('RetrySeconds', 10)) * 1000;
+  PinLibrary;   // stay in the process: see the rules in keysourcecommon.pas
 
   // One thread asks the service. The other threads wait and take the answer from the cache.
   EnterCriticalSection(CacheLock);

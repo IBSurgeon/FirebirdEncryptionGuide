@@ -225,7 +225,7 @@ def seq_embedded() -> None:
 # --------------------------------------------------------------------------- 4. life of the library
 def dll_life() -> None:
     svg = Svg(960, 400)
-    svg.text(20, 30, "Варианты «а», «б», «в»: библиотека загружается и выгружается при каждом подключении",
+    svg.text(20, 30, "Без закрепления: плагин загружает и выгружает библиотеку при каждом подключении",
              size=14, anchor="start", bold=True)
     x = 20
     for n in (1, 2, 3):
@@ -234,22 +234,22 @@ def dll_life() -> None:
         svg.box(x + 98, 72, 108, 44, "MakeKeys()", YELLOW, YELLOW_EDGE, size=12)
         svg.box(x + 212, 72, 90, 44, "FreeLibrary", GREY, GREY_EDGE, size=12)
         x += 314
-    svg.text(20, 142, "Глобальные переменные библиотеки не сохраняются между вызовами.", size=13, anchor="start")
+    svg.text(20, 142, "Переменные библиотеки не сохраняются. В многопоточном приложении теряется память.", size=13, anchor="start")
 
-    svg.text(20, 196, "Вариант «г»: библиотека закрепляет себя в процессе и хранит кэш",
+    svg.text(20, 196, "С закреплением (все библиотеки примера): PinLibrary в начале MakeKeys",
              size=14, anchor="start", bold=True)
     svg.text(170, 228, "подключение 1", size=13, italic=True)
     svg.box(20, 238, 92, 62, "LoadLibrary", BLUE, BLUE_EDGE, size=12)
-    svg.box(118, 238, 190, 62, "MakeKeys():\nзапрос к службе,\nPinLibrary", YELLOW, YELLOW_EDGE, size=12)
+    svg.box(118, 238, 190, 62, "MakeKeys():\nPinLibrary,\nполучить ключ", YELLOW, YELLOW_EDGE, size=12)
     svg.box(314, 238, 112, 62, "FreeLibrary:\nне выгружает", GREY, GREY_EDGE, size=12)
     svg.text(545, 228, "подключение 2", size=13, italic=True)
-    svg.box(465, 238, 160, 62, "MakeKeys():\nключ из кэша", YELLOW, YELLOW_EDGE, size=12)
+    svg.box(465, 238, 160, 62, "MakeKeys()", YELLOW, YELLOW_EDGE, size=12)
     svg.text(765, 228, "подключение 3", size=13, italic=True)
-    svg.box(685, 238, 160, 62, "MakeKeys():\nключ из кэша", YELLOW, YELLOW_EDGE, size=12)
+    svg.box(685, 238, 160, 62, "MakeKeys()", YELLOW, YELLOW_EDGE, size=12)
     svg.rect(118, 316, 822, 30, GREEN, GREEN_EDGE)
-    svg.text(529, 336, "KeySource.dll остаётся в памяти процесса до его завершения; кэш действует CacheSeconds",
+    svg.text(529, 336, "KeySource.dll остаётся в памяти процесса до его завершения; переменные сохраняются",
              size=13)
-    svg.text(20, 376, "Библиотека не создаёт потоков. Кэш защищён критической секцией.", size=13, anchor="start")
+    svg.text(20, 376, "Вариант «г» хранит в этой памяти кэш ключа. Кэш защищён критической секцией.", size=13, anchor="start")
     svg.save("dll-life.svg")
 
 
