@@ -1,0 +1,104 @@
+[[fbcrypt-monitoring]]
+= Como acompanhar o andamento da criptografia
+
+O Firebird criptografa o banco de dados somente quando ele tem conexões ativas. O processo de criptografia é executado em uma thread paralela separada. Para bancos de dados grandes, a criptografia completa pode levar bastante tempo.
+
+== Tabela MON$DATABASE
+
+Para acompanhar o processo de criptografia, execute uma consulta SQL na tabela de monitoramento `MON$DATABASE`:
+
+[source,sql]
+----
+select mon$crypt_page * 100.0 / mon$pages as Percent from mon$database;
+commit;
+----
+
+O campo `MON$CRYPT_PAGE` contém o número da página a que a thread de criptografia chegou. Quando a criptografia termina, o campo é igual a `0`.
+
+As tabelas de monitoramento mostram um retrato do momento do primeiro acesso na transação. Para ver o novo valor, termine a transação (`commit`) e execute a consulta de novo.
+
+No Firebird 4.0 e 5.0, também existe o campo `MON$CRYPT_STATE`:
+
+[source,sql]
+----
+select mon$crypt_state from mon$database;
+----
+
+[cols="1,3", options="header"]
+|===
+| Valor | Estado
+| `0` | o banco de dados não está criptografado
+| `1` | o banco de dados está criptografado
+| `2` | descriptografia em andamento
+| `3` | criptografia em andamento
+|===
+
+== isql
+
+O comando `show database` mostra uma destas linhas:
+
+[cols="2,3", options="header"]
+|===
+| Linha | Estado
+| `Database not encrypted` | o banco de dados não está criptografado
+| `Database encrypted, crypt thread not complete` | a criptografia foi iniciada, mas não terminou
+| `Database encrypted` | a criptografia terminou
+|===
+
+== gstat
+
+O comando `gstat -h` mostra os atributos do cabeçalho: o indicador `encrypted`, o nome do plugin e o nome da chave. Ele é rápido.
+
+O comando `gstat -e` também conta as páginas criptografadas e não criptografadas:
+
+[listing]
+----
+gstat -e dbname
+
+Database "D:\ENCDB\TESTENCRYPT.FDB"
+Gstat execution time Tue Mar 16 11:45:11 2021
+
+Database header page information:
+        Flags                   0
+        Generation              10697
+        System Change Number    3
+        Page size               8192
+        ODS version             12.0
+        Oldest transaction      7053
+        Oldest active           7054
+        Oldest snapshot         7054
+        Next transaction        7054
+        Sequence number         0
+        Next attachment ID      17834
+        Implementation          HW=Intel/i386 little-endian OS=Windows CC=MSVC
+        Shadow count            0
+        Page buffers            0
+        Next header page        0
+        Database dialect        3
+        Creation date           Oct 9, 2019 6:42:31
+        Attributes              encrypted, plugin DBCRYPT
+
+    Variable header data:
+        Database backup GUID:   {866B4967-ED58-427E-A481-DB9206CEA2ED}
+        Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+        Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+        Encryption key name:    RED
+        Database GUID:  {323FE494-1771-4608-E99D-C1B69C84578B}
+        *END*
+
+Data pages: total 105, encrypted 105, non-crypted 0
+Index pages: total 95, encrypted 95, non-crypted 0
+Blob pages: total 0, encrypted 0, non-crypted 0
+Generator pages: total 1, encrypted 1, non-crypted 0
+Gstat completion time Tue Mar 16 11:45:11 2021
+----
+
+A criptografia terminou quando todas as linhas mostram `non-crypted 0`.
+
+Observe que o comando `gstat -e` pode levar muito tempo: o utilitário lê todas as páginas do banco de dados.
+
+== Se a criptografia não avança
+
+* Verifique se há pelo menos uma conexão com o banco de dados. Sem conexões, a thread de criptografia não funciona.
+* Verifique se a conexão enviou a chave ou se a chave está disponível para o servidor.
+* Veja as mensagens no `firebird.log`.

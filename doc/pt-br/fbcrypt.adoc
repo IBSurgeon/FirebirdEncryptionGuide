@@ -1,0 +1,56 @@
+[[hqbird]]
+= Firebird Encryption plugin
+1.2.0, 24.11.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 3
+:outlinelevels: 6:0
+:icons: font
+:experimental:
+:imagesdir: images
+include::../../attributes-pt-br.adoc[opts=optional]
+
+toc::[]
+
+include::_fbcrypt-preface.adoc[leveloffset=1]
+
+include::_fbcrypt-server.adoc[leveloffset=1]
+
+include::_fbcrypt-client-app.adoc[leveloffset=1]
+
+include::_fbcrypt-keygen.adoc[leveloffset=1]
+
+include::_fbcrypt-install.adoc[leveloffset=1]
+
+include::_fbcrypt-usage.adoc[leveloffset=1]
+
+include::_fbcrypt-utils.adoc[leveloffset=1]
+
+include::_fbcrypt-monitoring.adoc[leveloffset=1]
+
+include::_fbcrypt-config.adoc[leveloffset=1]
+
+include::_fbcrypt-troubleshooting.adoc[leveloffset=1]
+
+== Resumo
+
+. A criptografia de bancos de dados Firebird é um recurso poderoso para proteger as informações dos bancos de dados contra acesso não autorizado.
+. O processo de criptografia exige uma biblioteca dinâmica no servidor, o plugin de criptografia (normalmente chamado `DbCrypt`), e, na grande maioria dos casos, o plugin de gerenciamento de chaves (normalmente chamado `KeyHolder`).
+. Uma implementação segura e confiável dos plugins `DbCrypt` e `KeyHolder` deve levar em conta os tipos de ataque mais comuns.
+. Para trabalhar com um banco de dados criptografado, as aplicações cliente devem enviar a chave de criptografia. Cada conexão deve enviar a chave.
+. A instalação e a configuração do plugin de criptografia no servidor são simples: exigem 1 parâmetro em `firebird.conf`/`databases.conf` e alguns arquivos.
+. O processo de criptografia pode ser demorado. Ele é executado em uma thread separada em segundo plano. Você pode acompanhar o andamento com a tabela `MON$DATABASE` ou com o utilitário `gstat`.
+. O backup do `gbak` só é criptografado quando você informa ao utilitário o plugin de gerenciamento de chaves (`-KeyHolder`; no Firebird 3.0 -- `-KeyFile` ou `-Key`). As opções dos utilitários na versão 3.0 são diferentes das versões 4.0 e 5.0. O utilitário precisa do plugin `DbCrypt` e da licença na sua pasta `plugins`.
+. Uma chave perdida não pode ser recuperada. Guarde uma cópia da chave separada do servidor e dos backups.
+
+[discrete]
+=== Próximos passos
+
+Estamos trabalhando em testes detalhados de desempenho da criptografia de bancos de dados Firebird. Em geral, o desempenho cai de 4% a 8%, mas isso depende do hardware e da configuração do Firebird. Acompanhe as atualizações!
+
+[appendix]
+== Contatos
+
+Envie suas sugestões, correções de erros de digitação, erros etc., e também quaisquer perguntas por e-mail: mailto:support@ib-aid.com[support@ib-aid.com]

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="428" viewBox="0 0 960 428">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker><marker id="arrowkey" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0,0 L14,6 L0,12 z" fill="#b45309"/></marker></defs>
+<rect x="0" y="0" width="960" height="428" fill="#ffffff"/>
+<rect x="220" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Disco da estação</text>
+<text x="310.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">de trabalho</text>
+<rect x="400" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Memória</text>
+<text x="490.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">da aplicação</text>
+<rect x="580" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="44.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Outro programa</text>
+<text x="670.0" y="63.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">ou computador</text>
+<rect x="760" y="20" width="180" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="53.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Rede</text>
+<rect x="20" y="78" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">a) chave na biblioteca</text>
+<rect x="220" y="78" width="180" height="58" rx="6" fill="#fee2e2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">sim: dentro da dll</text>
+<rect x="400" y="78" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="102.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">durante</text>
+<text x="490.0" y="121.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">a conexão</text>
+<rect x="580" y="78" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="760" y="78" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="111.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="20" y="136" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="169.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">b) chave em arquivo</text>
+<rect x="220" y="136" width="180" height="58" rx="6" fill="#fee2e2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="160.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">sim: no arquivo</text>
+<text x="310.0" y="179.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">de chave</text>
+<rect x="400" y="136" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="160.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">durante</text>
+<text x="490.0" y="179.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">a conexão</text>
+<rect x="580" y="136" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="169.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="760" y="136" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="160.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">se o arquivo estiver</text>
+<text x="850.0" y="179.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">em pasta de rede</text>
+<rect x="20" y="194" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">c) provedor de chave</text>
+<rect x="220" y="194" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="400" y="194" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="218.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">durante</text>
+<text x="490.0" y="237.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">a conexão</text>
+<rect x="580" y="194" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="218.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">memória do</text>
+<text x="670.0" y="237.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">KeyProvider.exe</text>
+<rect x="760" y="194" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="227.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="20" y="252" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">d) serviço REST</text>
+<rect x="220" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">só o token</text>
+<rect x="400" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="276.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">cache na dll:</text>
+<text x="490.0" y="295.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">CacheSeconds</text>
+<rect x="580" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="285.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">servidor de chaves</text>
+<rect x="760" y="252" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="276.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">HTTPS até o</text>
+<text x="850.0" y="295.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">servidor de chaves</text>
+<rect x="20" y="310" width="200" height="58" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="120.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933" font-weight="bold">Prompt (sem dll)</text>
+<rect x="220" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="310.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="400" y="310" width="180" height="58" rx="6" fill="#fef9c3" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="490.0" y="334.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">até sair</text>
+<text x="490.0" y="353.05" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">da aplicação</text>
+<rect x="580" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="670.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<rect x="760" y="310" width="180" height="58" rx="6" fill="#dcfce7" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="850.0" y="343.55" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não</text>
+<text x="20" y="394" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">Em todas as variantes, a chave vai ao servidor de banco de dados de forma criptografada</text>
+<text x="20" y="413" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="start" fill="#1f2933">e fica na memória do servidor enquanto a conexão estiver aberta.</text>
+</svg>

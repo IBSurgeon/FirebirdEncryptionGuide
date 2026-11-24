@@ -1,0 +1,582 @@
+[[fbcrypt-install]]
+= Instalação do plugin de criptografia
+
+São suportados o Firebird 3.0 (a partir da 3.0.3), 4.0 e 5.0. O Firebird 2.5 não é suportado: ele não tem a interface de plugins de criptografia.
+
+[NOTE]
+====
+O HQbird já contém os arquivos de servidor do plugin de criptografia (`DbCrypt`, `KeyHolder`). Para o HQbird, não é necessário executar os scripts de instalação nem copiar a pasta `Server` do arquivo compactado. São necessários somente o arquivo de licença `DbCrypt.conf`, o parâmetro `KeyHolderPlugin` e, para as aplicações cliente, a pasta `Client` do arquivo compactado.
+====
+
+A instalação tem os mesmos passos em todas as plataformas:
+
+. Copiar os arquivos do plugin para a pasta do Firebird.
+. Colocar o arquivo de licença `DbCrypt.conf` na pasta `plugins`.
+. Definir o parâmetro `KeyHolderPlugin = KeyHolder` em `firebird.conf` ou `databases.conf`.
+. Reiniciar o Firebird.
+. Verificar a criptografia em um banco de dados de teste.
+
+== Windows
+
+=== Instalação do plugin de criptografia no Windows com script
+
+Baixe 2 arquivos de https://github.com/IBSurgeon/FirebirdEncryptionPluginInstall/tree/main/ForWindows: `install-Firebird-encryption-plugin.bat` e `inst-crypt-plugin.ps1`
+
+Para simplificar a implantação do plugin de criptografia, preparamos um script em PowerShell. Ele procura automaticamente as instâncias instaladas do Firebird, baixa o arquivo compactado necessário com o plugin, descompacta o arquivo, altera o arquivo de configuração e executa testes de criptografia para verificar o funcionamento do plugin.
+
+Abra o prompt de comando `cmd` como administrador e vá para a pasta onde está o script `install-Firebird-encryption-plugin.bat`.
+
+[source,cmd]
+----
+cd d:\IBase\crypt-plugin
+----
+
+Agora você pode executar o script de instalação do plugin:
+
+[source,cmd]
+----
+install-Firebird-encryption-plugin.bat
+----
+
+Esta mensagem é mostrada:
+
+----
+This script will install Firebird crypt plugin.
+Now script will scan OS registry for Firebird installations.
+You can run script silently adding --crypt="c:\path\to\firebird" parameter
+(Do not forget double-quotes in path like "C:\Program Files", etc...)
+Press Enter to continue or Ctrl+C to exit script.
+----
+
+Se você pressionar `Enter`, o instalador procura o Firebird instalado no registro e pede que você escolha em qual instância o plugin deve ser instalado. Ele verifica se existe uma versão compatível do Firebird (3.0.3+, 4.0.x, 5.0.x).
+
+Você também pode pressionar `Ctrl+C`, sair e executar o comando de novo com uma opção adicional.
+
+Primeiro, vamos pressionar Enter.
+
+----
+== Choose from installed instances ==
+============= WARNING! ==============
+If you select service that is running
+it will be restarted to install plugin
+ -------------------------------------
+1) Service Name: FirebirdServerDefaultInstance (Running, OK)
+Installed in: C:\Firebird\5.0
+Version: 5.0.4.1812 (64bit)
+ -------------------------------------
+0) Exit script
+Enter number (0-1) and press Enter:
+----
+
+As instâncias do Firebird encontradas são mostradas. Escolha a necessária e pressione Enter (neste caso, digite 1 e depois pressione Enter).
+
+Como alternativa, você pode indicar explicitamente o caminho da pasta raiz do Firebird em que o plugin de criptografia será instalado:
+
+[source,cmd]
+----
+install-Firebird-encryption-plugin.bat --crypt="C:\Firebird\5.0"
+----
+
+Depois disso, o instalador executa os seguintes passos:
+
+* *Download automático dos arquivos* +
+O instalador baixa os arquivos necessários (arquivos dll, arquivos de configuração e a licença de avaliação) e os salva na pasta do Firebird escolhida.
+
+* *Alteração do firebird.conf* +
+O instalador altera o `firebird.conf`: adiciona a linha `KeyHolderPlugin = KeyHolder`
+
+* *Reinicialização do Firebird (cuidado em ambiente de produção!)* +
+O instalador reinicia a instância do Firebird. Nesta etapa, o Firebird está pronto para criptografar bancos de dados com a licença de avaliação.
+
+* *Cria pastas com arquivos para as aplicações cliente* +
+O instalador cria uma pasta com os arquivos do cliente na pasta em que ele foi executado: `Client\32bit` e `Client\64bit`.
++
+Você pode usar esses arquivos para desenvolver uma aplicação que vai usar a criptografia: copie todos os arquivos dessa pasta para a pasta onde está o arquivo executável da sua aplicação. É muito importante usar o arquivo `fbclient.dll` fornecido.
+
+* *Verificação do funcionamento da instalação* +
+O instalador verifica o funcionamento da criptografia:
++
+[loweralpha]
+. Cria uma cópia do banco de dados `employee.fdb` de `%Firebird_Root%\examples\empbuild\employee.fdb` -> `emp_crypted.fdb`
+
+. Criptografa o banco de dados `emp_crypted.fdb` com a chave enviada pelo console por meio do plugin `KeyHolderStdin`
+
+. Se a criptografia for bem-sucedida, conecta-se ao banco de dados com o `isql` e executa o comando `show database` para mostrar que a criptografia funcionou.
+
+----
+Downloading plugin... https://cc.ib-aid.com/download/distr/crypt/CryptPlugin-FB_50_WINDOWS_64bit.zip
+Extracting plugin...
+Copying plugin files to C:\Firebird\5.0
+Copying client files...
+Client files successfully copied to C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient
+DB copied to C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\employee.fdb
+Adding KeyHolderPlugin to firebird.conf
+Starting "FirebirdServerDefaultInstance"...
+C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\64bit\gbak.exe
+C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb
+Initial encryption of employee database...
+Executing SQL> alter database encrypt with dbcrypt key Green;
+Executing
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\64bit\isql.exe" -user SYSDBA -password masterkey -q -i "C:\Users\vboxuser\AppData\Local\Temp\tmp1AC.tmp" localhost:"C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb"
+Database: localhost:C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb
+        Owner: SYSDBA
+PAGE_SIZE 8192
+Number of DB pages allocated = 346
+Number of DB pages used = 315
+Number of DB pages free = 31
+Sweep interval = 20000
+Forced Writes are OFF
+Transaction - oldest = 162
+Transaction - oldest active = 163
+Transaction - oldest snapshot = 163
+Transaction - Next = 164
+ODS = 13.1
+Database encrypted
+Wire crypt plugin: Arc4
+Creation date: Jul 2, 2026 16:34:12
+Replica mode: NONE
+Protocol version = 19
+Default Character set: NONE
+Publication: Disabled
+
+Let's make some tests
+Creating backup of encrypted database...
+Executing echo Key=Green ... | gbak -b localhost:"C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb" "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fbk" -KeyHolder KeyHolderStdin
+Encrypted backup: C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fbk
+Starting test restore...
+Executing echo Key=Green=... | gbak -c -KeyHolder KeyHolderStdin "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fbk" localhost:"C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_restore.fdb"
+Encrypted restore: "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_restore.fdb"
+Starting nbackup test...
+Executing echo Key=Green=... | nbackup -b 0 localhost:"C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb" "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_nbackup.fdb" -KeyHolder KeyHolderStdin
+time elapsed    1 sec
+page reads      327
+page writes     326
+Encrypted nbackup: "C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_nbackup.fdb"
+Starting gfix test...
+Executing echo Key=Green=... | gfix -v -full -KeyHolder KeyHolderStdin localhost:"C:\Users\vboxuser\Downloads\crypt-plugin\CryptClient\db-crypt\emp_crypted.fdb"
+Pressione qualquer tecla para continuar. . .
+----
+
+* *Verifica a criação de um backup criptografado* +
+O instalador verifica a criação de um backup criptografado com o `gbak.exe`
++
+O gbak cria o arquivo de backup com a chave enviada pelo plugin `KeyHolderStdin` (nas versões Firebird 5.0 e 4.0) ou com a opção `-Key` (na versão Firebird 3.0). Como resultado, é criado o arquivo `emp_crypted.fbk` na pasta `CryptClient\db-crypt`.
+
+* *Verifica a restauração a partir de um backup criptografado* +
+O instalador verifica a restauração a partir de um backup criptografado com o `gbak.exe`. A chave é enviada pelo plugin `KeyHolderStdin`.
+
+* *Verifica a criação de um backup com o nbackup*
+
+* *Verifica a validação do banco de dados com o gfix*
+
+* *A licença de avaliação está instalada: não se esqueça de atualizá-la.* +
+Importante! Observe que o script instala o arquivo de licença de avaliação `DbCrypt.conf`: ele tem prazo de validade limitado e, em ambiente de produção, deve ser substituído por um arquivo de licença válido.
+
+[WARNING]
+====
+O pacote cliente (`Client\32bit\key-plugins` e `Client\64bit\key-plugins`) contém a biblioteca dinâmica `KeySource.dll`. Essa biblioteca dinâmica contém uma função que retorna a chave de teste usada para testar a criptografia. Essa chave de teste é passada para o plugin `KeyHolder`. Não use essa biblioteca dinâmica em um sistema de produção. Implemente a sua própria. Os detalhes estão em <<fbcrypt-keysource>>.
+====
+
+=== Instalação manual
+
+Em alguns casos, não é possível instalar com o script, por exemplo, se o Firebird funciona em uma porta não padrão. Nesse caso, você pode instalar o plugin de criptografia manualmente. Para isso, baixe o arquivo zip do instalador para a versão correspondente em um destes endereços:
+
+* https://cc.ib-aid.com/download/distr/crypt/CryptPlugin-FB_30_WINDOWS_64bit.zip
+* https://cc.ib-aid.com/download/distr/crypt/CryptPlugin-FB_40_WINDOWS_64bit.zip
+* https://cc.ib-aid.com/download/distr/crypt/CryptPlugin-FB_50_WINDOWS_64bit.zip
+
+A estrutura interna do arquivo compactado é esta:
+
+----
+FB_50_WINDOWS_64bit
+├── Client
+│   ├── 32bit                    os mesmos arquivos para 32 bits
+│   ├── 64bit
+│   │   ├── fbclient.dll
+│   │   ├── fbcrypt.dll
+│   │   ├── firebird.conf        KeyHolderPlugin = KeyHolder
+│   │   ├── firebird.msg
+│   │   ├── gbak.exe
+│   │   ├── gfix.exe
+│   │   ├── isql.exe
+│   │   ├── nbackup.exe
+│   │   ├── icudt63.dll, icudt63l.dat, icuin63.dll, icuuc63.dll
+│   │   ├── libcrypto-1_1-x64.dll, libssl-1_1.dll
+│   │   ├── msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll
+│   │   ├── key-plugins
+│   │   │   ├── keyholderstdin.dll
+│   │   │   └── KeySource.dll
+│   │   └── plugins
+│   │       ├── DbCrypt.conf
+│   │       ├── dbcrypt.dll
+│   │       └── keyholder.dll
+│   └── db-crypt
+│       ├── EMPLOYEE.FDB
+│       └── run-tests.ps1
+└── Server
+    ├── decrypt.exe
+    ├── fbclient.dll
+    ├── fbcrypt.dll
+    ├── firebird.msg
+    ├── libcrypto-1_1-x64.dll
+    ├── libssl-1_1.dll
+    └── plugins
+        ├── DbCrypt.conf
+        ├── dbcrypt.dll
+        └── keyholder.dll
+----
+
+Este é o conteúdo do arquivo compactado para Firebird 5.0 de 01.10.2026. O arquivo compactado para Firebird 3.0 tem outras bibliotecas ICU (`icu*52`) e C++ (`msvcp100.dll`, `msvcr100.dll`).
+
+A pasta `Server` do arquivo compactado contém arquivos binários *SOMENTE* para a arquitetura x64. Supõe-se que a instalação do servidor tem exatamente essa arquitetura, o que quase sempre é verdade. A pasta `Client` do arquivo compactado contém arquivos binários tanto para a arquitetura x86 (32bit) quanto para x64 (64bit).
+
+Descompacte os arquivos da pasta `Server` na pasta raiz do servidor Firebird. Uma parte dos arquivos binários do Firebird será substituída. Antes de copiar, pare o serviço do Firebird.
+
+A pasta `Client` contém duas subpastas: `Client\32bit` e `Client\64bit`. Você pode usar os arquivos dessas pastas para desenvolver uma aplicação que vai usar a criptografia: copie todos os arquivos dessa pasta para a pasta onde está o arquivo executável da sua aplicação. É muito importante usar o arquivo `fbclient.dll` fornecido.
+
+A pasta `key-plugins` contém duas fontes de chave. Copie você mesmo o arquivo necessário:
+
+[cols="2,3,4", options="header"]
+|===
+| Arquivo | Para onde copiar | Finalidade
+| `KeySource.dll` | para a pasta do cliente, junto da `fbclient.dll` | Biblioteca de teste com chaves de teste. A aplicação e os utilitários sem opções recebem a chave. Veja <<fbcrypt-keysource>>.
+| `keyholderstdin.dll` | para a pasta `plugins` do cliente | Plugin `KeyHolderStdin`: o utilitário lê a chave da entrada padrão. Veja <<fbcrypt-utils-stdin>>.
+|===
+
+Sem a cópia, um utilitário com a opção `-KeyHolder KeyHolderStdin` mostra `Key holder plugin KeyHolderStdin failed to load`.
+
+A pasta `Client/db-crypt` contém um script para verificar a criptografia e um banco de dados de teste.
+
+==== Configuração
+
+Depois de descompactar o arquivo, configure o Firebird.
+
+Para ativar o plugin de criptografia do banco de dados e o gerenciamento de chaves, informe o nome do plugin de gerenciamento de chaves no arquivo de configuração `firebird.conf`:
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolder
+----
+
+Ou, como alternativa, defina o alias do banco de dados criptografado no arquivo `databases.conf`:
+
+[source,conf]
+----
+myencrypted = C:\Temp\EMPLOYEE30\EMPLOYEE30.FDB
+{
+    KeyHolderPlugin = KeyHolder
+}
+----
+
+No segundo caso, conecte-se ao banco de dados pelo alias (`localhost:myencrypted`).
+
+Depois de alterar a configuração, reinicie o serviço do Firebird.
+
+==== Testes
+
+Depois da instalação e da configuração, você pode fazer uma série de testes para verificar o funcionamento da criptografia e da descriptografia. Os testes estão na pasta `Client/db-crypt`.
+
+[NOTE]
+====
+Nos arquivos compactados de 01.10.2026, em vez dos arquivos `01-encrypt.bat` ... `05-gfix.bat`, há um único script `run-tests.ps1`. Ele executa os mesmos passos duas vezes: com a chave da biblioteca `KeySource.dll` e com a chave da entrada padrão (plugin `KeyHolderStdin`). Antes de cada execução, o script copia o arquivo necessário da pasta `key-plugins` e altera o parâmetro `KeyHolderPlugin` no arquivo `firebird.conf` do cliente. Os comandos que ele executa estão descritos abaixo.
+====
+
+[WARNING]
+====
+Todos os testes são feitos com chaves de teste. Se na sua instalação as chaves de teste estiverem no arquivo `%root%/plugins/KeyHolder.conf`, esse arquivo serve somente para testes. Não se esqueça de renomeá-lo ou apagá-lo quando terminar os testes.
+====
+
+Primeiro, vamos criptografar o banco de dados de teste `employee.fdb`.
+
+.Teste 01-encrypt.bat
+[source,cmd]
+----
+.\01-encrypt.bat
+----
+
+Este script executa os seguintes comandos:
+
+[source,sql]
+----
+-- Início da criptografia com o plugin dbcrypt e a chave com o nome Green
+alter database encrypt with dbcrypt key Green;
+commit;
+-- Exibição das informações sobre o banco de dados, incluindo a criptografia
+show database;
+exit;
+----
+
+Como resultado, a criptografia é feita, e são exibidas informações de que a criptografia está em andamento.
+
+----
+Executing "C:\Firebird\crypt-plugin\CryptClient\64bit\isql.exe" -user SYSDBA -password masterkey -q -i "C:\Users\Administrator\AppData\Local\Temp\2\tmp6A6A.tmp" localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb"
+Database: localhost:C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb
+        Owner: SYSDBA
+PAGE_SIZE 8192
+Number of DB pages allocated = 346
+Number of DB pages used = 315
+Number of DB pages free = 31
+Sweep interval = 20000
+Forced Writes are OFF
+Transaction - oldest = 162
+Transaction - oldest active = 163
+Transaction - oldest snapshot = 163
+Transaction - Next = 164
+ODS = 13.1
+Database encrypted, crypt thread not complete
+Wire crypt plugin: Arc4
+Creation date: Jul 2, 2026 16:34:12
+Replica mode: NONE
+Protocol version = 19
+Default Character set: NONE
+Publication: Disabled
+----
+
+Observe que o processo de criptografia é assíncrono e, para bancos de dados grandes, pode levar bastante tempo. A frase "crypt thread not complete" indica que o processo de criptografia foi iniciado, mas não terminou. Quando a criptografia terminar, essa frase desaparece e aparece somente "Database encrypted".
+
+Agora vamos verificar o backup com o utilitário `gbak`.
+
+.Teste 02-backup.bat
+[source,cmd]
+----
+.\02-backup.bat
+----
+
+Este arquivo executa o seguinte comando:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gbak -b localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb" "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fbk" -KeyHolder KeyHolderStdin
+----
+
+Agora vamos verificar a restauração a partir do backup com o utilitário `gbak`.
+
+.Teste 03-restore.bat
+[source,cmd]
+----
+.\03-restore.bat
+----
+
+Este arquivo executa o seguinte comando:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gbak -c "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fbk" localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-restore.fdb" -KeyHolder KeyHolderStdin
+----
+
+Agora vamos verificar o backup com o utilitário `nbackup`.
+
+.Teste 04-nbackup.bat
+[source,cmd]
+----
+.\04-nbackup.bat
+----
+
+Este arquivo executa o seguinte comando:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | nbackup -b 0 localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb" "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-nbackup.fdb" -KeyHolder KeyHolderStdin
+----
+
+A saída é esta:
+
+[listing]
+----
+time elapsed    0 sec
+page reads      327
+page writes     326
+----
+
+Agora vamos verificar a validação do banco de dados com o utilitário `gfix`.
+
+.Teste 05-gfix.bat
+[source,cmd]
+----
+.\05-gfix.bat
+----
+
+Este arquivo executa o seguinte comando:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gfix -v -full -KeyHolder KeyHolderStdin localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb"
+----
+
+Se todos os testes terminarem sem erros, o plugin de criptografia está instalado e configurado corretamente. Apague ou renomeie o arquivo `%root%/plugins/KeyHolder.conf`, se ele existir: ele fornece chaves somente para testes. Depois disso, comece a trabalhar com as chaves reais.
+
+Antes de criptografar um banco de dados real, não se esqueça de fazer um backup do banco de dados original. Assim, em caso de falha, você terá uma forma de voltar ao estado anterior.
+
+== Linux
+
+Os scripts para instalar o Firebird e o plugin de criptografia no Linux estão em https://github.com/IBSurgeon/firebirdlinuxinstall
+
+Para instalar nas versões "vanilla" do Firebird, use um dos scripts com o nome `fb_vanilla-<version>.sh`. Por exemplo, para o Firebird 5.0, é o arquivo https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/refs/heads/main/fb_vanilla-50.sh[fb_vanilla-50.sh].
+
+[source,bash]
+----
+wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/refs/heads/main/fb_vanilla-50.sh
+chmod +x fb_vanilla-50.sh
+sudo ./fb_vanilla-50.sh
+----
+
+Esta mensagem é mostrada:
+
+----
+This program will install Firebird 5.0 on this computer
+    Command line switches:
+    --debug - also install debug information, takes more traffic;
+    --crypt - install and configure crypto plugin
+    --crypt-only[=/path/to/firebird] - install and configure ONLY crypto plugin without Firebird
+Press Enter to start installation or ^C to abort
+----
+
+A opção `--crypt` instala o Firebird junto com o plugin de criptografia. A opção `--crypt-only` instala somente o plugin em um Firebird já instalado:
+
+[source,bash]
+----
+sudo ./fb_vanilla-50.sh --crypt-only=/opt/firebird
+----
+
+[NOTE]
+====
+O script não instala o pacote de compatibilidade OpenSSL 1.1 e não cria o arquivo com as chaves. Se a criptografia não iniciar depois da execução do script, execute os passos da instalação manual descritos abaixo.
+====
+
+=== Instalação manual no Linux
+
+Os passos abaixo foram testados no AlmaLinux 9 com Firebird 3.0, 4.0 e 5.0 instalados em `/opt/firebird`. Todos os comandos são executados como `root`.
+
+Diferenças entre as versões:
+
+[cols="3,1,1,1", options="header"]
+|===
+| | FB 3.0 | FB 4.0 | FB 5.0
+| Arquivo compactado `CryptPlugin-FB_<V>_LINUX_64bit.tar.xz` | `30` | `40` | `50`
+| Precisa do OpenSSL 1.1 | sim | sim | não (OpenSSL 3)
+| Nome do serviço systemd | `firebird-superserver` | `firebird` | `firebird`
+| Cópia criptografada com o `gbak` padrão | não | sim | sim
+| `MON$DATABASE.MON$CRYPT_STATE` | não | sim | sim
+|===
+
+.Passo 1. Defina a versão
+[source,bash]
+----
+V=50      # 30 = Firebird 3.0, 40 = Firebird 4.0, 50 = Firebird 5.0
+FB=/opt/firebird
+----
+
+.Passo 2. Baixe e descompacte o arquivo
+[source,bash]
+----
+cd /root
+curl -LO https://cc.ib-aid.com/download/distr/crypt/CryptPlugin-FB_${V}_LINUX_64bit.tar.xz
+mkdir -p /root/crypt
+tar xJf CryptPlugin-FB_${V}_LINUX_64bit.tar.xz -C /root/crypt --strip-components=1
+ls /root/crypt/Server/plugins
+----
+
+A pasta `Server/plugins` contém os arquivos `libDbCrypt.so`, `libKeyHolder.so` e `DbCrypt.conf` (licença de avaliação). A pasta `Client` contém os utilitários e as bibliotecas do cliente.
+
+.Passo 3. Instale o OpenSSL 1.1 (somente Firebird 3.0 e 4.0)
+[source,bash]
+----
+dnf install -y compat-openssl11
+ls /usr/lib64/libcrypto.so.1.1
+----
+
+Os plugins para Firebird 3.0 e 4.0 carregam a `libcrypto.so.1.1`. Sem essa biblioteca, o comando `ALTER DATABASE ENCRYPT` termina com o erro `Library libcrypto.so.1.1 failed to load`. No Debian e no Ubuntu, o pacote tem outro nome; instale o pacote que contém a `libcrypto.so.1.1`.
+
+.Passo 4. Copie os arquivos do plugin
+[source,bash]
+----
+cp /root/crypt/Server/plugins/* $FB/plugins/
+ls -l $FB/plugins | grep -iE 'crypt|key'
+----
+
+.Passo 5. Crie o arquivo com a chave (para o teste)
+[source,bash]
+----
+KEY=$(openssl rand -hex 32 | sed 's/../0x&,/g')
+echo "Key=Red $KEY" > $FB/plugins/KeyHolder.conf
+chown root:firebird $FB/plugins/KeyHolder.conf
+chmod 640 $FB/plugins/KeyHolder.conf
+----
+
+Guarde uma cópia da chave fora do servidor. Um arquivo com a chave no mesmo disco do banco de dados serve somente para testes e desenvolvimento.
+
+.Passo 6. Ative o plugin de gerenciamento de chaves
+
+Para um banco de dados (`databases.conf`):
+
+[source,bash]
+----
+cat >> $FB/databases.conf <<'EOF'
+
+employee = /opt/firebird/examples/empbuild/employee.fdb
+{
+    KeyHolderPlugin = KeyHolder
+}
+EOF
+----
+
+Ou para todos os bancos de dados (`firebird.conf`):
+
+[source,bash]
+----
+echo "KeyHolderPlugin = KeyHolder" >> $FB/firebird.conf
+----
+
+A segunda variante é necessária se você restaura um backup criptografado em um novo arquivo.
+
+.Passo 7. Reinicie o Firebird
+[source,bash]
+----
+# Firebird 3.0:
+systemctl restart firebird-superserver
+# Firebird 4.0 e 5.0:
+systemctl restart firebird
+----
+
+.Passo 8. Criptografe o banco de dados de teste
+[source,bash]
+----
+$FB/bin/isql localhost:employee -user SYSDBA -password masterkey <<'EOF'
+alter database encrypt with "DbCrypt" key Red;
+commit;
+show database;
+EOF
+----
+
+No Linux, o nome do plugin `"DbCrypt"` diferencia maiúsculas de minúsculas. Não remova as aspas duplas.
+
+.Passo 9. Verifique o resultado
+[source,bash]
+----
+$FB/bin/gstat -h /opt/firebird/examples/empbuild/employee.fdb | grep -iE 'attrib|key name'
+#   Attributes      force write, encrypted, plugin DbCrypt
+#   Encryption key name:    RED
+----
+
+.Passo 10. Verifique que a chave é necessária
+[source,bash]
+----
+mv $FB/plugins/KeyHolder.conf $FB/plugins/KeyHolder.conf.off
+systemctl restart firebird            # firebird-superserver para 3.0
+echo "select count(*) from employee;" | $FB/bin/isql localhost:employee -user SYSDBA -password masterkey
+#   Statement failed, SQLSTATE = 08006
+#   Invalid crypt key RED
+#   -Key not set
+mv $FB/plugins/KeyHolder.conf.off $FB/plugins/KeyHolder.conf
+systemctl restart firebird            # firebird-superserver para 3.0
+----
+
+O backup no Linux está descrito em <<fbcrypt-utils-gbak>>.
+
+== Arquivo de licença
+
+O plugin `DbCrypt` funciona somente com o arquivo de licença `plugins/DbCrypt.conf`. Os arquivos compactados contêm uma licença de avaliação com prazo de validade limitado. Para um sistema em produção, substitua o arquivo pela licença recebida da IBSurgeon e reinicie o Firebird.
+
+O arquivo de licença é necessário em todos os lugares onde o plugin `DbCrypt` é carregado: no servidor e junto do utilitário `gbak` que cria backups criptografados.
+
+Os parâmetros do arquivo estão descritos em <<fbcrypt-config-dbcrypt>>.

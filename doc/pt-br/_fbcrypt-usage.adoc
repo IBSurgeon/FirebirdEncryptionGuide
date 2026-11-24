@@ -1,0 +1,97 @@
+[[fbcrypt-usage]]
+= Criptografia, descriptografia e troca da chave
+
+Este capítulo descreve as operações básicas com um banco de dados criptografado.
+
+== Antes de começar
+
+Verifique o seguinte:
+
+. Existe um backup do banco de dados. Faça os primeiros testes somente em uma cópia.
+. O plugin está instalado, e o arquivo de licença `DbCrypt.conf` está na pasta `plugins` (veja <<fbcrypt-install>>).
+. O parâmetro `KeyHolderPlugin = KeyHolder` está definido em `firebird.conf` ou em `databases.conf`.
+. A chave foi criada, e uma cópia dela está guardada fora do servidor (veja <<fbcrypt-keygen>>).
+. A chave está disponível para o servidor. Há três formas:
+** gravar a chave temporariamente no arquivo `plugins/KeyHolder.conf`;
+** enviar a chave a partir do cliente com o utilitário `isql` e o plugin `KeyHolderStdin` (veja <<fbcrypt-utils>>);
+** executar o comando com o utilitário `isql` a partir da pasta do cliente que contém a biblioteca `KeySource` (veja <<fbcrypt-keysource>>). O plugin `KeyHolder` do cliente envia a chave ao servidor, e não é necessário um arquivo no servidor.
+
+Conecte-se por TCP/IP (`localhost:` ou `inet://`), e não por um caminho local sem o nome do servidor.
+
+== Criptografia do banco de dados
+
+[source,sql]
+----
+ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY Red;
+COMMIT;
+----
+
+[cols="1,3", options="header"]
+|===
+| Elemento | Observação
+| `"DbCrypt"`
+| Nome do plugin de criptografia. No Linux, o nome diferencia maiúsculas de minúsculas. Por isso, escreva-o entre aspas duplas. No Windows, as aspas são opcionais.
+
+| `Red`
+| Nome da chave. Sem aspas, o nome é gravado em maiúsculas (`RED`). O plugin `KeyHolder` compara os nomes sem diferenciar maiúsculas de minúsculas.
+|===
+
+O comando somente inicia a criptografia. As páginas são criptografadas por uma thread do servidor em segundo plano:
+
+* A criptografia continua enquanto houver pelo menos uma conexão com o banco de dados. Para um banco de dados grande, mantenha uma conexão aberta até o fim da criptografia.
+* Você pode trabalhar com o banco de dados durante a criptografia.
+* Se o servidor for parado, a criptografia continua na próxima conexão com a chave.
+
+Como verificar se a criptografia terminou está descrito em <<fbcrypt-monitoring>>.
+
+[WARNING]
+====
+Depois da criptografia, execute `gstat -h`: a linha `Attributes` deve conter a palavra `encrypted`.
+
+O comando `ALTER DATABASE ENCRYPT` pode terminar sem erro e não criptografar o banco de dados. Isso acontece no Firebird 3.0, 4.0 e 5.0 quando a chave é definida no arquivo `KeyHolder.conf` com uma frase secreta que contém os caracteres `{` e `}`. Os caracteres permitidos na frase estão listados em <<fbcrypt-keygen-password>>.
+====
+
+Depois do fim da criptografia:
+
+. Se a chave foi gravada em `plugins/KeyHolder.conf` somente para a criptografia, apague ou renomeie esse arquivo e reinicie o Firebird. O servidor funciona sem o arquivo `KeyHolder.conf`: ele só é necessário para os parâmetros do plugin (veja <<fbcrypt-config-keyholder>>).
+. Verifique que não é possível se conectar sem a chave.
+. Verifique o funcionamento das aplicações e do backup.
+
+== Descriptografia do banco de dados
+
+[source,sql]
+----
+ALTER DATABASE DECRYPT;
+COMMIT;
+----
+
+A descriptografia também é executada em uma thread em segundo plano. Não remova a chave nem o parâmetro `KeyHolderPlugin` enquanto `gstat -h` mostrar o atributo `encrypted`.
+
+== Troca da chave
+
+O Firebird não consegue substituir a chave de um banco de dados criptografado com um único comando. Uma tentativa de executar `ALTER DATABASE ENCRYPT` em um banco de dados já criptografado termina com erro. Há duas formas de trocar a chave.
+
+*Forma 1. Descriptografar e criptografar de novo.*
+
+. Execute `ALTER DATABASE DECRYPT` e espere o fim.
+. Execute `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <novo nome>`.
+
+Entre os passos, o banco de dados fica no disco sem criptografia. As duas operações leem e gravam todas as páginas.
+
+*Forma 2. Backup e restauração.*
+
+. Faça um backup com o utilitário `gbak`.
+. Restaure-o em um novo banco de dados com o parâmetro `-KEYNAME <novo nome>`.
+
+Veja <<fbcrypt-utils-gbak>>.
+
+[TIP]
+====
+Dê um novo nome à nova chave. Pelo nome da chave no cabeçalho (`gstat -h`), você sempre vê com qual chave o banco de dados ou a cópia dele está criptografado.
+====
+
+== Quem pode criptografar o banco de dados
+
+Os comandos `ALTER DATABASE ENCRYPT` e `ALTER DATABASE DECRYPT` podem ser executados pelo dono do banco de dados, por um administrador (`SYSDBA`, role `RDB$ADMIN`) ou por um usuário com o privilégio `ALTER DATABASE`.
+
+A criptografia não substitui o controle de permissões. Um usuário que se conectou com a chave correta vê os dados de acordo com as suas permissões SQL.

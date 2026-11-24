@@ -1,0 +1,33 @@
+:sectnums!:
+
+[preface]
+= Por que precisamos de criptografia de bancos de dados (e quando ela não é necessária)?
+
+A criptografia de bancos de dados foi introduzida no Firebird 3.0 (junto com a criptografia do protocolo de rede, que muitas vezes é confundida com o assunto deste documento). Ela ampliou muito as possibilidades de proteger os dados contra acesso não autorizado. Porém, ela não resolve todos os problemas. Para usá-la corretamente, é necessário entender seus pontos fortes e fracos. Neste documento, vamos examinar a estrutura interna da criptografia de bancos de dados em um nível básico. O objetivo é dar aos desenvolvedores de aplicações Firebird um entendimento melhor de como a criptografia de bancos de dados funciona.
+
+== Por que precisamos de criptografia de bancos de dados?
+
+. Para proteger bancos de dados com dados confidenciais ou valiosos contra roubo "`físico`". Se um invasor roubar um disco com uma cópia do banco de dados criptografado ou obtiver de alguma forma uma cópia do arquivo do banco de dados, sem a chave correspondente não será possível ler os dados. Também não será possível usar software de recuperação, como o https://ib-aid.com/en/ibsurgeon-firstaid/[FirstAID], para extrair os dados. Isso depende, é claro, do algoritmo de criptografia e da capacidade de processamento, mas quebrar o AES256 exige tempo demais ou recursos computacionais demais.
+
+. Para proteger o banco de dados contra acesso de aplicações não autorizadas, que não têm as chaves de criptografia. Exemplos:
+acesso direto por uma pessoa não autorizada, com ferramentas de desenvolvedor, para alterar informações confidenciais (por exemplo, transações financeiras); alteração ou roubo da lógica de negócio (textos de stored procedures e triggers).
+
+. Proteção de bancos de dados com dados pré-carregados contra exportação ou acesso por aplicações não autorizadas.
+
+. Recentemente, os governos criaram leis de proteção de dados (GDPR/DSGVO na Europa, LGPD no Brasil e outras). Entre outras coisas, essas leis exigem um nível mais alto de proteção dos dados pessoais e de outros dados confidenciais. A criptografia é citada como uma das medidas de proteção adequadas.
+
+== Quando a criptografia do banco de dados não é adequada?
+
+Em alguns casos, é melhor usar os recursos de segurança e a configuração do Firebird em vez da criptografia do banco de dados:
+
+. Para proteger o banco de dados contra acesso físico pela rede, configure o acesso de rede: feche as pastas compartilhadas na rede, porque o Firebird não precisa de acesso de rede aos arquivos do banco de dados, e restrinja as permissões de acesso (por exemplo, no Linux os arquivos do banco de dados devem ter permissão de leitura e escrita somente para o usuário e o grupo "`firebird`").
+
+. Para restringir o acesso a um banco de dados específico a um grupo de usuários, uma solução mais simples é configurar um banco de dados de segurança separado.
+
+. Para restringir o acesso a objetos do banco de dados (tabelas, stored procedures), use os mecanismos de segurança do Firebird: usuários, roles etc.
+
+É claro que as duas listas acima não estão completas. Mas elas dão uma ideia de quando você precisa de criptografia do banco de dados e quando não precisa.
+
+NOTE: Este documento é uma tradução do original em russo (doc/ru). Se os textos forem diferentes, o texto em russo é o correto.
+
+:sectnums:

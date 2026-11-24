@@ -1,0 +1,285 @@
+[[fbcrypt-keygen]]
+= Geração da chave
+
+Para gerar chaves que podem ser usadas na criptografia, desenvolvemos o utilitário `aesKeyGen`. Ele gera chaves para o algoritmo de criptografia AES256. O uso do utilitário é simples
+
+[source,cmd]
+----
+aesKeyGen.exe
+----
+
+no Linux, o comando é este:
+
+[source,bash]
+----
+./aesKeyGen
+----
+
+A saída do utilitário é esta:
+
+[listing]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+};
+----
+
+O utilitário obtém 32 bytes aleatórios do gerador criptográfico da biblioteca OpenSSL. Cada execução gera uma nova chave.
+
+Se você não tiver o utilitário `aesKeyGen`, pode obter uma chave no mesmo formato com o `openssl`:
+
+[source,bash]
+----
+openssl rand -hex 32 | sed 's/../0x&,/g'
+----
+
+[IMPORTANT]
+====
+Guarde uma cópia da chave em um local seguro *fora* do servidor de banco de dados. Uma chave perdida não pode ser recuperada: os dados do banco de dados e dos backups criptografados ficarão inacessíveis.
+====
+
+[[fbcrypt-keygen-format]]
+== Formato da chave
+
+A forma de texto da chave é usada no arquivo `KeyHolder.conf`, na biblioteca `KeySource`, na entrada padrão do plugin `KeyHolderStdin` e nas propriedades de conexão de Java e .NET.
+
+[source]
+----
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Regras:
+
+* Cada byte é escrito com exatamente cinco caracteres: `0x`, dois dígitos hexadecimais e uma vírgula.
+* Não são permitidos espaços entre os bytes.
+* Uma vírgula depois do último byte é permitida. O utilitário `aesKeyGen` mostra a chave com essa vírgula, e não é necessário removê-la.
+* O tamanho da chave é de 16, 24 ou 32 bytes (AES-128, AES-192, AES-256). Uma chave com outro tamanho causa o erro `Invalid key length`.
+* O nome da chave não contém espaços. Maiúsculas e minúsculas no nome não são diferenciadas.
+
+== Como usar esta chave?
+
+=== No arquivo `KeyHolder.conf`
+
+Este arquivo só pode ser usado para depuração.
+
+O formato de gravação da chave é este:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Cada chave tem um nome, que é escrito depois de `Key=`. Depois de um espaço vem a própria chave. O arquivo pode conter várias linhas `Key=`.
+
+Exemplo:
+
+[source,conf]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+----
+
+No Linux, restrinja o acesso ao arquivo:
+
+[source,bash]
+----
+chown root:firebird /opt/firebird/plugins/KeyHolder.conf
+chmod 640 /opt/firebird/plugins/KeyHolder.conf
+----
+
+[[fbcrypt-keygen-password]]
+=== Frase secreta em vez da chave
+
+Em vez de uma chave binária, você pode definir uma frase secreta. Para isso, use o parâmetro `Password`:
+
+[source,conf]
+----
+Password=<KeyName> <passphrase>
+----
+
+O plugin calcula a partir da frase uma chave de 32 bytes com a função PBKDF2 (HMAC-SHA256, 10000 iterações). A mesma frase sempre gera a mesma chave.
+
+A linha `Password=` pode ser usada nos mesmos lugares que a linha `Key=`: no arquivo `KeyHolder.conf`, na biblioteca `KeySource` e na entrada padrão do plugin `KeyHolderStdin`.
+
+O plugin lê a linha como um arquivo de configuração do Firebird. Por isso, nem todos os caracteres são permitidos na frase:
+
+[cols="2,5", options="header"]
+|===
+| Caractere | O que acontece
+| `"` | A linha não é analisada. Erro `illegal line`.
+| `#` | O plugin recebe outra frase. A chave não serve: `Invalid crypt key`.
+| `{` e `}` | O plugin não recebe a chave. A partir da biblioteca `KeySource`: erro `Invalid crypt key`. A partir do arquivo `KeyHolder.conf`: o comando `ALTER DATABASE ENCRYPT` termina sem erro, mas o banco de dados continua sem criptografia.
+| `$(` | Início de uma substituição. O plugin recebe outra frase ou não analisa a linha.
+| espaços no início e no fim | São removidos.
+|===
+
+Passam sem alteração: letras, dígitos, espaços dentro da frase, os caracteres `'`, `;`, `=`, `\` e letras de alfabetos nacionais. Salve o arquivo com essa frase na codificação UTF-8 sem BOM.
+
+[NOTE]
+====
+A força dessa chave é igual à força da frase. Uma chave aleatória de 32 bytes é mais segura. Se você escolher esta forma, use uma frase longa.
+====
+
+=== Nos utilitários de linha de comando com o plugin KeyHolderStdin
+
+O formato geral de chamada dos utilitários de linha de comando com o plugin `KeyHolderStdin` é este (Firebird 4.0 e 5.0; para a versão 3.0, veja <<fbcrypt-utils-fb3>>):
+
+[source,cmd]
+----
+echo Key=<KeyName> <key_value> | <utils> -KeyHolder KeyHolderStdin ...
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Mais detalhes em <<fbcrypt-utils>>.
+
+=== Em uma aplicação em C/C++
+
+Você pode usar a chave gerada como está, removendo a vírgula final.
+
+[source,cpp]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1
+};
+----
+
+=== Em uma aplicação em Delphi e Lazarus
+
+Aqui é bem simples: substitua todos os caracteres `0x` da chave por `$` e remova a vírgula final.
+
+[source,delphi]
+----
+const keyRed: array [0..31] of byte  = ($d6,$d8,$8d,$07,$09,$70,$fe,$8c,$2e,$fd,$a2,$ee,$cd,$84,$ab,$d3,$89,$48,$29,$a1,$2b,$f0,$b9,$81,$65,$2c,$b2,$92,$ad,$22,$b6,$e1);
+----
+
+=== Em uma aplicação em Java e .NET
+
+Os drivers Jaybird e Firebird .NET recebem a chave em forma de texto. O nome da chave e o valor são separados por dois-pontos:
+
+[source]
+----
+MyKey:0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+----
+
+Mais detalhes em <<fbcrypt-client-java>> e <<fbcrypt-client-net>>.
+
+[[fbcrypt-keygen-clientkeys]]
+== Chaves individuais dos clientes
+
+Em alguns sistemas, muitos clientes (filiais, estações de trabalho, parceiros) recebem a mesma chave do banco de dados. O utilitário `ClientKeygen` permite dar a cada cliente a sua própria chave e ver no log do servidor com qual chave a conexão foi feita.
+
+[NOTE]
+====
+Somente o plugin para Firebird 5.0 (HQbird 5) suporta chaves individuais dos clientes. As versões para Firebird 3.0 e 4.0 não têm esse recurso. O utilitário `ClientKeygen` não faz parte de todos os pacotes. Se ele não estiver no seu pacote, entre em contato com o suporte da IBSurgeon.
+====
+
+=== Como funciona
+
+. O utilitário `ClientKeygen` usa a chave do banco de dados e cria uma chave de cliente de 64 bytes. A chave de cliente contém dados aleatórios, o número da chave e a chave do banco de dados. O utilitário a criptografa com o valor do parâmetro `License` do arquivo `DbCrypt.conf`.
+. O cliente envia ao servidor a chave de cliente em vez da chave do banco de dados. O nome da chave continua o mesmo.
+. O plugin `DbCrypt` no servidor descriptografa a chave de cliente com a sua licença. Ele obtém a chave do banco de dados e o número da chave de cliente.
+
+Disso resulta:
+
+* Não é necessário criptografar o banco de dados de novo. Todas as chaves de cliente abrem o mesmo banco de dados.
+* A chave de cliente funciona somente em um servidor com o mesmo valor de `License` que o utilitário `ClientKeygen` usou.
+* A chave do banco de dados deve ter 32 bytes.
+* A chave normal do banco de dados continua funcionando. Guarde-a somente com o administrador.
+
+=== Criação das chaves
+
+Sintaxe:
+
+[source]
+----
+ClientKeygen {keyname} {keycount} [starting]
+----
+
+[cols="1,3", options="header"]
+|===
+| Parâmetro | Valor
+| `keyname` | nome da chave do banco de dados no arquivo `KeyHolder.conf`
+| `keycount` | quantas chaves de cliente criar
+| `starting` | número da primeira chave (por padrão `1`)
+|===
+
+O utilitário lê a chave do banco de dados do arquivo `KeyHolder.conf` e a licença do arquivo `DbCrypt.conf`. Os dois arquivos devem estar na pasta atual ou na pasta `../plugins`. O utilitário grava o resultado na pasta atual.
+
+Passos:
+
+. No computador do administrador, crie uma pasta vazia.
+. Copie para ela o arquivo `DbCrypt.conf` do servidor.
+. Crie nela o arquivo `KeyHolder.conf` com a linha `Key=<nome> <valor>` para a chave do banco de dados.
+. Execute o utilitário nessa pasta:
++
+[source,bash]
+----
+ClientKeygen Red 20 1
+----
++
+O utilitário cria 20 arquivos: `KeyHolder.conf.1`, `KeyHolder.conf.2`, ... `KeyHolder.conf.20`. Cada arquivo contém uma linha `Key=Red <key_value>` com um valor de 64 bytes.
+. Entregue a cada cliente o seu arquivo por um canal protegido. Anote qual número de chave cada cliente recebeu.
+. Apague a pasta. Ela contém a chave do banco de dados.
+
+Para adicionar clientes depois, execute o utilitário com o terceiro parâmetro. Por exemplo, `ClientKeygen Red 5 21` cria as chaves com os números de 21 a 25.
+
+=== Uso no cliente
+
+A chave de cliente é usada da mesma forma que uma chave normal. O nome da chave é o mesmo, e o valor tem 64 bytes.
+
+[cols="2,4", options="header"]
+|===
+| Forma de envio da chave | O que fazer
+| Biblioteca `fbcrypt`
+| Passe o valor para `fbcrypt_key` com o tamanho 64.
+
+| Plugin `KeyHolder` do cliente
+| Salve o arquivo `KeyHolder.conf.<número>` com o nome `plugins/KeyHolder.conf` na pasta da biblioteca cliente. No `firebird.conf` do cliente, defina `KeyHolderPlugin = KeyHolder`.
+
+| Biblioteca `KeySource`
+| Retorne a linha do arquivo na função `MakeKeys`.
+
+| Plugin `KeyHolderStdin`
+| Envie a linha do arquivo para a entrada padrão do utilitário.
+
+| Propriedade do driver (Jaybird, .NET)
+| Use o valor na forma `<nome>:0x..,0x..,`. É necessário o parâmetro `UnsafeClient = true`.
+|===
+
+=== Log de conexões
+
+Para que o servidor grave em `firebird.log` qual chave de cliente foi usada, adicione o parâmetro ao arquivo `plugins/DbCrypt.conf` do servidor e reinicie o Firebird:
+
+[source,conf]
+----
+Logger = true
+----
+
+A mensagem no log tem esta aparência:
+
+[listing]
+----
+DbCrypt login from 192.168.1.15/54907 using key 7
+----
+
+Aqui `192.168.1.15/54907` é o endereço e a porta do cliente, e `7` é o número da chave de cliente.
+
+Características do log:
+
+* Uma linha é criada para cada conexão com chave de cliente.
+* As conexões com a chave normal do banco de dados não vão para o log.
+* A linha é criada antes da verificação da chave. Uma tentativa de conexão com uma chave de cliente danificada também vai para o log.
+
+=== Substituição da chave de um cliente
+
+O plugin não tem uma lista de chaves revogadas. Não é possível desativar uma única chave de cliente.
+
+Para bloquear o acesso de um cliente que tem uma chave:
+
+. Descriptografe o banco de dados e criptografe-o com uma nova chave (veja <<fbcrypt-usage>>).
+. Crie novas chaves de cliente para a nova chave do banco de dados.
+. Entregue as novas chaves aos demais clientes.
+
+Um exemplo de trabalho com chaves de cliente está na pasta `examples/clientkeygen` do repositório https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

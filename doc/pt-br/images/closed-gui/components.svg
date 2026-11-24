@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="870" viewBox="0 0 1000 870">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker><marker id="arrowkey" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0,0 L14,6 L0,12 z" fill="#b45309"/></marker></defs>
+<rect x="0" y="0" width="1000" height="870" fill="#ffffff"/>
+<rect x="20" y="20" width="410" height="564" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="225" y="46" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">Estação de trabalho: pasta da aplicação</text>
+<rect x="570" y="20" width="410" height="564" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="775" y="46" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1f2933" font-weight="bold">Servidor: pasta do Firebird</text>
+<rect x="45" y="64" width="360" height="76" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="225.0" y="88" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Aplicação</text>
+<text x="225.0" y="108" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">chama as funções comuns do Firebird,</text>
+<text x="225.0" y="126" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não sabe nada da criptografia</text>
+<rect x="45" y="170" width="360" height="76" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="225.0" y="194" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">fbclient.dll</text>
+<text x="225.0" y="214" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">biblioteca cliente do Firebird</text>
+<text x="225.0" y="232" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">firebird.conf: KeyHolderPlugin = KeyHolder</text>
+<rect x="45" y="276" width="360" height="76" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="225.0" y="300" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">plugins\keyholder.dll</text>
+<text x="225.0" y="320" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">plugin KeyHolder do cliente:</text>
+<text x="225.0" y="338" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">recebe a chave da KeySource.dll</text>
+<rect x="45" y="382" width="360" height="76" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="225.0" y="406" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeySource.dll</text>
+<text x="225.0" y="426" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">sua biblioteca:</text>
+<text x="225.0" y="444" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">a função MakeKeys retorna a chave</text>
+<rect x="45" y="488" width="360" height="76" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.2"/>
+<text x="225.0" y="512" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Origem da chave</text>
+<text x="225.0" y="532" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">código da biblioteca, arquivo, pessoa na tela</text>
+<text x="225.0" y="550" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">ou serviço de chaves: quatro variantes</text>
+<rect x="595" y="64" width="360" height="76" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="775.0" y="88" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">No disco do servidor não há chaves</text>
+<text x="775.0" y="108" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não há arquivo KeyHolder.conf com chaves,</text>
+<text x="775.0" y="126" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">não há biblioteca KeySource.dll</text>
+<rect x="595" y="170" width="360" height="76" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="775.0" y="194" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">firebird.exe</text>
+<text x="775.0" y="214" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">servidor Firebird</text>
+<text x="775.0" y="232" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">firebird.conf: KeyHolderPlugin = KeyHolder</text>
+<rect x="595" y="276" width="360" height="76" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="775.0" y="300" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">plugins\keyholder.dll</text>
+<text x="775.0" y="320" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">plugin KeyHolder do servidor: recebe a chave</text>
+<text x="775.0" y="338" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">e a mantém na memória da conexão</text>
+<rect x="595" y="382" width="360" height="76" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="775.0" y="406" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">plugins\dbcrypt.dll + DbCrypt.conf</text>
+<text x="775.0" y="426" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">plugin DbCrypt e arquivo de licença:</text>
+<text x="775.0" y="444" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">criptografa e descriptografa as páginas</text>
+<rect x="595" y="488" width="360" height="76" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="775.0" y="512" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Arquivo do banco de dados</text>
+<text x="775.0" y="532" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">EMPLOYEE.FDB:</text>
+<text x="775.0" y="550" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">todas as páginas criptografadas</text>
+<line x1="225.0" y1="140" x2="225.0" y2="168" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<circle cx="247.0" cy="154" r="10" fill="#1f2933"/>
+<text x="247.0" y="158.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">1</text>
+<line x1="225.0" y1="246" x2="225.0" y2="274" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<circle cx="247.0" cy="260" r="10" fill="#1f2933"/>
+<text x="247.0" y="264.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">4</text>
+<line x1="195.0" y1="352" x2="195.0" y2="380" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<circle cx="173.0" cy="366" r="10" fill="#1f2933"/>
+<text x="173.0" y="370.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">5</text>
+<line x1="255.0" y1="382" x2="255.0" y2="355" stroke="#b45309" stroke-width="3" marker-end="url(#arrowkey)"/>
+<circle cx="279.0" cy="366" r="10" fill="#1f2933"/>
+<text x="279.0" y="370.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">6</text>
+<line x1="225.0" y1="488" x2="225.0" y2="461" stroke="#b45309" stroke-width="3" marker-end="url(#arrowkey)"/>
+<text x="500" y="180" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">conexão</text>
+<line x1="405" y1="196" x2="593" y2="196" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<circle cx="500" cy="196" r="10" fill="#1f2933"/>
+<text x="500" y="200.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">2</text>
+<line x1="595" y1="226" x2="407" y2="226" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<circle cx="500" cy="226" r="10" fill="#1f2933"/>
+<text x="500" y="230.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">3</text>
+<text x="500" y="252" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">servidor pede a chave</text>
+<text x="500" y="298" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle" fill="#1f2933">chave criptografada</text>
+<line x1="405" y1="314" x2="592" y2="314" stroke="#b45309" stroke-width="3" marker-end="url(#arrowkey)"/>
+<circle cx="500" cy="314" r="10" fill="#1f2933"/>
+<text x="500" y="318.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">7</text>
+<line x1="775.0" y1="246" x2="775.0" y2="274" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="775.0" y1="352" x2="775.0" y2="379" stroke="#b45309" stroke-width="3" marker-end="url(#arrowkey)"/>
+<circle cx="799.0" cy="366" r="10" fill="#1f2933"/>
+<text x="799.0" y="370.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">8</text>
+<line x1="755.0" y1="458" x2="755.0" y2="486" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<line x1="795.0" y1="488" x2="795.0" y2="460" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<circle cx="819.0" cy="472" r="10" fill="#1f2933"/>
+<text x="819.0" y="476.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">9</text>
+<circle cx="40" cy="616" r="10" fill="#1f2933"/>
+<text x="40" y="620.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">1</text>
+<text x="60" y="621" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">A aplicação abre uma conexão com o banco de dados.</text>
+<circle cx="40" cy="640" r="10" fill="#1f2933"/>
+<text x="40" y="644.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">2</text>
+<text x="60" y="645" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">A fbclient.dll envia a solicitação ao servidor.</text>
+<circle cx="40" cy="664" r="10" fill="#1f2933"/>
+<text x="40" y="668.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">3</text>
+<text x="60" y="669" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">O servidor vê que o banco de dados está criptografado e pede a chave ao cliente.</text>
+<circle cx="40" cy="688" r="10" fill="#1f2933"/>
+<text x="40" y="692.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">4</text>
+<text x="60" y="693" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">A fbclient.dll carrega o plugin KeyHolder da pasta plugins.</text>
+<circle cx="40" cy="712" r="10" fill="#1f2933"/>
+<text x="40" y="716.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">5</text>
+<text x="60" y="717" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">O KeyHolder do cliente chama a função MakeKeys da biblioteca KeySource.dll.</text>
+<circle cx="40" cy="736" r="10" fill="#1f2933"/>
+<text x="40" y="740.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">6</text>
+<text x="60" y="741" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">A KeySource.dll obtém a chave da sua origem e a retorna.</text>
+<circle cx="40" cy="760" r="10" fill="#1f2933"/>
+<text x="40" y="764.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">7</text>
+<text x="60" y="765" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">O KeyHolder do cliente envia a chave ao servidor de forma criptografada.</text>
+<circle cx="40" cy="784" r="10" fill="#1f2933"/>
+<text x="40" y="788.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">8</text>
+<text x="60" y="789" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">O KeyHolder do servidor passa a chave ao plugin DbCrypt.</text>
+<circle cx="40" cy="808" r="10" fill="#1f2933"/>
+<text x="40" y="812.5" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle" fill="#ffffff" font-weight="bold">9</text>
+<text x="60" y="813" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933">O DbCrypt descriptografa as páginas na leitura e as criptografa na gravação.</text>
+<line x1="30" y1="836" x2="96" y2="836" stroke="#b45309" stroke-width="3" marker-end="url(#arrowkey)"/>
+<text x="108" y="841" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="start" fill="#1f2933" font-style="italic">linha grossa: caminho da chave</text>
+</svg>

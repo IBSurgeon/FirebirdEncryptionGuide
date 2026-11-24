@@ -1,0 +1,262 @@
+[[fbcrypt-server]]
+= Como funciona a criptografia do banco de dados Firebird no servidor
+
+Vamos examinar os detalhes internos da criptografia do banco de dados Firebird. Começamos pela parte do servidor.
+
+== Qual parte do banco de dados é criptografada?
+
+A primeira pergunta é: qual parte do banco de dados é criptografada? Como você provavelmente sabe, um banco de dados Firebird é formado por partes de tamanho igual, chamadas "`páginas do banco de dados`". Existem vários tipos dessas páginas. Cada tipo tem uma finalidade específica.
+
+Abaixo você pode ver uma figura com os principais tipos de página:
+
+.Tipos de página do banco de dados
+image::1_firebird_database_data_pages.png[]
+
+Algumas páginas guardam dados dos usuários. Outras são necessárias para guardar informações do sistema, por exemplo, as páginas de transações e as páginas de inventário de páginas (mais informações sobre as páginas do banco de dados estão https://ib-aid.com/en/articles/database-physical-structure-interbase-and-firebird/[disponíveis aqui]).
+
+Na criptografia do banco de dados Firebird, somente as páginas com dados dos usuários são criptografadas: páginas de dados, de índices, de geradores e de BLOBs.
+
+.A criptografia é aplicada somente às páginas do banco de dados que contêm dados dos usuários
+image::2_firebird_encrypted_pages.png[]
+
+Observe que os metadados do banco de dados (nomes de stored procedures, tabelas, views, triggers, geradores etc.) não são diferentes dos "`dados dos usuários`" para a parte do mecanismo responsável pela criptografia. Por isso, eles também são criptografados.
+
+Por que as páginas do sistema não são criptografadas? Principalmente por motivos de desempenho, e porque elas não contêm dados confidenciais que precisem de proteção.
+
+A página de cabeçalho do banco de dados não é criptografada, porque contém as informações necessárias para a criptografia (por exemplo, o nome da chave).
+
+== Quando ocorre a criptografia das páginas de dados?
+
+Quando o usuário executa uma consulta SELECT em um banco de dados criptografado, os dados são lidos do arquivo criptografado, mas chegam à aplicação no result set sem criptografia.
+
+Vamos ver os detalhes desse processo:
+
+.Quando ocorre a criptografia das páginas do banco de dados?
+image::3_when_pages_encrypted.png[]
+
+Normalmente, o processo começa com uma série de leituras de páginas do arquivo do banco de dados. Essas páginas ficam no cache de arquivos do sistema operacional.
+
+Também é possível configurar o Firebird para não usar o cache de arquivos e usar somente o seu próprio cache. Mas, por padrão, o cache de arquivos é usado.
+
+Depois disso, o Firebird lê as páginas e as coloca no cache de páginas do Firebird (o tamanho dele é definido pelo parâmetro `DefaultDBCachePages` em `firebird.conf` e/ou `databases.conf`, ou na página de cabeçalho do banco de dados).
+
+Em seguida, as páginas do cache são selecionadas para o result set de uma consulta SQL específica (`SELECT` no nosso exemplo).
+
+Os detalhes estão na figura abaixo:
+
+.A criptografia das páginas ocorre entre o cache do Firebird e o cache de arquivos do sistema operacional
+image::4_pages_encrypted_between_caches.png[]
+
+Assim, as páginas do banco de dados ficam criptografadas no cache de arquivos do sistema operacional, mas chegam ao cache de páginas do Firebird sem criptografia, e vice-versa.
+
+[IMPORTANT]
+====
+A criptografia do banco de dados protege os dados no disco: o arquivo do banco de dados, as cópias dele e os backups criptografados. Ela não criptografa os dados na memória do servidor nem os dados transmitidos pela rede. Para proteger o tráfego de rede, use a criptografia do protocolo (`WireCrypt` em `firebird.conf`).
+====
+
+A parte do software do Firebird responsável pela criptografia e descriptografia se chama "`plugin de criptografia`". Como a maioria das implementações de plugin (conhecidas pelos autores) se chama `DbCrypt`, vamos chamá-lo de `DbCrypt`.
+
+Na figura abaixo você pode ver as variantes para Windows (`DbCrypt.dll`) e para Linux (`libDbCrypt.so`):
+
+.O plugin de criptografia (DbCrypt) faz a criptografia e a descriptografia
+image::6_firebird_dbcrypt.png[]
+
+=== Algoritmo de criptografia
+
+O plugin `DbCrypt` da IBSurgeon criptografa as páginas com o algoritmo AES. O tamanho da chave define a variante do algoritmo:
+
+[cols="1,1", options="header"]
+|===
+| Tamanho da chave | Algoritmo
+| 16 bytes | AES-128
+| 24 bytes | AES-192
+| 32 bytes | AES-256 (recomendado)
+|===
+
+O utilitário `aesKeyGen` (veja <<fbcrypt-keygen>>) cria chaves de 32 bytes.
+
+O plugin usa as funções criptográficas da biblioteca OpenSSL (`libcrypto`). Essa biblioteca deve estar disponível tanto para o servidor quanto para os utilitários do cliente (veja <<fbcrypt-config-openssl>>).
+
+== Gerenciamento de chaves
+
+Se você olhar a figura anterior por tempo suficiente, logo vai surgir a próxima pergunta: como o `DbCrypt` obtém a chave correta para criptografar e descriptografar as páginas do banco de dados?
+
+A resposta: existe outro plugin para o gerenciamento de chaves.
+
+Normalmente, o gerenciamento de chaves é feito por um plugin chamado `KeyHolder`. Ele guarda e gerencia as chaves para o plugin de criptografia (`DbCrypt`). O `KeyHolder` implementa a interface de gerenciamento de chaves usada pelo `DbCrypt`.
+
+[NOTE]
+====
+Além disso (se o código do plugin de criptografia for escrito para isso), ele pode carregar a chave por conta própria, por exemplo, de um pendrive USB externo. Mas esta variante não é tratada neste documento.
+====
+
+.DbCrypt e KeyHolder
+image::7_dbcrypt_and_keyholder.png[]
+
+*O que significa "`gerenciamento de chaves`"?*
+
+No caso mais simples, o `KeyHolder` lê as chaves de um arquivo no servidor e as passa para o plugin `DbCrypt`. Nos plugins da IBSurgeon, esse é o arquivo de texto `KeyHolder.conf` na pasta `plugins`.
+
+O arquivo de chaves pode conter várias chaves, guardadas por conveniência como uma lista com nomes. Ele pode ter esta aparência (o exemplo abaixo foi retirado do framework de plugins de criptografia da IBSurgeon):
+
+[listing]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74,
+----
+
+Quando o banco de dados está criptografado, o cabeçalho dele (página zero) continua sem criptografia. Entre outras coisas, ele guarda informações sobre o plugin de criptografia e o nome da chave. O cabeçalho é protegido por hashes criptografados, que impedem tentativas de descriptografar o banco de dados por meio da alteração do estado dele. Você pode ver essas informações com o comando `gstat -h databasename`:
+
+[listing]
+----
+Database header page information:
+....
+Creation date    Jan 11, 2017 15:12:20
+Attributes       force write, encrypted, plugin DBCRYPT
+
+Variable header data:
+ Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+ Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+ Encryption key name:    RED
+ Sweep interval:         0
+*END*
+----
+
+O `DbCrypt` pode processar páginas de vários bancos de dados com várias chaves:
+
+.Várias chaves para vários bancos de dados no mesmo servidor (por exemplo, em uma instância do Firebird)
+image::10_multi_database_keys.png[]
+
+=== Escolha da chave correta
+
+Os desenvolvedores perguntam com frequência: "`Como o plugin sabe qual chave é de qual banco de dados?`" A resposta é simples: pelo nome da chave, que fica guardado na página de cabeçalho do banco de dados.
+
+[NOTE]
+====
+O plugin `KeyHolder` compara os nomes das chaves sem diferenciar maiúsculas de minúsculas. Os nomes `Red`, `RED` e `red` indicam a mesma chave. Se o nome da chave no comando `ALTER DATABASE ENCRYPT` estiver sem aspas, o Firebird o grava no cabeçalho em maiúsculas (`RED`).
+====
+
+Uma pergunta menos frequente, mas importante: e se o nome da chave for igual ao nome indicado no cabeçalho, mas o valor da chave for diferente? O Firebird se protege contra isso com duas verificações:
+
+* *Key hash.* Ao criptografar o banco de dados, o Firebird pede ao plugin `DbCrypt` que criptografe uma sequência de teste (`0123456789ABCDEF`) e grava o hash do resultado no cabeçalho. Em cada conexão, o Firebird repete essa operação com a chave recebida e compara o hash com o valor gravado. Se os valores forem diferentes, a conexão termina com erro, e nenhuma página é lida com a chave errada.
+
+* *Crypt checksum.* Os campos do cabeçalho relacionados à criptografia (os indicadores "`criptografado`" e "`criptografia em andamento`", o número da página atual da criptografia, o nome do plugin, o nome da chave e o hash da chave) são criptografados com a chave do banco de dados e gravados como uma soma de verificação. Não é possível alterar esses campos sem a chave sem quebrar a soma de verificação.
+
+=== De onde o KeyHolder obtém as chaves
+
+O plugin `KeyHolder` da IBSurgeon pode obter as chaves de três fontes:
+
+[cols="2,3,3", options="header"]
+|===
+| Fonte | Como configurar | Quando usar
+| Aplicação cliente (pela rede)
+| A aplicação envia a chave na conexão: por meio da `fbcrypt`, da `KeySource`, do `KeyHolderStdin` ou de uma propriedade do driver. Veja <<fbcrypt-client-app>>.
+| Sistema em produção. Não há chave no servidor.
+
+| Biblioteca `KeySource` no servidor
+| A biblioteca `KeySource.dll` / `libKeySource.so` na pasta de bibliotecas do Firebird. Veja <<fbcrypt-keysource>>.
+| O servidor precisa da chave sem a participação dos clientes, mas a chave não deve ficar em um arquivo de texto.
+
+| Arquivo `plugins/KeyHolder.conf`
+| Linhas `Key=<nome> <valor>` ou `Password=<nome> <senha>`. Veja <<fbcrypt-config-keyholder>>.
+| Depuração, testes, criptografia inicial.
+|===
+
+O arquivo `KeyHolder.conf` é opcional. Um servidor em produção que recebe as chaves dos clientes funciona sem ele.
+
+Se o cliente enviar uma chave com o mesmo nome de uma chave do arquivo `KeyHolder.conf`, a chave do cliente é usada.
+
+A abordagem com as chaves no servidor é simples e conveniente para depuração, testes de desempenho etc., porque a criptografia fica transparente: as aplicações cliente e as ferramentas de desenvolvedor não sabem que o banco de dados está criptografado.
+
+Porém, na prática é necessário restringir o acesso das aplicações ao banco de dados: somente a aplicação cliente que tem a chave deve conseguir se conectar ao banco de dados criptografado.
+
+Para isso, o plugin `KeyHolder` pode receber a chave da aplicação cliente (que normalmente está em outro computador) pelo protocolo de rede do Firebird.
+
+[IMPORTANT]
+====
+O plugin `KeyHolder` da IBSurgeon não compartilha chaves entre conexões. Se não houver chave no servidor, *cada* conexão deve enviar a chave correta por conta própria. Uma conexão sem chave recebe um erro, mesmo que outra conexão com chave esteja trabalhando com o banco de dados ao mesmo tempo.
+
+Isso também vale para as conexões de serviço: `gbak`, `gfix`, `nbackup`, `isql`, ferramentas de administração, replicação. Veja <<fbcrypt-utils>>.
+====
+
+== Como proteger a transmissão das chaves?
+
+Talvez seja necessário proteger o banco de dados em uma situação em que o cliente decide acessar diretamente o banco de dados criptografado, sem passar pelas aplicações autorizadas (muitos fornecedores querem restringir o acesso aos dados e permitir somente o acesso por uma aplicação específica).
+
+Essa situação é equivalente àquela em que um invasor tem acesso ao servidor, mas não tem as chaves.
+
+Vamos ver os seguintes cenários de ataque para interceptar as chaves no servidor:
+
+. O invasor cria um plugin de criptografia falso (`DBCrypt.dll`) e o coloca no servidor. Quando o `KeyHolder` passa a chave, o `DbCrypt` falso faz um dump da chave:
++
+.Ataque com um arquivo DbCrypt.dll falso
+image::11_attack_with_fake_dbcrypt.png[]
+
+. O invasor cria um arquivo `firebird.exe` falso e faz o dump com ele:
++
+.Ataque com um firebird.exe falso
+image::12_attack_with_fake_firebird.png[]
+
+Para proteger contra esses ataques, uma boa implementação dos plugins de criptografia e de gerenciamento de chaves deve proteger a troca de chaves.
+
+A troca de chaves pode ser protegida com criptografia assimétrica, com um par de chaves pública e privada.
+
+Essas chaves são geradas durante o build e embutidas em um par específico de plugin de criptografia e plugin de gerenciamento de chaves. Para a melhor proteção, use pares `DbCrypt`/`KeyHolder` criados especialmente para você.
+
+image::13_key_exchange.png[]
+
+Nos plugins da IBSurgeon, a chave passa por dois trechos: da aplicação cliente para o `KeyHolder` e do `KeyHolder` para o `DbCrypt`. Cada trecho usa o mesmo protocolo, mas com o seu próprio par de chaves RSA embutido. Vamos chamar os lados de "`receptor`" (quem precisa da chave do banco de dados) e "`emissor`" (quem tem essa chave):
+
+[listing]
+----
+Receptor → Emissor:
+	Pedido de início da troca
+Emissor → Receptor:
+	Sequência aleatória (nova em cada troca)
+Receptor:
+	Cria um par de chaves RSA descartável
+	Assina com a chave privada embutida
+		(sequência aleatória + chave pública descartável)
+	Envia a chave pública descartável e a assinatura
+Emissor:
+	Verifica a assinatura com a chave pública embutida
+	Se a assinatura for inválida - não envia a chave
+	Criptografa as chaves do banco de dados com a chave pública descartável
+	Envia as chaves criptografadas (se necessário - em partes)
+Receptor:
+	Descriptografa as chaves com a chave privada descartável
+	Pronto para trabalhar
+----
+
+Essa troca tem as seguintes propriedades:
+
+* A chave do banco de dados nunca é transmitida em texto aberto.
+* O emissor entrega a chave somente ao "`seu`" receptor: um plugin falso sem a chave privada embutida não consegue criar uma assinatura correta.
+* Uma troca interceptada não pode ser repetida: a sequência aleatória e o par RSA descartável são novos em cada conexão.
+
+A implementação da proteção da troca de chaves no plugin da IBSurgeon também protege os dados na transmissão por uma rede externa não confiável. Isso inclui os casos em que a chave deve ser enviada por um canal que ainda não está pronto para criptografar todos os dados da forma padrão do Firebird. Essa situação ocorre quando se usa self security database.
+
+[IMPORTANT]
+====
+Observe que a criptografia e a correção das chaves transmitidas dependem da implementação do plugin. O engine do Firebird fornece somente um serviço básico de transmissão de baixo nível: "`enviar N bytes desta instância do plugin para a instância do plugin par`".
+====
+
+[NOTE]
+====
+A biblioteca cliente `fbcrypt` e os plugins `KeyHolder`, `KeyHolderStdin` e `DbCrypt` devem ser do mesmo pacote. Bibliotecas de builds diferentes podem ter pares de chaves embutidos diferentes. Nesse caso, elas não conseguem trocar a chave.
+====
+
+[discrete]
+== Resumo da parte do servidor da criptografia
+
+* A criptografia e a descriptografia são feitas pelo plugin de criptografia do banco de dados (`DbCrypt`) página por página, durante a troca de dados entre o cache de arquivos do sistema operacional e o cache de páginas do Firebird.
+
+* São criptografadas as páginas de dados, de índices, de BLOBs e de geradores. O cabeçalho e as páginas de serviço não são criptografados.
+
+* As chaves são gerenciadas pelo plugin `KeyHolder`. Ele recebe as chaves da aplicação cliente, da biblioteca `KeySource` ou do arquivo `KeyHolder.conf`.
+
+* A chave é transmitida entre a aplicação, o `KeyHolder` e o `DbCrypt` somente em forma criptografada.
+
+* Se não houver chave no servidor, cada conexão deve enviá-la.
+
+Agora vamos ver como as aplicações cliente trabalham com bancos de dados criptografados.
