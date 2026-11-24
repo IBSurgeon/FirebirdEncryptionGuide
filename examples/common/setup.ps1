@@ -16,11 +16,20 @@
 
 .EXAMPLE
   .\setup.ps1 -FirebirdDir C:\HQbird\Firebird50 -LicenseFile C:\lic\DbCrypt.conf
+
+.EXAMPLE
+  .\setup.ps1 -FirebirdDir C:\HQbird\Firebird50 -LicenseFile C:\lic\DbCrypt.conf -ClientDir32 C:\FB50x32
 #>
 param(
     [Parameter(Mandatory = $true)][string]$FirebirdDir,
     [Parameter(Mandatory = $true)][string]$LicenseFile,
     [string]$OpenSslDll = "",
+    # Folder with libcrypto-*.dll for the client folder. Default: the files in $FirebirdDir.
+    [string]$OpenSslDir = "",
+    # Folder with the 32-bit client files (fbclient.dll, fbcrypt.dll, plugins\).
+    # The script makes the folder client32 and the variable FBCRYPT_CLIENT32.
+    [string]$ClientDir32 = "",
+    [string]$OpenSslDir32 = "",
     [string]$WorkDir = (Join-Path $env:TEMP "fbcrypt-examples"),
     [int]$Port = 3070
 )
@@ -34,6 +43,58 @@ function Fail([string]$msg) {
 
 function Step([string]$msg) {
     Write-Host "== $msg"
+}
+
+# Machine type of a PE file: 0x8664 for x64, 0x14c for x86.
+function Get-PeMachine([string]$file) {
+    $bytes = [System.IO.File]::ReadAllBytes($file)
+    $peOffset = [System.BitConverter]::ToInt32($bytes, 0x3c)
+    return [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
+}
+
+# Names of the OpenSSL libraries that fbcrypt.dll loads by name. The names are in the library itself.
+function Get-FbCryptOpenSslNames([string]$library) {
+    $text = [System.Text.Encoding]::GetEncoding(28591).GetString([System.IO.File]::ReadAllBytes($library))
+    $names = @()
+    foreach ($m in [regex]::Matches($text, 'libcrypto-[0-9A-Za-z_-]+\.dll')) {
+        if ($names -notcontains $m.Value) { $names += $m.Value }
+    }
+    return ,$names
+}
+
+# fbcrypt.dll loads OpenSSL by name, and the name depends on the Firebird version and on
+# the bitness. A server folder can have the same OpenSSL under another name
+# (libcrypto-1_1.dll instead of libcrypto-1_1-x64.dll). Returns a table
+# "name that fbcrypt.dll loads" -> "file to copy from". The table is empty when $source
+# already has a library with a needed name.
+function Find-ClientOpenSsl([string]$source, [string]$openSslDir) {
+    $plan = @{}
+    $wanted = Get-FbCryptOpenSslNames (Join-Path $source "fbcrypt.dll")
+    if ($wanted.Count -eq 0) { return $plan }
+    $inSource = @(Get-ChildItem -Path $source -Filter "libcrypto-*.dll" | ForEach-Object { $_.Name })
+    foreach ($name in $wanted) {
+        if ($inSource -contains $name) { return $plan }
+    }
+    # The same version of OpenSSL under another name: look in -OpenSslDir, or in the folder itself.
+    # The library in -OpenSslDir can have the needed name too.
+    $libDir = $source
+    if ($openSslDir -ne "") { $libDir = (Resolve-Path $openSslDir).Path }
+    $machine = Get-PeMachine (Join-Path $source "fbclient.dll")
+    foreach ($name in $wanted) {
+        if ($name -notmatch 'libcrypto-(\d+(?:_\d+)?)') { continue }
+        $same = @(Get-ChildItem -Path $libDir -Filter "libcrypto-$($matches[1])*.dll")
+        foreach ($lib in $same) {
+            if ((Get-PeMachine $lib.FullName) -ne $machine) {
+                Fail "$($lib.FullName) is not for the same bitness as fbclient.dll in $source."
+            }
+            $plan[$name] = $lib.FullName
+            break
+        }
+    }
+    if ($plan.Count -eq 0) {
+        Fail "No OpenSSL library for fbcrypt.dll from $source. fbcrypt.dll looks for: $($wanted -join ', '). Use -OpenSslDir <folder with libcrypto-*.dll of the same bitness>."
+    }
+    return $plan
 }
 
 # ---------------------------------------------------------------- checks
@@ -54,6 +115,23 @@ if (($sslInDir.Count -eq 0) -and ($OpenSslDll -eq "")) {
     Fail "No libcrypto-*.dll in $FirebirdDir. Use -OpenSslDll <path to libcrypto dll>."
 }
 if (($OpenSslDll -ne "") -and (-not (Test-Path $OpenSslDll))) { Fail "OpenSSL library is not found: $OpenSslDll" }
+if (($OpenSslDir -ne "") -and (-not (Test-Path $OpenSslDir))) { Fail "Folder is not found: $OpenSslDir" }
+if (($OpenSslDir32 -ne "") -and (-not (Test-Path $OpenSslDir32))) { Fail "Folder is not found: $OpenSslDir32" }
+$client32 = ""
+if ($ClientDir32 -ne "") {
+    $ClientDir32 = (Resolve-Path $ClientDir32).Path
+    $client32 = Join-Path $WorkDir "client32"
+    foreach ($f in @("fbclient.dll", "fbcrypt.dll")) {
+        if (-not (Test-Path (Join-Path $ClientDir32 $f))) { Fail "File '$f' is not found in $ClientDir32." }
+    }
+    if ((Get-PeMachine (Join-Path $ClientDir32 "fbclient.dll")) -ne 0x14c) {
+        Fail "fbclient.dll in $ClientDir32 is not 32-bit. Use a folder with the 32-bit client files."
+    }
+}
+# OpenSSL for the client folders: check before the server is copied and the databases are created.
+$openSsl = Find-ClientOpenSsl $FirebirdDir $OpenSslDir
+$openSsl32 = @{}
+if ($ClientDir32 -ne "") { $openSsl32 = Find-ClientOpenSsl $ClientDir32 $OpenSslDir32 }
 
 $server = Join-Path $WorkDir "server"
 $client = Join-Path $WorkDir "client"
@@ -186,26 +264,51 @@ New-TestDb "work" ""
 # The server keeps no keys. UnsafeClient lets Java, .NET and Python send the key as a static value.
 Set-Content -Path (Join-Path $server "plugins\KeyHolder.conf") -Value @("UnsafeClient = true") -Encoding ASCII
 
-# ---------------------------------------------------------------- client folder
+# ---------------------------------------------------------------- client folders
+# Copies the client libraries, the tools and the key holder plugins from a server folder
+# or from a folder with the 32-bit client files. OpenSSL is copied under the name
+# that fbcrypt.dll loads (the table comes from Find-ClientOpenSsl).
+function New-ClientFolder([string]$source, [string]$target, [hashtable]$openSsl) {
+    New-Item -ItemType Directory -Force $target, (Join-Path $target "plugins") | Out-Null
+    $clientFiles = @(
+        "fbclient.dll", "fbcrypt.dll", "firebird.msg", "ib_util.dll", "zlib1.dll",
+        "msvcp*.dll", "vcruntime*.dll", "libcrypto-*.dll", "icu*.dll", "icudt*.dat",
+        "gbak.exe", "isql.exe", "gfix.exe", "gstat.exe", "nbackup.exe"
+    )
+    foreach ($pattern in $clientFiles) {
+        Get-ChildItem -Path $source -Filter $pattern | Copy-Item -Destination $target -Force
+    }
+    $clientPlugins = @("keyholder.dll", "keyholderstdin.dll", "dbcrypt.dll", "DbCrypt.conf", "chacha.dll")
+    foreach ($f in $clientPlugins) {
+        $src = Join-Path $source "plugins\$f"
+        if (Test-Path $src) { Copy-Item $src (Join-Path $target "plugins") -Force }
+    }
+    # Client configuration: no KeyHolderPlugin (new-keysource-client.ps1 makes a folder with it).
+    # "Providers = Remote": the client does not try other Firebird servers of this computer,
+    # so an error message always comes from the test server.
+    Set-Content -Path (Join-Path $target "firebird.conf") -Value @("Providers = Remote") -Encoding ASCII
+
+    foreach ($name in @($openSsl.Keys)) {
+        $libName = Split-Path $openSsl[$name] -Leaf
+        Copy-Item $openSsl[$name] (Join-Path $target $name)
+        if ($libName -eq $name) {
+            Write-Host "   OpenSSL: $name is copied from $(Split-Path $openSsl[$name] -Parent)."
+        } else {
+            Write-Host "   OpenSSL: $libName is copied as $name. fbcrypt.dll loads the library by this name."
+        }
+    }
+}
+
 Step "Create the client folder $client"
-New-Item -ItemType Directory -Force $client, (Join-Path $client "plugins") | Out-Null
-$clientFiles = @(
-    "fbclient.dll", "fbcrypt.dll", "firebird.msg", "ib_util.dll", "zlib1.dll",
-    "msvcp*.dll", "vcruntime*.dll", "libcrypto-*.dll", "icu*.dll", "icudt*.dat",
-    "gbak.exe", "isql.exe", "gfix.exe", "gstat.exe", "nbackup.exe"
-)
-foreach ($pattern in $clientFiles) {
-    Get-ChildItem -Path $server -Filter $pattern | Copy-Item -Destination $client -Force
+New-ClientFolder $server $client $openSsl
+
+if ($ClientDir32 -ne "") {
+    Step "Create the 32-bit client folder $client32"
+    New-ClientFolder $ClientDir32 $client32 $openSsl32
+    # The license file is the same for the 32-bit and the 64-bit plugins.
+    $conf = Join-Path $client32 "plugins\DbCrypt.conf"
+    if (-not (Test-Path $conf)) { Copy-Item (Join-Path $server "plugins\DbCrypt.conf") $conf }
 }
-$clientPlugins = @("keyholder.dll", "keyholderstdin.dll", "dbcrypt.dll", "DbCrypt.conf", "chacha.dll")
-foreach ($f in $clientPlugins) {
-    $src = Join-Path $server "plugins\$f"
-    if (Test-Path $src) { Copy-Item $src (Join-Path $client "plugins") -Force }
-}
-# Client configuration: no KeyHolderPlugin (new-keysource-client.ps1 makes a folder with it).
-# "Providers = Remote": the client does not try other Firebird servers of this computer,
-# so an error message always comes from the test server.
-Set-Content -Path (Join-Path $client "firebird.conf") -Value @("Providers = Remote") -Encoding ASCII
 
 # ---------------------------------------------------------------- environment file
 $envFile = Join-Path $WorkDir "test-env.ps1"
@@ -216,6 +319,7 @@ $envLines = @(
     "`$env:FBCRYPT_USER = 'SYSDBA'",
     "`$env:FBCRYPT_PASSWORD = 'masterkey'",
     "`$env:FBCRYPT_CLIENT = '$client'",
+    "`$env:FBCRYPT_CLIENT32 = '$client32'",
     "`$env:FBCRYPT_KEYS = '$keysFile'",
     "`$env:FBCRYPT_WORK = '$WorkDir'",
     "`$env:FBCRYPT_FB_MAJOR = '$fbMajor'"
@@ -228,4 +332,5 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host ""
 Write-Host "Done. Databases: localhost/$Port`:crypt_red, crypt_green, plain, work"
+if ($client32 -ne "") { Write-Host "32-bit client folder (FBCRYPT_CLIENT32): $client32" }
 Write-Host "Next step:  . `"$envFile`""
