@@ -10,8 +10,12 @@
            connect, change a row, connect again, read the row
 
   Variant c: the script starts no key provider. KeySource.dll starts it, the script types
-  the test key into its window. The window must appear once for a combination.
+  the key or the pass phrase of the database into its window. The window must appear once
+  for a combination.
   Variant d: the script starts the demo key service and counts its requests.
+
+  The key of the database is in work\fb<N>\db-key.conf (script 20-encrypt-database.ps1).
+  When it is not the test key Red, the variant a is skipped: its library has the key Red in the code.
 
   -Negative   also run the checks that must end with an error (first version, network mode)
   -Load       also run 1000 connections and 8 threads for each variant (first version, network mode)
@@ -69,9 +73,11 @@ public static class KeyDialog {
 $script:dialogs = 0
 $script:dialogButton = "OK"
 $keysFile = (Get-Deploy '5' $WorkDir).KeysFile
-$redKey = ((Get-Content $keysFile | Where-Object { $_ -match '^\s*Key\s*=\s*Red\s' } | Select-Object -First 1) -replace '^\s*Key\s*=\s*Red\s+', '').Trim()
+# A wrong key for the checks that must fail: the test key Green.
 $greenKey = ((Get-Content $keysFile | Where-Object { $_ -match '^\s*Key\s*=\s*Green\s' } | Select-Object -First 1) -replace '^\s*Key\s*=\s*Green\s+', '').Trim()
-$script:typedKey = $redKey
+# The text that the script types into the window of the key provider: the key or the pass phrase
+# of the database. It is set for each Firebird version from work\fb<N>\db-key.conf.
+$script:typedKey = ""
 
 # Runs a program of the application folder. While it works, types the key into the
 # window of the key provider if the window appears.
@@ -114,7 +120,8 @@ function Start-KeyServer($d, [string]$token = "test-token") {
     Remove-Item $script:keyServerLog -ErrorAction SilentlyContinue
     $server = Join-Path (Split-Path $PSScriptRoot -Parent) "restserver\key-server.ps1"
     $script:keyServer = Start-Process powershell -WindowStyle Hidden -PassThru -ArgumentList @(
-        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$server`"", "-Token", $token, "-LogFile", "`"$script:keyServerLog`"")
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$server`"", "-Token", $token,
+        "-KeysFile", "`"$($d.DbKey)`"", "-LogFile", "`"$script:keyServerLog`"")
     foreach ($i in 1..50) { if (Test-Port 8085) { return }; Start-Sleep -Milliseconds 200 }
     Fail "The demo key service does not start."
 }
@@ -150,6 +157,7 @@ function Invoke-Isql2($f) {
 
 $results = @()
 $failed = 0
+$skipped = 0
 $started = @()
 
 foreach ($v in $Version) {
@@ -159,8 +167,17 @@ foreach ($v in $Version) {
         & (Join-Path $deploy "11-start-server.ps1") -Version $v -WorkDir $d.WorkDir *> $null
         $started += $v
     }
+    $key = Get-DbKey $d
+    $script:typedKey = $key.Value
+    $redKey = Test-RedKey $d
+    Write-Host "Firebird ${v}: key name $($key.Name), $(if ($key.Kind -eq 'Password') { 'pass phrase' } else { 'key in hexadecimal form' })"
     foreach ($m in $Mode) {
         foreach ($k in $KeySource) {
+            if (($k -eq 'a') -and (-not $redKey)) {
+                Write-Host ("{0} {1,-8} {2}  skipped: the library of the variant 'a' has the test key Red in its code" -f $v, $m, $k)
+                $skipped++
+                continue
+            }
             Stop-Helpers $d
             $script:dialogs = 0
             $f = New-Folder $d $m $k
@@ -228,17 +245,19 @@ if ($Negative) {
         Write-Host ("{0,-4} {1,-44} {2}" -f $(if ($ok) { 'OK' } else { 'FAIL' }), $name, ($extra + $short))
     }
     $script:failed = $failed
+    $key = Get-DbKey $d
+    $script:typedKey = $key.Value
 
     Stop-Helpers $d
-    $f = New-Folder $d 'remote' 'a'
+    $f = New-Folder $d 'remote' 'b'
     Remove-Item (Join-Path $f.Folder "KeySource.dll")
     Test-Refused "no KeySource.dll" $f ""
 
     $f = New-Folder $d 'remote' 'b'
     $keyFile = Join-Path $d.Root "keyfile\employee.key"
-    Set-Content -Path $keyFile -Value "Key=Red $greenKey" -Encoding ASCII
+    Set-Content -Path $keyFile -Value "Key=$($key.Name) $greenKey" -Encoding ASCII
     Test-Refused "b: wrong key in the file" $f "keys from the file"
-    Set-Content -Path $keyFile -Value "Key=Red" -Encoding ASCII
+    Set-Content -Path $keyFile -Value "Key=$($key.Name)" -Encoding ASCII
     Test-Refused "b: line of the key without a value" $f "keys from the file"
     Remove-Item $keyFile
     Test-Refused "b: no file of keys" $f "cannot read the file of keys"
@@ -250,7 +269,7 @@ if ($Negative) {
     Stop-Helpers $d
     $script:typedKey = $greenKey
     Test-Refused "c: the user types a wrong key" $f "keys from the key provider"
-    $script:typedKey = $redKey
+    $script:typedKey = $key.Value
     Stop-Helpers $d
     Add-Content -Path (Join-Path $f.Folder "KeySource.ini") -Value "ProviderExe=$(Join-Path $d.Root 'keyprovider\missing.exe')" -Encoding ASCII
     (Get-Content (Join-Path $f.Folder "KeySource.ini")) | Where-Object { $_ -notmatch 'KeyProvider\.exe' } |
@@ -272,7 +291,9 @@ if ($Load) {
     Write-Host ""
     Write-Host "== Load: 1000 connections, then 8 threads x 125 connections (Firebird $($d.Version), network connection)"
     $loop = Join-Path $PSScriptRoot "connect_loop.py"
+    $script:typedKey = (Get-DbKey $d).Value
     foreach ($k in $KeySource) {
+        if (($k -eq 'a') -and (-not (Test-RedKey $d))) { continue }
         Stop-Helpers $d
         $f = New-Folder $d 'remote' $k
         if ($k -eq 'd') { Start-KeyServer $d }
@@ -300,6 +321,7 @@ foreach ($v in $started) { & (Join-Path $deploy "12-stop-server.ps1") -Version $
 Remove-Item Env:FIREBIRD_LOCK -ErrorAction SilentlyContinue
 
 Write-Host ""
+if ($skipped -gt 0) { Write-Host "Skipped combinations: $skipped" }
 if ($failed -eq 0) { Write-Host "ALL CHECKS PASSED: $($results.Count) combinations" -ForegroundColor Green; exit 0 }
 Write-Host "FAILED CHECKS: $failed" -ForegroundColor Red
 exit 1

@@ -35,7 +35,8 @@ Copy-Item (Join-Path $client "plugins\keyholder.dll") (Join-Path $target "plugin
 Install-KeySource $d $target $KeySource
 
 Set-Content -Path (Join-Path $target "firebird.conf") -Encoding ASCII -Value @(
-    "# The client does not try other Firebird servers of this computer.",
+    "# Only the network provider. The client does not look for a local server (provider Loopback)",
+    "# and does not try to load the embedded engine (provider EngineNN) with its plugins.",
     "Providers = Remote",
     "# The client-side KeyHolder takes the keys from KeySource.dll and sends them to the server.",
     "KeyHolderPlugin = KeyHolder"

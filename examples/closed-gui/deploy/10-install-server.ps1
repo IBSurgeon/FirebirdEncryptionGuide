@@ -11,7 +11,8 @@
     4. Adds the port and KeyHolderPlugin to firebird.conf.
     5. Creates the user SYSDBA (password masterkey).
 
-  The server has no keys. Installed Firebird services are not changed.
+  The server has no keys and no file plugins\KeyHolder.conf: each connection must send the key.
+  Installed Firebird services are not changed.
 
 .EXAMPLE
   .\10-install-server.ps1 -Version 5
@@ -40,9 +41,7 @@ $pluginRoot = Join-Path $d.PluginDir $d.Plugin.Folder
 Step "Copy the server files of the plugin"
 Copy-Item (Join-Path $pluginRoot "Server\*") $d.Server -Recurse -Force
 Copy-Item $d.License (Join-Path $d.Server "plugins\DbCrypt.conf") -Force
-Set-Content -Path (Join-Path $d.Server "plugins\KeyHolder.conf") -Encoding ASCII -Value @(
-    "# The server keeps no keys. Each connection must send the key."
-)
+# No plugins\KeyHolder.conf: the server keeps no keys and needs no settings of the KeyHolder plugin.
 
 Step "Write firebird.conf: port $($d.Fb.Port)"
 Add-Content -Path (Join-Path $d.Server "firebird.conf") -Encoding ASCII -Value @(

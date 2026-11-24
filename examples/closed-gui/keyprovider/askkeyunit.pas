@@ -105,10 +105,11 @@ begin
   end;
 
   // The plugin reads the text of the keys as a configuration file:
-  // # starts a comment, " is a quotation mark, $( starts a macro.
-  if (Pos('#', Text) > 0) or (Pos('"', Text) > 0) or (Pos('$(', Text) > 0) then
+  // # starts a comment, " is a quotation mark, { } make a block, $( starts a macro.
+  if (Pos('#', Text) > 0) or (Pos('"', Text) > 0) or (Pos('{', Text) > 0) or (Pos('}', Text) > 0) or
+    (Pos('$(', Text) > 0) then
   begin
-    Error := 'A pass phrase cannot contain  #  "  $(';
+    Error := 'A pass phrase cannot contain  #  "  {  }  $(';
     Exit;
   end;
   // LCL strings are UTF-8. The pass phrase goes to the plugin in UTF-8.

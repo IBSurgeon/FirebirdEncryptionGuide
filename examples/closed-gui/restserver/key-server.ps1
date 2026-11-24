@@ -8,7 +8,9 @@
       GET http://localhost:<Port>/keys/<key name>
       Authorization: Bearer <Token>
 
-  with the line of the key from the file of keys (format of KeyHolder.conf).
+  with the line of the key from the file of keys. The file has the format of KeyHolder.conf:
+  lines "Key=<name> 0x..," and "Password=<name> <phrase>", encoding UTF-8.
+  Without -KeysFile the service gives the public test keys of examples\common\test-keys.conf.
   Each request is written to the console and to the log file.
 
   A real key service must have: HTTPS, a token for each workstation that you
@@ -18,6 +20,9 @@
   .\key-server.ps1
 .EXAMPLE
   .\key-server.ps1 -Port 8085 -Token my-token -KeysFile C:\keys\keys.conf
+.EXAMPLE
+  .\key-server.ps1 -KeysFile ..\work\fb5\db-key.conf
+  The key of the database of the example, also when it is a pass phrase.
 #>
 param(
     [int]$Port = 8085,
@@ -31,7 +36,7 @@ if ($LogFile -eq "") { $LogFile = Join-Path $env:TEMP "key-server.log" }
 
 # Key name -> line of the key.
 $keys = @{}
-foreach ($line in Get-Content $KeysFile) {
+foreach ($line in Get-Content $KeysFile -Encoding UTF8) {
     if ($line -match '^\s*(Key|Password)\s*=\s*(\S+)\s') { $keys[$Matches[2]] = $line.Trim() }
 }
 

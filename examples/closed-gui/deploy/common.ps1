@@ -34,6 +34,8 @@ function Get-Deploy([string]$Version, [string]$WorkDir) {
         Db          = Join-Path $root "db"
         Tmp         = Join-Path $root "tmp"
         PidFile     = Join-Path $root "server.pid"
+        # The key line of the encrypted database. The script 20 writes it, the scripts 40 and 41 read it.
+        DbKey       = Join-Path $root "db-key.conf"
         Build       = Join-Path $WorkDir "build"
         KeysFile    = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "common\test-keys.conf"
     }
@@ -120,12 +122,57 @@ function Get-LicenseInfo([string]$file) {
     return [pscustomobject]@{ RegName = $info["RegName"]; Expire = $expire }
 }
 
+# Writes a text file in UTF-8 without the byte order mark. A pass phrase can have national letters.
+function Write-Utf8([string]$file, [string[]]$lines) {
+    [IO.File]::WriteAllLines($file, $lines, (New-Object Text.UTF8Encoding($false)))
+}
+
+# Checks a pass phrase. The plugin reads the line of the key as a Firebird configuration file,
+# so some characters change the phrase or break the line.
+function Test-Passphrase([string]$phrase) {
+    if ($phrase -eq "") { Fail "The pass phrase is empty." }
+    if ($phrase -ne $phrase.Trim()) { Fail "The pass phrase must not start or end with a space." }
+    # Braces: the plugin takes no key and reports no error. The database stays not encrypted.
+    if ($phrase -match '[#"{}]' -or $phrase.Contains('$(')) {
+        Fail 'The pass phrase must not contain the characters  #  "  {  }  and the pair $(.'
+    }
+    if ($phrase -match '[\x00-\x1F]') { Fail "The pass phrase must not contain control characters." }
+    if ($phrase.Length -lt 12) { Write-Host "   WARNING: the pass phrase is short. A short phrase can be guessed." -ForegroundColor Yellow }
+}
+
+# Returns the key of the encrypted database of the example:
+#   Line   "Key=<name> 0x..," or "Password=<name> <phrase>"
+#   Kind   Key or Password
+#   Name   name of the key
+#   Value  bytes of the key or the pass phrase: the text that a person types into a key window
+function Get-DbKey($d) {
+    if (-not (Test-Path $d.DbKey)) { Fail "$($d.DbKey) is not found. Run 20-encrypt-database.ps1 first." }
+    foreach ($line in [IO.File]::ReadAllLines($d.DbKey, [Text.Encoding]::UTF8)) {
+        if ($line -match '^\s*(Key|Password)\s*=\s*(\S+)\s+(.*\S)\s*$') {
+            return [pscustomobject]@{ Line = $line.Trim(); Kind = $Matches[1]; Name = $Matches[2]; Value = $Matches[3] }
+        }
+    }
+    Fail "No line 'Key=' or 'Password=' in $($d.DbKey)."
+}
+
+# True: the database is encrypted with the public test key Red. The library of the variant "a" has this key in its code.
+function Test-RedKey($d) {
+    $red = (Get-Content $d.KeysFile | Where-Object { $_ -match '^\s*Key\s*=\s*Red\s' } | Select-Object -First 1) -replace '^\s*Key\s*=\s*Red\s+', ''
+    $key = Get-DbKey $d
+    return ($key.Kind -eq 'Key') -and ($key.Name -eq 'Red') -and ($key.Value -eq $red.Trim())
+}
+
 $script:KeySourceFolders = @{ a = "a-static"; b = "b-file"; c = "c-provider"; d = "d-rest"; probe = "probe" }
 
 # Copies one KeySource library to an application folder and writes its settings.
 function Install-KeySource($d, [string]$target, [string]$variant) {
     $dll = Join-Path $d.Build "keysource\$($script:KeySourceFolders[$variant])\KeySource.dll"
     if (-not (Test-Path $dll)) { Fail "$dll is not found. Run 30-build.ps1 first." }
+    $key = Get-DbKey $d
+    if (($variant -eq "a") -and (-not (Test-RedKey $d))) {
+        Fail ("The library of the variant 'a' has the test key Red in its code, but the database uses another key. " +
+              "Use -KeySource b, c or d. Or write your line of the key to keysource\a-static\KeySource.lpr and build the library.")
+    }
     # The KeyHolder plugin looks for the library with the name KeySource next to fbclient.dll.
     Copy-Item $dll (Join-Path $target "KeySource.dll") -Force
     $ini = @("[KeySource]", "Log=1")
@@ -134,8 +181,7 @@ function Install-KeySource($d, [string]$target, [string]$variant) {
         # The folder "keyfile" plays the role of a removable disk with the key.
         $keyDir = Join-Path $d.Root "keyfile"
         New-Item -ItemType Directory -Force $keyDir | Out-Null
-        $keyLine = Get-Content $d.KeysFile | Where-Object { $_ -match '^\s*Key\s*=\s*Red\s' } | Select-Object -First 1
-        Set-Content -Path (Join-Path $keyDir "employee.key") -Value $keyLine -Encoding ASCII
+        Write-Utf8 (Join-Path $keyDir "employee.key") @($key.Line)
         $ini += "KeyFile=$(Join-Path $keyDir 'employee.key')"
     }
     if ($variant -eq "c") {
@@ -144,16 +190,21 @@ function Install-KeySource($d, [string]$target, [string]$variant) {
         $providerDir = Join-Path $d.Root "keyprovider"
         New-Item -ItemType Directory -Force $providerDir | Out-Null
         Copy-Item $provider $providerDir -Force
+        # The key provider knows only the name of the key. A person types the key or the pass phrase.
         Set-Content -Path (Join-Path $providerDir "KeyProvider.ini") -Encoding ASCII -Value @(
-            "[KeyProvider]", "KeyName=Red", "KeepMinutes=0")
+            "[KeyProvider]", "KeyName=$($key.Name)", "KeepMinutes=0")
         $ini += "ProviderExe=$(Join-Path $providerDir 'KeyProvider.exe')"
         $ini += "TimeoutMs=120000"
     }
     if ($variant -eq "d") {
-        $ini += "Url=http://localhost:8085/keys/Red"
+        $ini += "Url=http://localhost:8085/keys/$($key.Name)"
         $ini += "Token=test-token"
         $ini += "TimeoutMs=5000"
         $ini += "CacheSeconds=300"
+    }
+    if ($variant -eq "probe") {
+        # The diagnostic library returns the key of the database.
+        $ini += "KeysFile=$($d.DbKey)"
     }
     Set-Content -Path (Join-Path $target "KeySource.ini") -Value $ini -Encoding ASCII
 }
