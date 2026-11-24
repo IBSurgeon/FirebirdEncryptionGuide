@@ -111,10 +111,15 @@ UnsafeClient = true
 |===
 | Библиотека | Функция | Назначение
 | `KeySource` | `MakeKeys` | Возвращает список ключей. См. <<fbcrypt-keysource>>.
-| `KeyChecker` | `CheckKey` | Вызывается для каждого ключа, который плагин загрузил или получил от клиента.
+| `KeyChecker` | `CheckKey` | Получает каждый ключ, который плагин загрузил. См. <<fbcrypt-config-keychecker>>.
 |===
 
-Функция `CheckKey` имеет следующий вид:
+Каталог библиотек: в Windows это каталог, где находится `firebird.exe` или `fbclient.dll`; в Linux -- каталог `lib`.
+
+[[fbcrypt-config-keychecker]]
+=== Библиотека KeyChecker
+
+Имя файла: `KeyChecker.dll` (Windows) или `libKeyChecker.so` (Linux). Библиотека экспортирует функцию `CheckKey`:
 
 [source,cpp]
 ----
@@ -130,7 +135,36 @@ void CheckKey(const char* keyName, const char* exeName, unsigned keyLen, void* k
 | `keyValue` | указатель на значение ключа
 |===
 
+Что может функция:
+
+* Записать сведения о ключе в свой журнал: имя ключа, длину, имя программы.
+* Изменить значение ключа на месте. Длину изменить нельзя.
+
+Функция ничего не возвращает. Отклонить ключ она не может.
+
+Плагин вызывает `CheckKey` не для всех ключей:
+
+[cols="2,3,1", options="header"]
+|===
+| Где работает плагин | Откуда получен ключ | Вызов
+| Сервер, `KeyHolder` | файл `KeyHolder.conf` или библиотека `KeySource` | да
+| Сервер, `KeyHolder` | клиент отправил статическое значение (`UnsafeClient = true`) | да
+| Сервер, `KeyHolder` | клиент выполнил защищённый обмен ключом (`fbcrypt`, клиентский `KeyHolder`, `KeyHolderStdin`) | нет
+| Клиент, `KeyHolder` | файл `KeyHolder.conf` или библиотека `KeySource` на клиенте | да
+| Утилита, `KeyHolderStdin` | входной поток утилиты | да
+| Приложение, `fbcrypt` | функция `fbcrypt_key` | нет
+|===
+
+Клиентский плагин `KeyHolder` вызывает функцию для каждого своего ключа при каждом подключении.
+
+[WARNING]
+====
+Не записывайте в журнал значение ключа.
+====
+
 [NOTE]
 ====
-Библиотека `KeyChecker` -- точка расширения для особых схем проверки ключей. В обычной установке она не нужна. Перед использованием проконсультируйтесь с поддержкой IBSurgeon.
+Библиотека `KeyChecker` -- точка расширения для особых схем работы с ключами. В обычной установке она не нужна. Перед использованием проконсультируйтесь с поддержкой IBSurgeon.
 ====
+
+Примеры библиотеки на C++ и Free Pascal находятся в каталоге `examples/keychecker` репозитория https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].
