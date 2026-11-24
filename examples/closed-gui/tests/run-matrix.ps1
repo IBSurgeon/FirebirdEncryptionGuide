@@ -207,8 +207,11 @@ if ($Negative) {
     Write-Host ""
     Write-Host "== Checks that must end with an error (Firebird $($d.Version), network connection)"
 
-    function Test-Refused([string]$name, $f, [string]$logPattern) {
+    function Test-Refused([string]$name, $f, [string]$logPattern, [int]$windows = -1, [int]$maxSeconds = 0) {
+        $script:dialogs = 0
+        $clock = [Diagnostics.Stopwatch]::StartNew()
         $r = Invoke-Isql2 $f
+        $seconds = [int]$clock.Elapsed.TotalSeconds
         $refused = ($r.Text -match 'SQLSTATE') -and ($r.Text -notmatch 'CUSTOMERS\s+15')
         $logOk = $true
         if ($logPattern -ne "") {
@@ -216,10 +219,13 @@ if ($Negative) {
             $logOk = $log -match $logPattern
         }
         $ok = $refused -and $logOk
+        $extra = ""
+        if ($windows -ge 0) { $extra = "[key windows: $($script:dialogs)] "; if ($script:dialogs -ne $windows) { $ok = $false } }
+        if ($maxSeconds -gt 0) { $extra += "[$seconds s] "; if ($seconds -gt $maxSeconds) { $ok = $false } }
         if (-not $ok) { $script:failed++ }
         $short = $r.Text
         if ($short.Length -gt 110) { $short = $short.Substring(0, 110) }
-        Write-Host ("{0,-4} {1,-44} {2}" -f $(if ($ok) { 'OK' } else { 'FAIL' }), $name, $short)
+        Write-Host ("{0,-4} {1,-44} {2}" -f $(if ($ok) { 'OK' } else { 'FAIL' }), $name, ($extra + $short))
     }
     $script:failed = $failed
 
@@ -239,7 +245,7 @@ if ($Negative) {
 
     $f = New-Folder $d 'remote' 'c'
     $script:dialogButton = "Cancel"
-    Test-Refused "c: the user cancels the input" $f "did not enter the key"
+    Test-Refused "c: the user cancels the input" $f "did not enter the key" 1
     $script:dialogButton = "OK"
     Stop-Helpers $d
     $script:typedKey = $greenKey
@@ -252,7 +258,7 @@ if ($Negative) {
     Test-Refused "c: the key provider cannot start" $f "cannot start the key provider"
 
     $f = New-Folder $d 'remote' 'd'
-    Test-Refused "d: the key service is not running" $f "does not answer"
+    Test-Refused "d: the key service is not running" $f "does not answer" -1 15
     Start-KeyServer $d "other-token"
     Test-Refused "d: wrong token" $f "status 401"
     Stop-Helpers $d

@@ -18,10 +18,15 @@ library KeySource;
     TokenFile=            file with the access token; better than Token
     TimeoutMs=5000        time limit of the request
     CacheSeconds=300      how long the keys stay in memory; 0: ask at each connection
+    RetrySeconds=10       after a failed request: no new request during this time
     Log=0
 
   The library uses WinHTTP, a part of Windows. It needs no other dll.
-  With https the certificate of the server is checked by Windows. }
+  With https the certificate of the server is checked by Windows.
+
+  When MakeKeys returns NULL, the Firebird client calls it again several times for the
+  same connection (5 to 9 times in the tests). Without RetrySeconds a key service that
+  does not answer would delay the error message by TimeoutMs for each of these calls. }
 
 {$mode objfpc}{$H+}
 
@@ -63,6 +68,7 @@ var
   CacheLock: TRTLCriticalSection;
   CachedKeys: AnsiString = '';
   CachedAt: QWord = 0;
+  FailedAt: QWord = 0;      // time of the last failed request; 0: no failure
 
 // Splits "http://host:port/path" into its parts.
 function ParseUrl(const Url: UnicodeString; out Secure: Boolean; out Host: UnicodeString;
@@ -219,13 +225,23 @@ end;
 
 function MakeKeys(Alloc: TAllocator; var Size: Cardinal): PAnsiChar; cdecl;
 var
-  CacheMs: QWord;
+  CacheMs, RetryMs: QWord;
   Body, Keys: AnsiString;
   Error: string;
+
+  // Keeps the time of the failure. The library must stay in the process for that.
+  procedure RememberFailure(const Text: string);
+  begin
+    LogLine('MakeKeys: ' + Text);
+    if PinLibrary then
+      FailedAt := GetTickCount64;
+  end;
+
 begin
   Result := nil;
   Size := 0;
   CacheMs := QWord(SettingInt('CacheSeconds', 300)) * 1000;
+  RetryMs := QWord(SettingInt('RetrySeconds', 10)) * 1000;
 
   // One thread asks the service. The other threads wait and take the answer from the cache.
   EnterCriticalSection(CacheLock);
@@ -237,18 +253,25 @@ begin
       Exit;
     end;
 
+    if (FailedAt <> 0) and (GetTickCount64 - FailedAt < RetryMs) then
+    begin
+      LogLine('MakeKeys: the last request failed a moment ago; no new request');
+      Exit;
+    end;
+
     CachedKeys := '';
     if not HttpGet(Setting('Url', ''), ReadToken, SettingInt('TimeoutMs', 5000), Body, Error) then
     begin
-      LogLine('MakeKeys: ' + Error);
+      RememberFailure(Error);
       Exit;
     end;
     Keys := CleanKeys(Body);
     if Keys = '' then
     begin
-      LogLine('MakeKeys: the key service returned no keys');
+      RememberFailure('the key service returned no keys');
       Exit;
     end;
+    FailedAt := 0;
 
     if CacheMs > 0 then
       if PinLibrary then

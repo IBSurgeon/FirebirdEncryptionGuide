@@ -55,6 +55,7 @@ type
     FKeyName: string;
     FKeyLine: AnsiString;     // the key; only in memory
     FKeyTime: TDateTime;
+    FRefusedAt: TDateTime;    // time when the user cancelled the input; 0: never
     FKeepMinutes: Integer;
     FExiting: Boolean;
     FServer: TPipeServer;
@@ -75,6 +76,9 @@ implementation
 
 const
   IniSection = 'KeyProvider';
+  // When no key comes, the Firebird client asks again several times for the same connection.
+  // After Cancel the program answers these requests without a new window.
+  RefuseSeconds = 15;
 
 { TProviderForm }
 
@@ -200,12 +204,20 @@ begin
   Client := Format('%s (process %d)', [ExtractFileName(ClientFile), ClientId]);
   if not HasKey then
   begin
+    if (FRefusedAt <> 0) and ((Now - FRefusedAt) * 86400 < RefuseSeconds) then
+    begin
+      Answer := 'ERROR the user did not enter the key'#10;
+      Exit;
+    end;
     if TAskKeyForm.Ask(FKeyName, 'The program ' + Client + ' opens an encrypted database.', Line) then
     begin
       FKeyLine := Line;
       FKeyTime := Now;
+      FRefusedAt := 0;
       Note('The user entered the key.');
-    end;
+    end
+    else
+      FRefusedAt := Now;
   end;
 
   if FKeyLine <> '' then
@@ -230,6 +242,7 @@ begin
     ForgetKey;
     FKeyLine := Line;
     FKeyTime := Now;
+    FRefusedAt := 0;
     Note('The user entered the key.');
     UpdateView;
   end;
@@ -238,6 +251,7 @@ end;
 procedure TProviderForm.ForgetKeyClick(Sender: TObject);
 begin
   ForgetKey;
+  FRefusedAt := 0;
   Note('The key is removed from memory.');
   UpdateView;
 end;
