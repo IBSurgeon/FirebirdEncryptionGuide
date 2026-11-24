@@ -1,0 +1,224 @@
+object MainForm: TMainForm
+  Left = 300
+  Height = 540
+  Top = 150
+  Width = 820
+  Caption = 'Employee'
+  ClientHeight = 540
+  ClientWidth = 820
+  OnClose = FormClose
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object ConnectionBox: TGroupBox
+    Left = 0
+    Height = 96
+    Top = 0
+    Width = 820
+    Align = alTop
+    Caption = 'Connection'
+    ClientHeight = 76
+    ClientWidth = 816
+    TabOrder = 0
+    object HostLabel: TLabel
+      Left = 8
+      Height = 15
+      Top = 8
+      Width = 32
+      Caption = 'Server'
+    end
+    object HostEdit: TEdit
+      Left = 72
+      Height = 23
+      Top = 4
+      Width = 150
+      TabOrder = 0
+    end
+    object PortLabel: TLabel
+      Left = 232
+      Height = 15
+      Top = 8
+      Width = 22
+      Caption = 'Port'
+    end
+    object PortEdit: TEdit
+      Left = 264
+      Height = 23
+      Top = 4
+      Width = 60
+      TabOrder = 1
+    end
+    object DatabaseLabel: TLabel
+      Left = 336
+      Height = 15
+      Top = 8
+      Width = 48
+      Caption = 'Database'
+    end
+    object DatabaseEdit: TEdit
+      Left = 400
+      Height = 23
+      Top = 4
+      Width = 404
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 2
+    end
+    object UserLabel: TLabel
+      Left = 8
+      Height = 15
+      Top = 44
+      Width = 23
+      Caption = 'User'
+    end
+    object UserEdit: TEdit
+      Left = 72
+      Height = 23
+      Top = 40
+      Width = 150
+      TabOrder = 3
+    end
+    object PasswordLabel: TLabel
+      Left = 232
+      Height = 15
+      Top = 44
+      Width = 50
+      Caption = 'Password'
+    end
+    object PasswordEdit: TEdit
+      Left = 296
+      Height = 23
+      Top = 40
+      Width = 130
+      EchoMode = emPassword
+      PasswordChar = '*'
+      TabOrder = 4
+    end
+    object ConnectButton: TButton
+      Left = 440
+      Height = 25
+      Top = 39
+      Width = 100
+      Caption = 'Connect'
+      OnClick = ConnectButtonClick
+      TabOrder = 5
+    end
+    object DisconnectButton: TButton
+      Left = 548
+      Height = 25
+      Top = 39
+      Width = 100
+      Caption = 'Disconnect'
+      OnClick = DisconnectButtonClick
+      TabOrder = 6
+    end
+  end
+  object Navigator: TDBNavigator
+    Left = 0
+    Height = 28
+    Top = 96
+    Width = 820
+    Align = alTop
+    BevelOuter = bvNone
+    ChildSizing.EnlargeHorizontal = crsScaleChilds
+    ChildSizing.EnlargeVertical = crsScaleChilds
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 100
+    ClientHeight = 28
+    ClientWidth = 820
+    DataSource = DataSource
+    Options = []
+    TabOrder = 1
+  end
+  object Grid: TDBGrid
+    Left = 0
+    Height = 300
+    Top = 124
+    Width = 820
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    DataSource = DataSource
+    TabOrder = 2
+  end
+  object BottomPanel: TPanel
+    Left = 0
+    Height = 93
+    Top = 424
+    Width = 820
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 93
+    ClientWidth = 820
+    TabOrder = 3
+    object SaveButton: TButton
+      Left = 8
+      Height = 25
+      Top = 6
+      Width = 120
+      Caption = 'Save changes'
+      OnClick = SaveButtonClick
+      TabOrder = 0
+    end
+    object CancelButton: TButton
+      Left = 136
+      Height = 25
+      Top = 6
+      Width = 120
+      Caption = 'Cancel changes'
+      OnClick = CancelButtonClick
+      TabOrder = 1
+    end
+    object MessageMemo: TMemo
+      Left = 8
+      Height = 50
+      Top = 38
+      Width = 804
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      ReadOnly = True
+      ScrollBars = ssAutoVertical
+      TabOrder = 2
+    end
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 517
+    Width = 820
+    Panels = <>
+    SimpleText = 'Not connected'
+  end
+  object Connection: TIBConnection
+    Connected = False
+    LoginPrompt = False
+    KeepConnection = False
+    Transaction = Transaction
+    CharSet = 'UTF8'
+    Left = 48
+    Top = 184
+  end
+  object Transaction: TSQLTransaction
+    Active = False
+    Database = Connection
+    Left = 144
+    Top = 184
+  end
+  object Query: TSQLQuery
+    FieldDefs = <>
+    Database = Connection
+    Transaction = Transaction
+    SQL.Strings = (
+      'select * from CUSTOMER order by CUST_NO'
+    )
+    Params = <>
+    Macros = <>
+    Left = 240
+    Top = 184
+  end
+  object DataSource: TDataSource
+    DataSet = Query
+    Left = 320
+    Top = 184
+  end
+end
