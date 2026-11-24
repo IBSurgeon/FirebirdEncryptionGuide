@@ -11,8 +11,8 @@
 | `dbcrypt.dll` / `libDbCrypt.so` | `plugins` | Плагин шифрования страниц (`DbCrypt`).
 | `DbCrypt.conf` | `plugins` | Лицензия и параметры плагина `DbCrypt`.
 | `keyholder.dll` / `libKeyHolder.so` | `plugins` | Плагин управления ключами (`KeyHolder`).
-| `KeyHolder.conf` | `plugins` | Параметры плагина `KeyHolder`. Может содержать ключи (только для тестов).
-| `keyholderstdin.dll` / `libKeyHolderStdin.so` | `plugins` клиента | Плагин, который читает ключ из входного потока утилиты.
+| `KeyHolder.conf` | `plugins` | Параметры плагина `KeyHolder`. Файл необязателен. Может содержать ключи (только для тестов).
+| `keyholderstdin.dll` / `libKeyHolderStdin.so` | `plugins` клиента | Плагин, который читает ключ из входного потока утилиты. В пакете для Windows файл лежит в каталоге `key-plugins`: скопируйте его в `plugins`.
 | `fbcrypt.dll` / `libfbcrypt.so` | рядом с приложением / `lib` | Библиотека для передачи ключа из приложения.
 | `KeySource.dll` / `libKeySource.so` | рядом с `fbclient` / `lib` | Ваша библиотека с ключами (необязательно).
 | `libcrypto-*.dll` / `libcrypto.so.*` | рядом с `fbclient` / системная | Библиотека OpenSSL.
@@ -25,6 +25,9 @@
 | Параметр | Описание
 | `KeyHolderPlugin`
 | Список плагинов управления ключами. Для плагина IBSurgeon: `KeyHolderPlugin = KeyHolder`. Параметр можно задать для всего сервера (`firebird.conf`) или для одной базы данных (`databases.conf`). Параметр нужен и на клиенте, если используется библиотека `KeySource`.
+
+| `Providers`
+| Список провайдеров клиента. Значение по умолчанию: `Remote,Engine13,Loopback` (в версии 3.0 `Engine12`). Строка `Providers = Remote` на рабочем месте оставляет только сетевое подключение: клиент не загружает движок embedded с его плагинами и не ищет локальный сервер. Строка `Providers = Engine13` оставляет только режим embedded.
 
 | `WireCrypt`
 | Шифрование сетевого протокола. Не связано с шифрованием базы данных, но обязательно (`Required`), если ключ передают Java- или .NET-приложения.
@@ -65,6 +68,8 @@ RegEmail = admin@example.com
 | `UnsafeClient` | логический | Если `true`, плагин принимает ключи, которые клиент отправил без защищённого обмена (Jaybird, Firebird .NET). По умолчанию `false`. См. <<fbcrypt-client-unsafe>>.
 | `Prompt` | строка | Текст приглашения для ввода ключа пользователем на стороне клиента. См. <<fbcrypt-client-prompt>>.
 |===
+
+Файл необязателен. Без него плагин работает со значениями по умолчанию. Серверу, который получает ключи от клиентов, файл нужен только для параметра `UnsafeClient`.
 
 Пример файла для тестового сервера:
 

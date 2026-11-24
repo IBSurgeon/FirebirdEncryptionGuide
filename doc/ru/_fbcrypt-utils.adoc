@@ -55,7 +55,9 @@
 ====
 Рядом с утилитой должны находиться каталог `plugins` с плагинами `KeyHolderStdin`, `KeyHolder` и `DbCrypt`, файл лицензии `DbCrypt.conf` и библиотека OpenSSL.
 
-Плагин `DbCrypt` и лицензия нужны утилите `gbak`: она сама шифрует и расшифровывает файл резервной копии.
+Плагин `DbCrypt` и лицензия нужны утилите `gbak`: она сама шифрует и расшифровывает файл резервной копии. Без них `gbak` завершается ошибкой `Crypt plugin DbCrypt failed to load`.
+
+В клиентском пакете для Windows файл `keyholderstdin.dll` лежит в каталоге `key-plugins`. Скопируйте его в каталог `plugins`. Иначе утилита сообщает `Key holder plugin KeyHolderStdin failed to load`.
 ====
 
 [[fbcrypt-utils-stdin]]
@@ -160,7 +162,7 @@ int main()
 ====
 Утилита `gbak` шифрует файл резервной копии только тогда, когда указан переключатель `-KEYHOLDER`.
 
-Если `gbak -b` запущен без этого переключателя и смог подключиться к базе данных (например, ключ есть на сервере в файле `KeyHolder.conf`), файл `.fbk` будет *не зашифрован*. Данные в нём лежат в открытом виде.
+Если `gbak -b` запущен без этого переключателя и смог подключиться к базе данных (ключ есть на сервере в файле `KeyHolder.conf` или его передала библиотека `KeySource` клиента), файл `.fbk` будет *не зашифрован*. Данные в нём лежат в открытом виде.
 ====
 
 При резервном копировании с переключателем `-KEYHOLDER` утилита берёт имя ключа и имя плагина шифрования из базы данных. Переключатели `-KEYNAME` и `-CRYPT` нужны, только если вы хотите указать другие значения.
@@ -186,6 +188,37 @@ echo Key=Green 0xab,0xd7,...,0x74, | gbak -c C:\db\emp-crypted.fbk localhost:C:\
 gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -crypt DbCrypt localhost:employee /backup/employee.fbk
 ----
 
+==== Ключ из библиотеки KeySource
+
+Плагин `KeyHolder` в каталоге утилиты берёт ключ у библиотеки `KeySource`, которая лежит рядом с `fbclient` (см. <<fbcrypt-keysource>>). Ключа нет ни в команде, ни во входном потоке:
+
+[source,cmd]
+----
+gbak -b -KeyHolder KeyHolder -user SYSDBA -password masterkey localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+gbak -c -KeyHolder KeyHolder -user SYSDBA -password masterkey C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb
+----
+
+Результат `gbak -b` зависит от команды и от файлов в каталоге `plugins` утилиты:
+
+[cols="3,3,3", options="header"]
+|===
+| В каталоге `plugins` утилиты | Команда | Результат
+| только `keyholder.dll` | `gbak -b` | копия *не зашифрована*
+| только `keyholder.dll` | `gbak -b -KeyHolder KeyHolder` | ошибка `Crypt plugin DbCrypt failed to load`
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b` | копия *не зашифрована*
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b -KeyHolder KeyHolder` | копия зашифрована
+|===
+
+Восстановление зашифрованной копии без ключа завершается ошибкой `Unknown key name <имя> - key can't be found`.
+
+Готовый пример с пробным восстановлением: скрипт `examples/closed-gui/deploy/50-backup.ps1` в репозитории https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+==== Как убедиться, что копия зашифрована
+
+* В незашифрованной копии имена таблиц записаны обычным текстом. Команда `findstr /m CUSTOMER emp-crypted.fbk` (Linux: `grep -l CUSTOMER emp-crypted.fbk`) выводит имя файла, если нашла в нём слово. Для зашифрованной копии она не выводит ничего. Подставьте имя таблицы своей базы данных.
+* Восстановление без ключа должно завершиться ошибкой.
+* Регулярно восстанавливайте копию на тестовом сервере.
+
 [NOTE]
 ====
 Для восстановления в новый файл параметр `KeyHolderPlugin` должен быть задан в `firebird.conf`. Настройка в `databases.conf` действует только для своего псевдонима и на новый файл не распространяется.
@@ -199,6 +232,8 @@ gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -cryp
 ----
 echo Key=Green 0xab,0xd7,...,0x74, | nbackup -b 0 localhost:C:\db\emp-crypted.fdb C:\db\emp-nbackup.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
 ----
+
+Команда `gstat -h` для файла копии показывает атрибут `encrypted` и то же имя ключа, что у базы данных. Если ключ даёт библиотека `KeySource`, укажите `-KeyHolder KeyHolder` и не передавайте ничего во входной поток.
 
 === gfix
 
@@ -222,6 +257,8 @@ alter database encrypt with "DbCrypt" key Green;
 commit;
 show database;
 ----
+
+Тот же оператор можно выполнить из каталога клиента, в котором лежит библиотека `KeySource` и в файле `firebird.conf` есть строка `KeyHolderPlugin = KeyHolder`. Тогда не нужны ни переключатель, ни входной поток. Этот способ работает и в версии 3.0.
 
 [[fbcrypt-utils-fb3]]
 == Firebird 3.0
@@ -293,7 +330,11 @@ echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full localhost:C:\db\emp-crypted.f
 
 Так же можно указать `KeyHolderPlugin = KeyHolder`. Тогда утилита берёт ключи из файла `plugins/KeyHolder.conf` или из библиотеки `KeySource` в своём каталоге.
 
-Утилита `gbak` 3.0 без `-KEYFILE` и `-KEY` тоже использует плагин из `firebird.conf`. Если плагин передал ключ, файл резервной копии шифруется.
+Утилита `gbak` 3.0 без `-KEYFILE` и `-KEY` тоже использует плагин из `firebird.conf`. Если плагин передал ключ, файл резервной копии шифруется. С плагином `KeyHolder` ключ даёт библиотека `KeySource`, с плагином `KeyHolderStdin` входной поток.
+
+Для этого в каталоге `plugins` утилиты нужны `dbcrypt.dll` и лицензия `DbCrypt.conf`. Без них `gbak` 3.0 не создаёт файл и завершается ошибкой `Crypt plugin DbCrypt failed to load`.
+
+В клиентском пакете для Windows файл `keyholderstdin.dll` лежит в каталоге `key-plugins`. Скопируйте его в каталог `plugins`. Иначе утилита версии 3.0 сообщает `Key not set`.
 
 [NOTE]
 ====

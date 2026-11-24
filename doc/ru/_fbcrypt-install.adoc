@@ -174,7 +174,7 @@ Gbak создает файл резервной копии с ключом, пе
 
 [WARNING]
 ====
-В папках с клиентскими библиотеками `Client\32bit` и `Client\64bit` присутствует динамическая библиотека `KeySource.dll`. В этой динамической библиотеке находится функция, возвращающая тестовый ключ, который был использован для тестирования шифрования. Этот тестовый ключ передаётся плагину `KeyHolder`. Вы не должны использовать эту динамическую библиотеку в производственной системе. Следует реализовать её самостоятельно. Подробности описаны в <<fbcrypt-keysource>>.
+В клиентском пакете (`Client\32bit\key-plugins` и `Client\64bit\key-plugins`) присутствует динамическая библиотека `KeySource.dll`. В этой динамической библиотеке находится функция, возвращающая тестовый ключ, который был использован для тестирования шифрования. Этот тестовый ключ передаётся плагину `KeyHolder`. Вы не должны использовать эту динамическую библиотеку в производственной системе. Следует реализовать её самостоятельно. Подробности описаны в <<fbcrypt-keysource>>.
 ====
 
 === Ручная установка
@@ -188,78 +188,45 @@ Gbak создает файл резервной копии с ключом, пе
 Внутренняя структура архива выглядит следующим образом:
 
 ----
+FB_50_WINDOWS_64bit
 ├── Client
-│   ├── 32bit
-│   │   ├── fbclient.dll
-│   │   ├── fbcrypt.dll
-│   │   ├── firebird.conf
-│   │   ├── firebird.msg
-│   │   ├── gbak.exe
-│   │   ├── gfix.exe
-│   │   ├── icudt63.dll
-│   │   ├── icudt63l.dat
-│   │   ├── icuin63.dll
-│   │   ├── icuuc63.dll
-│   │   ├── isql.exe
-│   │   ├── KeySource.dll
-│   │   ├── libcrypto-1_1.dll
-│   │   ├── libssl-1_1.dll
-│   │   ├── msvcp140.dll
-│   │   ├── nbackup.exe
-│   │   ├── plugins
-│   │   │   ├── DbCrypt.conf
-│   │   │   ├── dbcrypt.dll
-│   │   │   ├── keyholder.dll
-│   │   │   └── keyholderstdin.dll
-│   │   ├── vcruntime140_1.dll
-│   │   └── vcruntime140.dll
+│   ├── 32bit                    те же файлы для 32 бит
 │   ├── 64bit
 │   │   ├── fbclient.dll
 │   │   ├── fbcrypt.dll
-│   │   ├── firebird.conf
+│   │   ├── firebird.conf        KeyHolderPlugin = KeyHolder
 │   │   ├── firebird.msg
 │   │   ├── gbak.exe
 │   │   ├── gfix.exe
-│   │   ├── icudt63.dll
-│   │   ├── icudt63l.dat
-│   │   ├── icuin63.dll
-│   │   ├── icuuc63.dll
 │   │   ├── isql.exe
-│   │   ├── KeySource.dll
-│   │   ├── libcrypto-1_1-x64.dll
-│   │   ├── libssl-1_1.dll
-│   │   ├── msvcp140.dll
 │   │   ├── nbackup.exe
-│   │   ├── plugins
-│   │   │   ├── DbCrypt.conf
-│   │   │   ├── dbcrypt.dll
-│   │   │   ├── keyholder.dll
-│   │   │   └── keyholderstdin.dll
-│   │   ├── vcruntime140_1.dll
-│   │   └── vcruntime140.dll
+│   │   ├── icudt63.dll, icudt63l.dat, icuin63.dll, icuuc63.dll
+│   │   ├── libcrypto-1_1-x64.dll, libssl-1_1.dll
+│   │   ├── msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll
+│   │   ├── key-plugins
+│   │   │   ├── keyholderstdin.dll
+│   │   │   └── KeySource.dll
+│   │   └── plugins
+│   │       ├── DbCrypt.conf
+│   │       ├── dbcrypt.dll
+│   │       └── keyholder.dll
 │   └── db-crypt
-│       ├── 01-encrypt.bat
-│       ├── 02-backup.bat
-│       ├── 03-restore.bat
-│       ├── 04-nbackup.bat
-│       ├── 05-gfix.bat
-│       └── EMPLOYEE.FDB
+│       ├── EMPLOYEE.FDB
+│       └── run-tests.ps1
 └── Server
     ├── decrypt.exe
     ├── fbclient.dll
     ├── fbcrypt.dll
     ├── firebird.msg
-    ├── gbak.exe
-    ├── gfix.exe
-    ├── isql.exe
     ├── libcrypto-1_1-x64.dll
     ├── libssl-1_1.dll
-    ├── nbackup.exe
     └── plugins
         ├── DbCrypt.conf
         ├── dbcrypt.dll
         └── keyholder.dll
 ----
+
+Это состав архива для Firebird 5.0 от 01.10.2026. В архиве для Firebird 3.0 другие библиотеки ICU (`icu*52`) и C++ (`msvcp100.dll`, `msvcr100.dll`).
 
 Каталог `Server` в архиве содержит бинарные файлы *ТОЛЬКО* для архитектуры x64, предполагая, что серверная установка имеет именно такую архитектуру, что практически всегда верно. Каталог `Client` в архиве содержит бинарные файлы как для архитектуры x86 (32bit), так и для x64 (64bit).
 
@@ -267,7 +234,18 @@ Gbak создает файл резервной копии с ключом, пе
 
 Каталог `Client` содержит два подкаталога `Client\32bit` и `Client\64bit`. Файлы из этих каталогов можно использовать для разработки приложения, которое будет использовать шифрование: скопируйте все файлы из этой папки в папку, где находится исполняемый файл вашего приложения. Очень важно использовать предоставленный файл `fbclient.dll`.
 
-В каталоге `Client/db-crypt` находятся скрипты для проверки шифрования и тестовая база данных.
+Каталог `key-plugins` содержит два источника ключа. Нужный файл скопируйте сами:
+
+[cols="2,3,4", options="header"]
+|===
+| Файл | Куда скопировать | Назначение
+| `KeySource.dll` | в каталог клиента, рядом с `fbclient.dll` | Тестовая библиотека с тестовыми ключами. Ключ получают приложение и утилиты без переключателей. См. <<fbcrypt-keysource>>.
+| `keyholderstdin.dll` | в каталог `plugins` клиента | Плагин `KeyHolderStdin`: утилита читает ключ из входного потока. См. <<fbcrypt-utils-stdin>>.
+|===
+
+Без копирования утилита с переключателем `-KeyHolder KeyHolderStdin` сообщает `Key holder plugin KeyHolderStdin failed to load`.
+
+В каталоге `Client/db-crypt` находятся скрипт для проверки шифрования и тестовая база данных.
 
 ==== Настройка
 
@@ -297,6 +275,11 @@ myencrypted = C:\Temp\EMPLOYEE30\EMPLOYEE30.FDB
 ==== Тестирование
 
 После установки и конфигурирования вы можете провести ряд тестов для проверки работоспособности шифрования и дешифрования. Тесты находятся в папке `Client/db-crypt`.
+
+[NOTE]
+====
+В архивах от 01.10.2026 вместо файлов `01-encrypt.bat` ... `05-gfix.bat` находится один скрипт `run-tests.ps1`. Он выполняет те же шаги два раза: с ключом из библиотеки `KeySource.dll` и с ключом из входного потока (плагин `KeyHolderStdin`). Перед каждым проходом скрипт копирует нужный файл из каталога `key-plugins` и меняет параметр `KeyHolderPlugin` в файле `firebird.conf` клиента. Команды, которые он выполняет, описаны ниже.
+====
 
 [WARNING]
 ====
