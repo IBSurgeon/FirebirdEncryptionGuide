@@ -1,0 +1,175 @@
+[[fbcrypt-config]]
+= Parameter reference
+
+This chapter collects all parameters and files that the IBSurgeon encryption plugin uses.
+
+== Plugin files
+
+[cols="2,2,3", options="header"]
+|===
+| File (Windows / Linux) | Location | Purpose
+| `dbcrypt.dll` / `libDbCrypt.so` | `plugins` | The page encryption plugin (`DbCrypt`).
+| `DbCrypt.conf` | `plugins` | The license and the parameters of the `DbCrypt` plugin.
+| `keyholder.dll` / `libKeyHolder.so` | `plugins` | The key holder plugin (`KeyHolder`).
+| `KeyHolder.conf` | `plugins` | The parameters of the `KeyHolder` plugin. The file is optional. It can contain keys (only for tests).
+| `keyholderstdin.dll` / `libKeyHolderStdin.so` | client `plugins` | The plugin that reads the key from the input stream of the utility. In the package for Windows, the file is in the `key-plugins` folder: copy it to `plugins`.
+| `fbcrypt.dll` / `libfbcrypt.so` | near the application / `lib` | The library to send the key from the application.
+| `KeySource.dll` / `libKeySource.so` | near `fbclient` / `lib` | Your library with the keys (optional).
+| `libcrypto-*.dll` / `libcrypto.so.*` | near `fbclient` / system library | The OpenSSL library.
+|===
+
+== firebird.conf and databases.conf
+
+[cols="2,4", options="header"]
+|===
+| Parameter | Description
+| `KeyHolderPlugin`
+| The list of key holder plugins. For the IBSurgeon plugin: `KeyHolderPlugin = KeyHolder`. You can set the parameter for the whole server (`firebird.conf`) or for one database (`databases.conf`). The parameter is also necessary on the client if you use the `KeySource` library.
+
+| `Providers`
+| The list of client providers. The default value: `Remote,Engine13,Loopback` (in version 3.0 `Engine12`). The line `Providers = Remote` on a workstation leaves only the network connection: the client does not load the embedded engine with its plugins and does not look for a local server. The line `Providers = Engine13` leaves only embedded mode.
+
+| `WireCrypt`
+| Wire protocol encryption. It is not related to database encryption, but it is mandatory (`Required`) if Java or .NET applications send the key.
+|===
+
+[[fbcrypt-config-dbcrypt]]
+== DbCrypt.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Parameter | Type | Description
+| `License` | string | The license key. Mandatory.
+| `RegName` | string | The name of the license owner. Mandatory.
+| `RegEmail` | string | The e-mail address of the license owner. Mandatory.
+| `ExpireDate` | number | The end date of the trial license (Unix time in seconds). Not present in a permanent license.
+| `Logger` | boolean | If `true`, the plugin writes to `firebird.log` the connections with individual client keys (see <<fbcrypt-keygen-clientkeys>>). The default is `false`. Only in the plugin for Firebird 5.0.
+|===
+
+The `License` value is related to the `RegName`, `RegEmail` and `ExpireDate` values. Do not change these parameters: the license becomes invalid.
+
+Example:
+
+[source,conf]
+----
+License = 0123456789abcdef0123456789abcdef
+RegName = My Company
+RegEmail = admin@example.com
+----
+
+[[fbcrypt-config-keyholder]]
+== KeyHolder.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Parameter | Type | Description
+| `Key` | string | A named key: `Key = <name> <value>`. You can repeat the parameter. The value format is described in <<fbcrypt-keygen-format>>.
+| `Password` | string | A named key set with a pass phrase: `Password = <name> <phrase>`. You can repeat the parameter. See <<fbcrypt-keygen-password>>.
+| `UnsafeClient` | boolean | If `true`, the plugin accepts keys that the client sent without the protected exchange (Jaybird, Firebird .NET). The default is `false`. See <<fbcrypt-client-unsafe>>.
+| `Prompt` | string | The prompt text for the key input by the user on the client side. See <<fbcrypt-client-prompt>>.
+|===
+
+The file is optional. Without it, the plugin works with the default values. A server that gets the keys from the clients needs the file only for the `UnsafeClient` parameter.
+
+An example file for a test server:
+
+[source,conf]
+----
+Key = Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Password = Blue my long secret phrase
+----
+
+An example file for a production server to which Java applications connect:
+
+[source,conf]
+----
+UnsafeClient = true
+----
+
+[WARNING]
+====
+In a production system, the `KeyHolder.conf` file on the server must not contain `Key` and `Password` lines. Otherwise, anybody who gets access to the server also gets the key.
+====
+
+[[fbcrypt-config-openssl]]
+== The OpenSSL library
+
+The plugins and the `fbcrypt` library load the `libcrypto` library from OpenSSL. The library name depends on the version of the plugin package:
+
+[cols="1,2,2", options="header"]
+|===
+| Platform | OpenSSL 3 | OpenSSL 1.1
+| Windows 64 bit | `libcrypto-3-x64.dll` | `libcrypto-1_1-x64.dll`
+| Windows 32 bit | `libcrypto-3.dll` | `libcrypto-1_1.dll`
+| Linux | `libcrypto.so.3` | `libcrypto.so.1.1`
+|===
+
+The plugins from HQbird 5 first look for OpenSSL 3, then for OpenSSL 1.1. The plugins for Firebird 3.0 and 4.0 need OpenSSL 1.1.
+
+On Windows the library is in the plugin package. On Linux the system library is used. If necessary, install the compatibility package (see <<fbcrypt-install>>).
+
+== Additional libraries
+
+At startup, the `KeyHolder` plugin looks for two optional libraries in the Firebird library folder.
+
+[cols="1,2,4", options="header"]
+|===
+| Library | Function | Purpose
+| `KeySource` | `MakeKeys` | Returns a list of keys. See <<fbcrypt-keysource>>.
+| `KeyChecker` | `CheckKey` | Gets each key that the plugin loaded. See <<fbcrypt-config-keychecker>>.
+|===
+
+The library folder: on Windows, it is the folder that contains `firebird.exe` or `fbclient.dll`; on Linux -- the `lib` folder.
+
+[[fbcrypt-config-keychecker]]
+=== The KeyChecker library
+
+File name: `KeyChecker.dll` (Windows) or `libKeyChecker.so` (Linux). The library exports the `CheckKey` function:
+
+[source,cpp]
+----
+void CheckKey(const char* keyName, const char* exeName, unsigned keyLen, void* keyValue);
+----
+
+[cols="1,4", options="header"]
+|===
+| Parameter | Value
+| `keyName` | the key name
+| `exeName` | the full path to the executable file of the current process
+| `keyLen` | the key length in bytes
+| `keyValue` | a pointer to the key value
+|===
+
+What the function can do:
+
+* Write information about the key to its own log: the key name, the length, the program name.
+* Change the key value in place. It cannot change the length.
+
+The function returns nothing. It cannot reject a key.
+
+The plugin does not call `CheckKey` for all keys:
+
+[cols="2,3,1", options="header"]
+|===
+| Where the plugin works | Source of the key | Call
+| Server, `KeyHolder` | the `KeyHolder.conf` file or the `KeySource` library | yes
+| Server, `KeyHolder` | the client sent a static value (`UnsafeClient = true`) | yes
+| Server, `KeyHolder` | the client did the protected key exchange (`fbcrypt`, client `KeyHolder`, `KeyHolderStdin`) | no
+| Client, `KeyHolder` | the `KeyHolder.conf` file or the `KeySource` library on the client | yes
+| Utility, `KeyHolderStdin` | the input stream of the utility | yes
+| Application, `fbcrypt` | the `fbcrypt_key` function | no
+|===
+
+The client `KeyHolder` plugin calls the function for each of its keys at each connection.
+
+[WARNING]
+====
+Do not write the key value to the log.
+====
+
+[NOTE]
+====
+The `KeyChecker` library is an extension point for special key handling schemes. A usual installation does not need it. Before you use it, consult IBSurgeon support.
+====
+
+Examples of the library in C++ and Free Pascal are in the `examples/keychecker` folder of the repository https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

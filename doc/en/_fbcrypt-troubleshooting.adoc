@@ -1,0 +1,180 @@
+[[fbcrypt-troubleshooting]]
+= Troubleshooting
+
+The tables below collect the messages of the encryption plugin, their causes and the ways to correct them.
+
+== Key errors
+
+[cols="3,3,3", options="header"]
+|===
+| Message | Cause | What to do
+| `Invalid crypt key <name>` +
+`Key not set (missing KeyHolder plugin in firebird.conf / databases.conf)`
+| The `KeyHolderPlugin` parameter is not set for this database.
+| Add `KeyHolderPlugin = KeyHolder` to `firebird.conf` or to the database section in `databases.conf`. If you configure it in `databases.conf`, connect by the alias.
+
+| `Invalid crypt key <name>` +
+`Key not set`
+| The connection did not send the key, and the key is not on the server.
+| Send the key from the client (`fbcrypt`, `KeySource`, `KeyHolderStdin`) or write it to `KeyHolder.conf` for a test.
+
+| `Invalid crypt key <name>` without the line `Key not set`
+| A key with this name was received, but its value is not correct. A frequent cause: the pass phrase contains the character `#`, `{` or `}`.
+| Check the key value or the pass phrase. See <<fbcrypt-keygen-password>>.
+
+| `Key not set (loading keys from KeyHolder.conf)`
+| The `KeyHolder.conf` file contains keys, but there is no key with the necessary name among them, or its value is not correct.
+| Check the key name in the header (`gstat -h`) and in the `KeyHolder.conf` file.
+
+| `Unknown key name <name> - key can't be found in KeyHolder.conf`
+| There is no key with this name in the `KeyHolder.conf` file.
+| Add the key or correct the name.
+
+| `Unknown key name <name> - key can't be found in external source`
+| The `KeySource` library did not return a key with this name.
+| Check the text that the `MakeKeys` function returns.
+
+| `Missing database encryption key for your attachment`
+| The database is encrypted, but this connection did not send the key. Other connections with the key do not help: each connection needs the key.
+| Send the key from this client. For the utilities, use `-KeyHolder`.
+
+| `Invalid key length N bytes, need 16, 24, 32 or 64` (Firebird 5.0) +
+`Invalid key length N bytes, need 16, 24 or 32` (Firebird 3.0 and 4.0)
+| The key length is not correct.
+| Use a key with a length of 16, 24 or 32 bytes. Check that the key text does not contain spaces or extra characters.
+
+| `Key format error`
+| The key value does not match the format `0x..,0x..,`.
+| See <<fbcrypt-keygen-format>>.
+
+| `Bad key or password in config file` +
+`Bad key or password passed from external source`
+| In the `Key=` or `Password=` line, there is no space between the name and the value.
+| Correct the line: `Key=<name> <value>`.
+
+| `text stream: illegal line <line>` (Firebird 5.0) +
+`Passed text: illegal line <line>` (Firebird 3.0 and 4.0)
+| The `Key=` or `Password=` line cannot be parsed. The usual cause: a quote `"` in the pass phrase.
+| Remove the character from the phrase. See <<fbcrypt-keygen-password>>.
+
+| `Unknown key name <name> - key can't be found` (gbak)
+| The backup file is encrypted, but the utility did not get the key.
+| Specify `-KeyHolder` and send the key: from the input stream or from the `KeySource` library. See <<fbcrypt-utils-gbak>>.
+
+| `No input`
+| The `KeyHolderStdin` plugin got an empty input stream.
+| Send the key: `echo Key=... \| utility ...` or `utility ... < file`.
+|===
+
+== Key exchange errors
+
+[cols="3,3,3", options="header"]
+|===
+| Message | Cause | What to do
+| `RSA_private_decrypt failed` +
+`Too long reply from callback >1Mb`
+| The client sent the key without the protected exchange (Jaybird, Firebird .NET), and the `UnsafeClient` parameter is not on. Another cause: the client and server libraries are from different plugin packages.
+| Set `UnsafeClient = true` (see <<fbcrypt-client-unsafe>>), or use `fbcrypt` and plugins from the same package.
+
+| An application with `fbcrypt` gets `Missing database encryption key for your attachment`
+| The callback is registered in a different thread or in a different instance of `fbclient.dll`.
+| Call `fbcrypt_callback(nil)` in the thread that connects. Give to `fbcrypt_init` the path to the same library that the access component loads.
+
+| `fbcrypt_init` returns `-1`
+| The client library is not found, has a different bitness, or dependent dll files are missing. Or `fbcrypt_init` was already called with a different path.
+| Check the path, the bitness and that the dll files from the client package are present.
+
+| `fbcrypt_callback` returns `-10`
+| There was no successful call of `fbcrypt_init`.
+| First call `fbcrypt_init`.
+
+| `fbcrypt_callback` returns `-5`
+| An `fbclient` of version 2.5 or older is loaded.
+| Use `fbclient` from the client package of the plugin.
+|===
+
+== License errors
+
+[cols="3,3,3", options="header"]
+|===
+| Message | Cause | What to do
+| `No crypt license info found`
+| There is no `plugins/DbCrypt.conf` file, or it does not contain the `License` parameter.
+| Copy the license file to the `plugins` folder.
+
+| `In crypt license info RegName not found` +
+`In crypt license info RegEmail not found`
+| A mandatory parameter is missing in the license file.
+| Use the license file without changes.
+
+| `License is incorrect`
+| The license parameters were changed, or the file is damaged.
+| Restore the original license file.
+
+| `Trial period expired`
+| The trial license period ended.
+| Install a permanent license.
+|===
+
+The same errors occur in the `gbak` utility if there is no `plugins/DbCrypt.conf` file near it.
+
+== Environment errors
+
+[cols="3,3,3", options="header"]
+|===
+| Message | Cause | What to do
+| `Library libcrypto... failed to load`
+| The OpenSSL library of the necessary version is not found.
+| See <<fbcrypt-config-openssl>>. On Linux, install the package with `libcrypto.so.1.1` for Firebird 3.0 and 4.0.
+
+| `Entrypoint ... not found`
+| An OpenSSL library of an unsuitable version is found.
+| Use `libcrypto` from the plugin package.
+
+| `Keyfile parameter missing but backup file is encrypted` (gbak 3.0)
+| The backup file is encrypted, but the `-KEYFILE` and `-KEY` switches are not specified.
+| Add `-KEYFILE <file>` or `-KEY <value> -KEYNAME <name>`.
+
+| `KEY switch requires KEYNAME` +
+`KEYNAME switch requires KEY or KEYFILE` +
+`KEY switch is not compatible with KEYFILE` (gbak 3.0)
+| An incorrect combination of switches.
+| See <<fbcrypt-utils-fb3>>.
+
+| `Key holder parameter missing but backup file is encrypted` (gbak 4.0, 5.0)
+| The backup file is encrypted, but the `-KEYHOLDER` switch is not specified.
+| Add `-KeyHolder KeyHolderStdin` and send the key.
+
+| `Unknown crypt plugin name - use -CRYPT switch` (gbak)
+| The utility could not find the name of the encryption plugin.
+| Add `-CRYPT DbCrypt`.
+
+| `Crypt plugin DbCrypt failed to load` (gbak)
+| The `plugins` folder of the utility does not contain `dbcrypt.dll` or the license `DbCrypt.conf`. The `gbak` utility encrypts the backup file itself.
+| Copy `dbcrypt.dll` and `DbCrypt.conf` to the `plugins` folder near the utility.
+
+| `Crypt plugin DBCRYPT failed to load` (Linux)
+| The plugin name in the `ALTER DATABASE ENCRYPT` statement is written without quotes and was converted to upper case.
+| Write the name in double quotes: `"DbCrypt"`.
+
+| `Key holder plugin <name> failed to load`
+| The plugin specified in `KeyHolderPlugin` or in the `-KEYHOLDER` switch is not found in the `plugins` folder.
+| Check the plugin name and that the file is present. The utilities need the `plugins` folder near the utility. In the client package for Windows, the `keyholderstdin.dll` file is in the `key-plugins` folder: copy it to `plugins`.
+|===
+
+== Frequent questions
+
+*The database is encrypted, but a connection without the key is possible.* +
+The key is on the server: in the `plugins/KeyHolder.conf` file or in the `KeySource` library. Remove it from the server and restart Firebird. Another cause: the client itself sends the key. The `KeySource` library is near its `fbclient`, or a key is written in its `plugins/KeyHolder.conf`.
+
+*The `ALTER DATABASE ENCRYPT` statement completed without an error, but the database is not encrypted.* +
+Check the pass phrase in the `KeyHolder.conf` file: with curly brackets in the phrase, the plugin does not get the key and does not report an error. See <<fbcrypt-keygen-password>>.
+
+*The line `crypt thread not complete` does not disappear.* +
+The encryption thread works only while there are connections to the database. Keep a connection open. See <<fbcrypt-monitoring>>.
+
+*The backup file is not encrypted.* +
+The `gbak` utility was run without the `-KEYHOLDER` switch (in version 3.0 -- without `-KEYFILE` and `-KEY`). In versions 4.0 and 5.0, the switch is necessary also when the `KeySource` library sends the key. See <<fbcrypt-utils-gbak>> and <<fbcrypt-utils-fb3>>.
+
+*The key is lost.* +
+You cannot recover the data without the key. Keep a copy of the key separately from the server and from the backups.

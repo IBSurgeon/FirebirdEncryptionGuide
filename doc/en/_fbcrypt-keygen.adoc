@@ -1,0 +1,285 @@
+[[fbcrypt-keygen]]
+= Key generation
+
+To generate keys for encryption, we made the `aesKeyGen` utility. It generates keys for the AES256 encryption algorithm. The use of the utility is simple
+
+[source,cmd]
+----
+aesKeyGen.exe
+----
+
+for Linux the command is:
+
+[source,bash]
+----
+./aesKeyGen
+----
+
+The output of the utility is:
+
+[listing]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+};
+----
+
+The utility gets 32 random bytes from the cryptographic generator of the OpenSSL library. Each run gives a new key.
+
+If you do not have the `aesKeyGen` utility, you can get a key in the same format with `openssl`:
+
+[source,bash]
+----
+openssl rand -hex 32 | sed 's/../0x&,/g'
+----
+
+[IMPORTANT]
+====
+Keep a copy of the key in a safe place *outside* the database server. You cannot recover a lost key: the data in the database and in the encrypted backups becomes unavailable.
+====
+
+[[fbcrypt-keygen-format]]
+== Key format
+
+The text form of the key is used in the `KeyHolder.conf` file, in the `KeySource` library, in the input stream of the `KeyHolderStdin` plugin and in the Java and .NET connection properties.
+
+[source]
+----
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Rules:
+
+* Each byte is written with exactly five characters: `0x`, two hexadecimal digits and a comma.
+* Spaces between the bytes are not allowed.
+* A comma after the last byte is allowed. The `aesKeyGen` utility writes the key with this comma. You do not need to remove it.
+* The key length is 16, 24 or 32 bytes (AES-128, AES-192, AES-256). A key of a different length causes the error `Invalid key length`.
+* The key name does not contain spaces. The letter case of the name is not significant.
+
+== How to use this key?
+
+=== In the `KeyHolder.conf` file
+
+Use this file only for debugging.
+
+The format to store the key is:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Each key has a name, which is written after `Key=`. After a space comes the key itself. The file can contain several `Key=` lines.
+
+Example:
+
+[source,conf]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+----
+
+On Linux, limit the access to the file:
+
+[source,bash]
+----
+chown root:firebird /opt/firebird/plugins/KeyHolder.conf
+chmod 640 /opt/firebird/plugins/KeyHolder.conf
+----
+
+[[fbcrypt-keygen-password]]
+=== Pass phrase instead of a key
+
+Instead of a binary key, you can set a pass phrase. For this, use the `Password` parameter:
+
+[source,conf]
+----
+Password=<KeyName> <passphrase>
+----
+
+The plugin calculates a key with a length of 32 bytes from the phrase with the PBKDF2 function (HMAC-SHA256, 10000 iterations). The same phrase always gives the same key.
+
+You can use the `Password=` line in the same places as the `Key=` line: in the `KeyHolder.conf` file, in the `KeySource` library and in the input stream of the `KeyHolderStdin` plugin.
+
+The plugin reads the line as a Firebird configuration file. Thus, not all characters are allowed in the phrase:
+
+[cols="2,5", options="header"]
+|===
+| Character | What occurs
+| `"` | The line is not parsed. Error `illegal line`.
+| `#` | The plugin gets a different phrase. The key does not match: `Invalid crypt key`.
+| `{` and `}` | The plugin does not get the key. From the `KeySource` library: error `Invalid crypt key`. From the `KeyHolder.conf` file: the `ALTER DATABASE ENCRYPT` statement completes without an error, but the database stays not encrypted.
+| `$(` | Start of a substitution. The plugin gets a different phrase or does not parse the line.
+| spaces at the start and at the end | Are removed.
+|===
+
+These pass without changes: letters, digits, spaces inside the phrase, the characters `'`, `;`, `=`, `\` and letters of national alphabets. Save a file with such a phrase in UTF-8 encoding without BOM.
+
+[NOTE]
+====
+The strength of such a key is the same as the strength of the phrase. A random key of 32 bytes is more secure. Use a long phrase if you select this method.
+====
+
+=== In command line utilities with the KeyHolderStdin plugin
+
+The general format to call command line utilities with the `KeyHolderStdin` plugin is (Firebird 4.0 and 5.0; for version 3.0 see <<fbcrypt-utils-fb3>>):
+
+[source,cmd]
+----
+echo Key=<KeyName> <key_value> | <utils> -KeyHolder KeyHolderStdin ...
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+For more information, see <<fbcrypt-utils>>.
+
+=== In a C/C++ application
+
+You can take the generated key as it is. Remove the final comma.
+
+[source,cpp]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1
+};
+----
+
+=== In a Delphi and Lazarus application
+
+This is quite simple: replace all `0x` characters of the key with `$` and remove the final comma.
+
+[source,delphi]
+----
+const keyRed: array [0..31] of byte  = ($d6,$d8,$8d,$07,$09,$70,$fe,$8c,$2e,$fd,$a2,$ee,$cd,$84,$ab,$d3,$89,$48,$29,$a1,$2b,$f0,$b9,$81,$65,$2c,$b2,$92,$ad,$22,$b6,$e1);
+----
+
+=== In a Java and .NET application
+
+The Jaybird and Firebird .NET drivers get the key in text form. The key name and the value are separated by a colon:
+
+[source]
+----
+MyKey:0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+----
+
+For more information, see <<fbcrypt-client-java>> and <<fbcrypt-client-net>>.
+
+[[fbcrypt-keygen-clientkeys]]
+== Individual client keys
+
+In some systems, many clients (branches, workstations, partners) get the same database key. The `ClientKeygen` utility lets you give each client its own key and see in the server log which key was used for the connection.
+
+[NOTE]
+====
+Only the plugin for Firebird 5.0 (HQbird 5) supports individual client keys. The versions for Firebird 3.0 and 4.0 do not have this feature. The `ClientKeygen` utility is not in all packages. If it is not in your package, contact IBSurgeon support.
+====
+
+=== How it works
+
+. The `ClientKeygen` utility takes the database key and creates a client key with a length of 64 bytes. The client key contains random data, the key number and the database key. The utility encrypts it with the value of the `License` parameter from the `DbCrypt.conf` file.
+. The client sends the client key to the server instead of the database key. The key name stays the same.
+. The `DbCrypt` plugin on the server decrypts the client key with its license. It gets the database key and the number of the client key.
+
+From this it follows:
+
+* You do not need to encrypt the database again. All client keys open the same database.
+* A client key works only on a server with the same `License` value that the `ClientKeygen` utility had.
+* The database key must have a length of 32 bytes.
+* The usual database key continues to work. Keep it only with the administrator.
+
+=== Creation of keys
+
+Syntax:
+
+[source]
+----
+ClientKeygen {keyname} {keycount} [starting]
+----
+
+[cols="1,3", options="header"]
+|===
+| Parameter | Value
+| `keyname` | the name of the database key in the `KeyHolder.conf` file
+| `keycount` | how many client keys to create
+| `starting` | the number of the first key (default `1`)
+|===
+
+The utility reads the database key from the `KeyHolder.conf` file and the license from the `DbCrypt.conf` file. Both files must be in the current folder or in the `../plugins` folder. The utility writes the result to the current folder.
+
+Procedure:
+
+. On the administrator computer, create an empty folder.
+. Copy the server `DbCrypt.conf` file into it.
+. Create in it a `KeyHolder.conf` file with the line `Key=<name> <value>` for the database key.
+. Run the utility in this folder:
++
+[source,bash]
+----
+ClientKeygen Red 20 1
+----
++
+The utility creates 20 files: `KeyHolder.conf.1`, `KeyHolder.conf.2`, ... `KeyHolder.conf.20`. Each file contains one line `Key=Red <key_value>` with a value with a length of 64 bytes.
+. Give each client its file over a protected channel. Write down which key number each client got.
+. Delete the folder. It contains the database key.
+
+To add clients later, run the utility with the third parameter. For example, `ClientKeygen Red 5 21` creates keys with the numbers from 21 to 25.
+
+=== Use on the client
+
+Use a client key in the same way as a usual key. The key name is the same, the value length is 64 bytes.
+
+[cols="2,4", options="header"]
+|===
+| Method to send the key | What to do
+| `fbcrypt` library
+| Give the value to `fbcrypt_key` with the length 64.
+
+| Client `KeyHolder` plugin
+| Save the file `KeyHolder.conf.<number>` with the name `plugins/KeyHolder.conf` in the client library folder. In the client `firebird.conf`, set `KeyHolderPlugin = KeyHolder`.
+
+| `KeySource` library
+| Return the line from the file in the `MakeKeys` function.
+
+| `KeyHolderStdin` plugin
+| Give the line from the file to the input stream of the utility.
+
+| Driver property (Jaybird, .NET)
+| Use the value in the form `<name>:0x..,0x..,`. The parameter `UnsafeClient = true` is necessary.
+|===
+
+=== Connection log
+
+To make the server write to `firebird.log` which client key was used, add the parameter to the server `plugins/DbCrypt.conf` file and restart Firebird:
+
+[source,conf]
+----
+Logger = true
+----
+
+The message in the log looks like this:
+
+[listing]
+----
+DbCrypt login from 192.168.1.15/54907 using key 7
+----
+
+Here `192.168.1.15/54907` is the client address and port, `7` is the number of the client key.
+
+Properties of the log:
+
+* A record is created for each connection with a client key.
+* Connections with the usual database key do not go to the log.
+* The record is created before the key check. A connection attempt with a damaged client key also goes to the log.
+
+=== Replacement of a client key
+
+The plugin does not have a list of revoked keys. You cannot disable one client key.
+
+To close access for a client that has a key:
+
+. Decrypt the database and encrypt it with a new key (see <<fbcrypt-usage>>).
+. Create new client keys for the new database key.
+. Give the new keys to the other clients.
+
+An example of the work with client keys is in the `examples/clientkeygen` folder of the repository https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

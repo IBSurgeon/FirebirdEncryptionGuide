@@ -1,0 +1,536 @@
+[[fbcrypt-client-app]]
+= How Firebird encryption works on the client side
+
+== Ways to send the key
+
+A client can send the key to the server in several ways. The choice depends on the application type:
+
+[cols="2,3,2", options="header"]
+|===
+| Method | For which applications | Key exchange is protected
+| `fbcrypt` library (<<fbcrypt-client-native>>)
+| Native applications with source code (Delphi, Lazarus, C++ and others)
+| Yes
+
+| `KeySource` library (<<fbcrypt-keysource>>)
+| Native applications without source code
+| Yes
+
+| `KeyHolderStdin` plugin (<<fbcrypt-utils>>)
+| Firebird command line utilities
+| Yes
+
+| Key request to the user (<<fbcrypt-client-prompt>>)
+| Applications without source code, when a person types the key
+| Yes
+
+| Driver connection property (<<fbcrypt-client-java>>, <<fbcrypt-client-net>>)
+| Java (Jaybird), .NET
+| No. You need `UnsafeClient = true` and wire protocol encryption
+|===
+
+[[fbcrypt-client-native]]
+== Native applications
+
+To understand what occurs when a client application connects to an encrypted database, let us look at the usual connection process to a database that is not encrypted, for native applications.
+
+Note: here and below, a "`native`" application is an application that makes a network connection to the server with `fbclient.dll`. Usually such applications are made with Delphi, C++, PHP. Unlike native applications, Java and .NET implement their own versions of the protocol. We discuss them below.
+
+The connection process:
+
+. The client application loads the client library
+.. `fbclient.dll` – native Windows applications
+.. `libfbclient.so` – native Linux applications
+. The client application starts the connection and sends
+.. The user name, for example, SYSDBA
+.. The password, for example, masterkey
+.. The database path/alias
+
+For an encrypted database, an additional step is necessary: the client must send the name of the encryption key and its value.
+
+It is important to know that the key transfer must occur before the usual connection, because the data pages with the metadata (including the database owner name, the character set and so on) are encrypted.
+
+This gives us the following:
+
+. An additional network data exchange is necessary to send the key before the usual connection.
+
+. To send the key from the client application to Firebird, you must write code that uses asymmetric encryption and implements a callback interface. This can be quite difficult. To make this task simpler, plugin developers give sample code for the connection. Or, as in the IBSurgeon plugin framework, they make an additional library `fbcrypt.dll`/`libfbcrypt.so`. This library implements an easy-to-use interface to send keys from the client application.
+
+=== Functions of the fbcrypt library
+
+The `fbcrypt.dll`/`libfbcrypt.so` library exports three simple functions. Call them before your application connects to the database:
+
+[source,cpp]
+----
+int fbcrypt_init(const char* clientPathName);
+int fbcrypt_key(const char* name, const unsigned char* data, unsigned dl);
+int fbcrypt_callback(void* provider);
+----
+
+On Windows the functions use the `stdcall` calling convention, on Linux -- `cdecl`.
+
+`fbcrypt_init`::
+Loads the Firebird client library from the specified path and *clears the list of keys* that were stored before.
++
+* A repeated call with the same path is allowed.
+* A repeated call with a different path returns an error: in one process, `fbcrypt` works only with one client library.
+* A call with `NULL` (`nil`) only clears the list of keys. Use it to replace the keys.
+
+`fbcrypt_key`::
+Adds a named key to the list: the name, the value and the value length in bytes.
++
+* You can call the function several times to add several keys.
+* The key name is a null-terminated string, not longer than 255 bytes. The letter case of the name is not significant.
+* The key length is 16, 24 or 32 bytes (see <<fbcrypt-keygen>>).
+
+`fbcrypt_callback`::
+Registers a callback in the client library. The callback sends the keys from the list to the server.
++
+* If the application uses the object-oriented API, give the pointer to the provider (`IProvider`) that creates the connections.
+* If the application uses the ISC API (`isc_attach_database`), give `NULL` (`nil`). In this case the callback is registered *for the current thread*.
+
+All functions return `0` if the function completed without errors, and a value `< 0` in other cases.
+
+Error codes:
+
+fbcrypt_init::
+* `-1` the client library with the specified name cannot be loaded, or the library was already loaded from a different path.
+fbcrypt_key::
+* `-1` unknown error when the key is stored, possibly not enough memory.
+fbcrypt_callback::
+* `-10` the client library was not loaded with `fbcrypt_init`;
+* `-5` the library loaded with `fbcrypt_init` does not have the `fb_get_master_interface` or `fb_database_crypt_callback` call - usually a very old (\<=2.5) `fbclient` or an incorrect library;
+* `-1` unknown error when the stored keys are registered in `fbclient` - usually does not occur.
+
+[IMPORTANT]
+====
+The application must use the `fbclient.dll` from the client package of the encryption plugin, and the same library whose path you give to `fbcrypt_init`. If the access component loads a different instance of `fbclient.dll`, the callback is registered in the incorrect library, and the key is not sent.
+
+The bitness of `fbcrypt.dll`, `fbclient.dll` and the application must be the same (32 or 64 bit).
+====
+
+=== Example
+
+To connect a native application (that uses `fbclient.dll`) to an encrypted database, you must make 3 calls. Below is an example in Delphi (simplified, without error handling).
+
+Function declarations:
+
+[source,pascal]
+----
+function fbcrypt_init(clientPathName: PAnsiChar): Integer; stdcall;
+  external 'fbcrypt.dll';
+function fbcrypt_key(name: PAnsiChar; data: PByte; dl: Cardinal): Integer; stdcall;
+  external 'fbcrypt.dll';
+function fbcrypt_callback(provider: Pointer): Integer; stdcall;
+  external 'fbcrypt.dll';
+----
+
+In the `BeforeConnect` event handler:
+
+[source,pascal]
+----
+const keyRed: array [0..31] of byte  = ($ec,$a1,$52,$f6,$4d,$27,$da,$93,$53,$e5,$48,$86,$b9,$7d,$e2,$8f,$3b,$fa,$b7,$91,$22,$5b,$59,$15,$82,$35,$f5,$30,$1f,$04,$dc,$75);
+
+fbcrypt_init(PAnsiChar('C:\Firebird30\fbclient.dll'));
+fbcrypt_key(PAnsiChar('RED'), @keyRed, SizeOf(keyRed));
+fbcrypt_callback(nil);
+
+ // Then connect as usual
+Database1.Active:=True;
+----
+
+[WARNING]
+====
+In the example, the key is written in the code as a constant. Do this only in training examples: it is easy to find the constant in the executable file. In a production application, get the key from a protected storage or build it while the program runs.
+====
+
+The picture below gives a general view of the connection process to an encrypted database in a native application:
+
+.Connection process to an encrypted database for native applications
+image::14_key_exchange.png[]
+
+The source code of the examples is in the `examples` folder of the repository https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+=== Several keys and several databases
+
+There is one `fbcrypt` key list for the whole process. At each connection, *all* keys from the list are sent to the server. The server selects the necessary key by the key name that is written in the database header.
+
+Thus, to work with several databases, it is sufficient to give the keys different names and add all of them:
+
+[source,pascal]
+----
+fbcrypt_init(PAnsiChar(ClientLibPath));
+fbcrypt_key(PAnsiChar('RED'), @keyRed, SizeOf(keyRed));
+fbcrypt_key(PAnsiChar('GREEN'), @keyGreen, SizeOf(keyGreen));
+fbcrypt_callback(nil);
+----
+
+To replace the keys, clear the list with the call `fbcrypt_init(nil)` and add the new keys. The keys stay in memory until the next call of `fbcrypt_init` or until `fbcrypt.dll` is unloaded. A disconnect from the database does not clear the list.
+
+=== What about thread safety in multithreaded client applications?
+
+Let us recall some general points about the implementation of multithreaded client applications.
+
+Since Firebird 2.5, several threads in an application can safely use one database connection, because `fbclient.dll` does all the necessary synchronization.
+
+But in this case the threads can work with the connection only one after another.
+
+This is acceptable for applications that do not need high-performance data exchange with the database. If it is not a problem that one thread waits for its SQL query while another thread runs a different SQL query, it is simpler to use the simple model: one connection is used by several threads.
+
+If the application needs parallel execution of SQL queries (that is, it is a full-scale client application), it is better to use a separate database connection for each thread.
+
+The key exchange for connections to encrypted databases is a bit more complex.
+
+At each connection, the client library sends the keys from the client. But this is not directly related to the threads in the client application. The situation depends on the API that you use.
+
+As you know, since version 3.0 the Firebird client library gives 2 types of API: the new object-oriented API, based on the concept of providers, and the legacy isc_ API, implemented as a workaround to keep compatibility with old Firebird drivers.
+
+If you use the new object-oriented client API, it is sufficient to create a provider, give it the necessary keys (`fbcrypt_callback(provider)`), and then use it for new connections from any threads.
+
+If you use the client isc_ API, for each connection the client library creates its own temporary provider. The end user cannot see or access this provider.
+
+In this case, the callback is taken from the thread where `isc_attach_database` is called: the client library keeps a pointer to it in the thread local storage.
+
+*In practice, many access libraries use the isc_ API (for example, FireDAC). For them, you must call `fbcrypt_callback(nil)` in each thread that connects to the encrypted database, before the connection.* For example, IBX for Lazarus and `firebird-driver` for Python use the object-oriented API.
+
+Rules for a multithreaded application:
+
+[cols="2,3", options="header"]
+|===
+| Function | Where to call
+| `fbcrypt_init(path)`
+| One time at application start. The function clears the shared key list, so do not call it while other threads connect to the database.
+
+| `fbcrypt_key(...)`
+| After `fbcrypt_init`, one time for each key. The key list is shared by all threads and is protected from concurrent access.
+
+| `fbcrypt_callback(nil)` (isc_ API)
+| In each thread that makes a connection, before the connection. One call per thread is sufficient.
+
+| `fbcrypt_callback(provider)` (object-oriented API)
+| One time for each provider.
+|===
+
+If you use a connection pool (isc_ API), remember: a new physical connection is made by the thread that requested it from the pool. Call `fbcrypt_callback(nil)` in each worker thread.
+
+Set the key values before the connection. After the connection, you cannot change the key value.
+
+[[fbcrypt-keysource]]
+== Legacy applications without source code
+
+What if you want to use database encryption, but you do not have the source code of your application? We prepared for this situation. In this case you must create a dynamic library with the name `KeySource.dll` and put it near `fbclient.dll`.
+
+=== How it works
+
+. The application does not register a callback to send the key.
+. At connection time, `fbclient` reads the `KeyHolderPlugin` parameter from its `firebird.conf` file and loads the `KeyHolder` plugin from the `plugins` folder.
+. The `KeyHolder` plugin looks for the `KeySource` library in the Firebird library folder (Windows: in the folder that contains `fbclient.dll`), calls its `MakeKeys` function and gets the keys.
+. `KeyHolder` on the client sends the keys to the `KeyHolder` plugin on the server over the protected protocol.
+
+You do not need to change the application code.
+
+=== Which files are necessary
+
+The folder from which the application loads `fbclient.dll` must contain the files from the client package (`Client\32bit` or `Client\64bit`):
+
+[listing]
+----
+fbclient.dll            client library from the plugin package
+firebird.conf           contains the line KeyHolderPlugin = KeyHolder
+firebird.msg
+libcrypto-*.dll         OpenSSL library
+KeySource.dll           your library with the keys
+plugins\keyholder.dll   key holder plugin
+... other dll files from the package folder
+----
+
+[cols="1,3", options="header"]
+|===
+| Platform | Name and location of the `KeySource` library
+| Windows | `KeySource.dll` near `fbclient.dll`
+| Linux | `libKeySource.so` in the Firebird library folder (usually `/opt/firebird/lib`)
+|===
+
+The bitness of the files (32 or 64 bit) must be the same as the bitness of the application, not of the operating system.
+
+=== The MakeKeys function
+
+The library must export one function with the `cdecl` calling convention:
+
+[source,cpp]
+----
+char* MakeKeys(char* (*allocator)(unsigned int size), unsigned int* size);
+----
+
+Rules:
+
+* Allocate the memory for the text with the keys only with the `allocator` function that the plugin gives. The plugin releases this memory itself.
+* Write the text length in bytes, without the terminating null, to `*size`. The function `allocator(n)` allocates `n + 1` bytes.
+* The function returns a pointer to the allocated buffer. If you return `NULL`, the plugin takes the keys from the `KeyHolder.conf` file.
+
+The code of the dynamic library `KeySource.dll` is simple.
+
+Example in C/C++:
+
+[source,cpp]
+----
+#include <stdio.h>
+#include <string.h>
+
+const char* keys =
+"Key=Zero 0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,\n"
+"Key=White 0x25,0x83,0x46,0x88,0xf4,0x1d,0x2c,0x69,0x48,0x53,0x7a,0x4a,0x0a,0x15,0x35,0x22,0x2c,0x02,0x4f,0x65,0xb8,0x73,0x77,0x07,0x89,0xb2,0xc6,0x04,0xda,0xe4,0x03,0x5d,\n";
+
+extern "C" char* MakeKeys(char* (*allocator)(unsigned int size), unsigned int* size)
+{
+	*size = strlen(keys);			// store keys length
+	char* rc = allocator(*size);	// allocate memory for keys data
+	memcpy(rc, keys, (*size) + 1);	// store keys data
+
+	return rc;
+}
+----
+
+Example in Delphi:
+
+[source,pascal]
+----
+library KeySource;
+
+type
+  Allocator = function(size: Cardinal): PAnsiChar; cdecl;
+
+const
+  keys: AnsiString =
+    'Key=Zero 0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,'#10 +
+    'Key=White 0x25,0x83,0x46,0x88,0xf4,0x1d,0x2c,0x69,0x48,0x53,0x7a,0x4a,0x0a,0x15,0x35,0x22,0x2c,0x02,0x4f,0x65,0xb8,0x73,0x77,0x07,0x89,0xb2,0xc6,0x04,0xda,0xe4,0x03,0x5d,'#10;
+
+function MakeKeys(alloc: Allocator; var size: Cardinal): PAnsiChar; cdecl;
+begin
+  size := Length(keys);
+  Result := alloc(size);
+  Move(keys[1], Result^, size);
+end;
+
+exports
+  MakeKeys;
+
+begin
+end.
+----
+
+Complete projects for C++, Delphi and Lazarus are in the `examples/keysource` folder of the repository https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+A ready example for a Windows GUI application with four variants of the library (key in the code, key in a file, key from a tray program, key from a REST service) is described in a separate guide: https://github.com/IBSurgeon/FirebirdEncryptionGuide/releases/latest/download/fbcrypt-closed-gui-en.pdf[Firebird database encryption for a closed-source application]. It also describes encryption with a pass phrase, an encrypted backup and deployment scripts for Firebird 3.0, 4.0 and 5.0. The source code is in the `examples/closed-gui` folder.
+
+=== Format of the text with the keys
+
+The `MakeKeys` function returns several named keys at one time. The text has the same format as the `KeyHolder.conf` file: one key per line, the lines are separated by a line feed.
+
+[source]
+----
+<keys> ::= <key-line> \n [ <key-line> \n ... ]
+
+<key-line> ::= Key=<KeyName> <key_value>
+             | Password=<KeyName> <passphrase>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Each key has a name, which is written after `Key=`. After a space comes the key itself. Each byte is written as a hexadecimal pair with the prefix `0x`. The bytes are separated by a comma without spaces. For more information about the format, see <<fbcrypt-keygen-format>>.
+
+[NOTE]
+====
+If the `KeySource` library is found and returned keys, the `Key` and `Password` lines from the `KeyHolder.conf` file are not used. The other parameters of this file (`UnsafeClient`, `Prompt`) continue to work.
+====
+
+[WARNING]
+====
+The `KeySource.dll` library from the client package contains only test keys. For a production system, build your own library.
+
+The key is inside `KeySource.dll` on the workstation. This method protects the database file and the backups from theft. It does not protect from a user who has full access to the workstation and can copy the library.
+====
+
+=== How the plugin calls the library
+
+These properties are the same for Firebird 3.0, 4.0 and 5.0 on Windows:
+
+* The plugin loads the library before each connection and unloads it after the `MakeKeys` call. The global variables of the library are not kept between connections. To keep a state, for example a cache, pin the library in the process: call `GetModuleHandleEx` with the `GET_MODULE_HANDLE_EX_FLAG_PIN` flag.
+* `MakeKeys` is called one time for each successful connection. If the function returned `NULL` and the key is not in the `KeyHolder.conf` file, the client calls it several times for the same connection: 9 times on Firebird 3.0 and 4.0, 5 times on Firebird 5.0. Only after that the application gets an error. Thus, a refusal must be fast.
+* The function can be called from several threads at the same time.
+* The client sends to the server all keys that the function returned. Return only the necessary keys.
+* The plugin loads the library by the full path from the folder that contains `fbclient.dll`. If the `FIREBIRD` environment variable is set, the client looks for `firebird.conf`, `plugins` and `KeySource.dll` in its folder.
+* Do not put the client `KeySource.dll` into the server folder. The server `KeyHolder` also calls it, and the key is then on the server.
+
+What is necessary in the client `firebird.conf` file and in its folder:
+
+[cols="2,3,4", options="header"]
+|===
+| Mode | `firebird.conf` | Additional files
+| Usual connection | `KeyHolderPlugin = KeyHolder` +
+`Providers = Remote` (optional) | `plugins\keyholder.dll`, `KeySource.dll`
+| Embedded | `KeyHolderPlugin = KeyHolder` +
+`Providers = Engine13` (in version 3.0 `Engine12`) | the same, and also `plugins\dbcrypt.dll`, the license `plugins\DbCrypt.conf`, the engine `plugins\engine13.dll` and the `intl` folder
+|===
+
+The line `Providers = Remote` leaves the client only the network connection: it does not load the embedded engine with its plugins and does not look for a local server.
+
+[WARNING]
+====
+Firebird 3.0: the standard `fbclient.dll` library does not call the client `KeyHolder` plugin. The `KeySource` library is not used with it, and the connection fails with the error `Key not set`. Take `fbclient.dll` from the plugin package.
+====
+
+[[fbcrypt-client-prompt]]
+== Key request to the user
+
+The `KeyHolder` plugin on the client side can itself ask the user for the key. The client `firebird.conf` file must contain the line `KeyHolderPlugin = KeyHolder`. Add the `Prompt` parameter with the prompt text to the `plugins/KeyHolder.conf` file:
+
+[source,conf]
+----
+Prompt = Enter key %k for database %d
+----
+
+You can use substitutions in the text:
+
+[cols="1,3", options="header"]
+|===
+| Substitution | Value
+| `%k` | the key name from the database header
+| `%d` | the database name
+| `%%` | the `%` character
+|===
+
+How it works:
+
+. The application connects to the encrypted database, and the key is not found.
+. The plugin shows an input window (Windows) or asks for input in the terminal (Linux).
+. If the typed text has the format `0x..,0x..,`, it is used as the key. Otherwise the text is a pass phrase, and the key is calculated from it (see <<fbcrypt-keygen-password>>).
+. The connection is tried again. On an error, the plugin shows the error text and asks for the key again.
+. After a successful connection, the key is kept in the process memory until the process ends.
+
+The client shows the request. The Firebird server does not ask the user for the key.
+
+Tested on Windows with a usual connection to the server: Firebird 3.0, 4.0, 5.0. In embedded mode with the setting `Providers = Engine13`, the input window did not appear in the test: for embedded mode, use the `KeySource` library.
+
+[[fbcrypt-client-java]]
+== Java applications
+
+The Java driver (JayBird) has its own implementation (in pure Java) of the Firebird protocol. Jaybird 4 (and 3.0.4+) adds support for the Firebird 3 database encryption callbacks in the pure Java implementation of protocol version 13.
+From the https://www.firebirdsql.org/file/documentation/drivers_documentation/java/4.0.2/release_notes.html#database-encryption-support[Jaybird 4 Readme] file:
+
+[quote]
+____
+The current implementation is simple and supports only a reply with a static value from a connection property. Note that a reply with a static value for database encryption is not very secure, because it can easily lead to replay attacks or to an unintended disclosure of the key.
+
+Future versions of Jaybird (probably 5) will add support for database encryption plugins that need a more complex callback.
+____
+
+For the features of newer Jaybird versions, see their release notes.
+
+In practice, this means that we must set the value for the encryption callback (the key name and the key value, separated by a colon) in the `dbCryptConfig` connection property.
+
+The value format:
+
+[source]
+----
+<KeyName>:<key_value>[:<KeyName>:<key_value>...]
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+For example:
+
+[source,java]
+----
+String url = "jdbc:firebirdsql://localhost/g:/Databases/ODS12/crypt.fdb?lc_ctype=utf8"
+    + "&dbCryptConfig=MyKey:0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,";
+----
+
+It is better to give the key in the connection properties, not in the URL. Then the key does not go to the logs where the URL is printed:
+
+[source,java]
+----
+Properties props = new Properties();
+props.setProperty("user", "SYSDBA");
+props.setProperty("password", "masterkey");
+props.setProperty("dbCryptConfig", "MyKey:" + keyHex);
+Connection con = DriverManager.getConnection(
+    "jdbc:firebirdsql://localhost/g:/Databases/ODS12/crypt.fdb", props);
+----
+
+You can also give a string in base64 format. From the readme file:
+
+[quote]
+____
+For strings with the prefix `base64:`, the rest of the string is decoded as base64 into bytes.
+The padding characters "=" are optional, but if they are present, they must be valid (that is, if you use padding, you must use the correct number of padding characters for the length).
+If the base64 encoded value contains "+", it must be escaped as %2B in the JDBC URL. For backward compatibility with Jaybird 3, we cannot switch to the URL-safe variant of base64.
+____
+
+The whole string `MyKey:0xec,0xa1,...` is encoded in base64, not the binary value of the key.
+
+[[fbcrypt-client-unsafe]]
+=== The UnsafeClient parameter
+
+With this method, the driver does not do the protected exchange that is described in <<fbcrypt-server>>. It sends the key to the server as it is. If wire protocol encryption is not on, it is easy to intercept the key with a network traffic analyzer, such as WireShark.
+
+Thus, the IBSurgeon `KeyHolder` plugin does not accept such keys by default. To allow the transfer of keys with this method:
+
+. Set the parameter `UnsafeClient = true` in the `plugins/KeyHolder.conf` file on the server.
+. Turn on mandatory wire protocol encryption: `WireCrypt = Required` in `firebird.conf` on the server.
+. Use `Srp` or `Srp256` authentication. The `Legacy_Auth` plugin does not create a session key, and wire protocol encryption does not work with it.
+
+[source,conf]
+----
+# plugins/KeyHolder.conf
+UnsafeClient = true
+----
+
+[source,conf]
+----
+# firebird.conf
+WireCrypt = Required
+----
+
+[[fbcrypt-client-net]]
+== .NET applications
+
+The Firebird.NET provider implements a similar key exchange scheme for encrypted databases. It also needs the parameter `UnsafeClient=true` in the `KeyHolder.conf` file (see <<fbcrypt-client-unsafe>>).
+
+An example of a connection string for encrypted databases in .NET:
+
+[source,csharp]
+----
+string connectionString =
+                "User=SYSDBA;" +
+                "Password=masterkey;" +
+                "Database=G:\\Databases\\ODS12\\CRYPT.FDB;" +
+                "DataSource=localhost;" +
+                "Port=3053;" +
+                "Dialect=3;" +
+                "Charset=NONE;" +
+                "Role=;" +
+                "Connection lifetime=15;" +
+                "Pooling=true;" +
+                "MinPoolSize=0;" +
+                "MaxPoolSize=50;" +
+                "Packet Size=8192;" +
+                "ServerType=0;" +
+                "cryptkey = TXlLZXk6MHhlYywweG...;";
+----
+
+You can see that the encryption key looks different from the example for native applications and JayBird. This is because it is the result of a Base64 conversion. Thus, to get the key for .NET applications, calculate Base64 from the string:
+
+----
+"MyKey:0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,"
+----
+
+and use it as the parameter for `"cryptkey=xxx;"` with a semicolon at the end of the connection string.
+
+For example, in C#:
+
+[source,csharp]
+----
+string plain = "MyKey:0xec,0xa1,0x52,...,0xdc,0x75,";
+string cryptKey = Convert.ToBase64String(Encoding.ASCII.GetBytes(plain));
+----

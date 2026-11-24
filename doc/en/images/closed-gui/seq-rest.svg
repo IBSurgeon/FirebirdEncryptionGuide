@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="667" viewBox="0 0 900 667">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#52606d"/></marker><marker id="arrowkey" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0,0 L14,6 L0,12 z" fill="#b45309"/></marker></defs>
+<rect x="0" y="0" width="900" height="667" fill="#ffffff"/>
+<line x1="80.0" y1="66" x2="80.0" y2="655" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="10.0" y="16" width="140" height="50" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="80.0" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Application</text>
+<text x="80.0" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">and KeyHolder</text>
+<line x1="450.0" y1="66" x2="450.0" y2="655" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="380.0" y="16" width="140" height="50" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>
+<text x="450.0" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">KeySource.dll</text>
+<text x="450.0" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">variant d</text>
+<line x1="820.0" y1="66" x2="820.0" y2="655" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="750.0" y="16" width="140" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+<text x="820.0" y="36.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">Key server</text>
+<text x="820.0" y="55.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-weight="bold">HTTPS</text>
+<line x1="20" y1="110" x2="880" y2="110" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="367.6" y="97" width="164.8" height="26" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<text x="450.0" y="115" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-style="italic">first connection</text>
+<text x="265.0" y="146" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">1. LoadLibrary, MakeKeys()</text>
+<line x1="84.0" y1="157" x2="446.0" y2="157" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="635.0" y="189" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">2. GET /keys/Red</text>
+<text x="635.0" y="208" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">Authorization: Bearer &lt;token&gt;</text>
+<line x1="454.0" y1="219" x2="816.0" y2="219" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<rect x="506.0" y="239" width="300" height="48" rx="6" fill="#ffffff" stroke="#52606d" stroke-width="1.2"/>
+<text x="656.0" y="258.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">3. check the token,</text>
+<text x="656.0" y="277.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">write the request to the log</text>
+<text x="635.0" y="317" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">4. 200  Key=Red 0x..,</text>
+<line x1="816.0" y1="328" x2="454.0" y2="328" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<rect x="464.0" y="348" width="300" height="48" rx="6" fill="#ffffff" stroke="#52606d" stroke-width="1.2"/>
+<text x="614.0" y="367.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">5. PinLibrary: dll stays in the process;</text>
+<text x="614.0" y="386.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">key is kept in memory</text>
+<text x="265.0" y="426" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">6. key text</text>
+<line x1="446.0" y1="437" x2="84.0" y2="437" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<line x1="20" y1="473" x2="880" y2="473" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6 4"/>
+<rect x="244.39999999999998" y="460" width="411.20000000000005" height="26" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+<text x="450.0" y="478" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933" font-style="italic">next connections, until CacheSeconds expires</text>
+<text x="265.0" y="509" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">7. MakeKeys()</text>
+<line x1="84.0" y1="520" x2="446.0" y2="520" stroke="#52606d" stroke-width="1.4" marker-end="url(#arrow)"/>
+<rect x="464.0" y="540" width="300" height="48" rx="6" fill="#ffffff" stroke="#52606d" stroke-width="1.2"/>
+<text x="614.0" y="559.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">8. key from memory,</text>
+<text x="614.0" y="578.4" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">no network</text>
+<text x="265.0" y="618" font-family="Noto Serif, Segoe UI, Arial, sans-serif" font-size="14" text-anchor="middle" fill="#1f2933">9. key text</text>
+<line x1="446.0" y1="629" x2="84.0" y2="629" stroke="#52606d" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+</svg>

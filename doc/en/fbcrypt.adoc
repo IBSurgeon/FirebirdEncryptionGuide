@@ -1,0 +1,55 @@
+[[hqbird]]
+= Firebird Encryption plugin
+1.2.0, 24.11.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 3
+:outlinelevels: 6:0
+:icons: font
+:experimental:
+:imagesdir: images
+
+toc::[]
+
+include::_fbcrypt-preface.adoc[leveloffset=1]
+
+include::_fbcrypt-server.adoc[leveloffset=1]
+
+include::_fbcrypt-client-app.adoc[leveloffset=1]
+
+include::_fbcrypt-keygen.adoc[leveloffset=1]
+
+include::_fbcrypt-install.adoc[leveloffset=1]
+
+include::_fbcrypt-usage.adoc[leveloffset=1]
+
+include::_fbcrypt-utils.adoc[leveloffset=1]
+
+include::_fbcrypt-monitoring.adoc[leveloffset=1]
+
+include::_fbcrypt-config.adoc[leveloffset=1]
+
+include::_fbcrypt-troubleshooting.adoc[leveloffset=1]
+
+== Summary
+
+. Firebird database encryption is a strong feature that protects the data in databases from unauthorized access.
+. The encryption process needs a server dynamic library: the encryption plugin (usually called `DbCrypt`). In almost all cases it also needs a key holder plugin (usually called `KeyHolder`).
+. A safe and reliable implementation of the `DbCrypt` and `KeyHolder` plugins must take into account the most common types of attacks.
+. To work with an encrypted database, client applications must send the encryption key. Each connection must send the key.
+. The installation and configuration of the encryption plugin on the server side is simple. It needs 1 parameter in `firebird.conf`/`databases.conf` and a few files.
+. The encryption process can take a long time. It runs in a separate background thread. You can monitor its progress with the `MON$DATABASE` table or with the `gstat` utility.
+. A `gbak` backup is encrypted only when you give the key holder plugin to the utility (`-KeyHolder`; in Firebird 3.0 -- `-KeyFile` or `-Key`). The utility switches in version 3.0 are different from versions 4.0 and 5.0. The utility needs the `DbCrypt` plugin and the license in its `plugins` folder.
+. You cannot recover a lost key. Keep a copy of the key separately from the server and from the backups.
+
+[discrete]
+=== What is next?
+
+We are working on detailed performance tests of Firebird database encryption. In general, performance decreases by 4-8%, but this depends on the hardware and on the Firebird settings. Watch for updates!
+
+[appendix]
+== Contacts
+
+Please send your suggestions, corrections of typos, errors and so on, and also any questions by e-mail: mailto:support@ib-aid.com[support@ib-aid.com]

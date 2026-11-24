@@ -1,0 +1,104 @@
+[[fbcrypt-monitoring]]
+= How to monitor the encryption progress
+
+Firebird encrypts the database only when it has active connections. The encryption process runs in a separate parallel thread. For large databases, the full encryption can take a long time.
+
+== The MON$DATABASE table
+
+To monitor the encryption process, run an SQL query on the monitoring table `MON$DATABASE`:
+
+[source,sql]
+----
+select mon$crypt_page * 100.0 / mon$pages as Percent from mon$database;
+commit;
+----
+
+The `MON$CRYPT_PAGE` field contains the number of the page that the encryption thread reached. When the encryption is complete, the field is `0`.
+
+The monitoring tables show a snapshot at the time of the first access in the transaction. To see a new value, end the transaction (`commit`) and run the query again.
+
+In Firebird 4.0 and 5.0 there is also the `MON$CRYPT_STATE` field:
+
+[source,sql]
+----
+select mon$crypt_state from mon$database;
+----
+
+[cols="1,3", options="header"]
+|===
+| Value | State
+| `0` | the database is not encrypted
+| `1` | the database is encrypted
+| `2` | decryption is in progress
+| `3` | encryption is in progress
+|===
+
+== isql
+
+The `show database` command shows one of these lines:
+
+[cols="2,3", options="header"]
+|===
+| Line | State
+| `Database not encrypted` | the database is not encrypted
+| `Database encrypted, crypt thread not complete` | the encryption is started, but not complete
+| `Database encrypted` | the encryption is complete
+|===
+
+== gstat
+
+The `gstat -h` command shows the header attributes: the `encrypted` flag, the plugin name and the key name. It works fast.
+
+The `gstat -e` command also counts the encrypted pages and the pages that are not encrypted:
+
+[listing]
+----
+gstat -e dbname
+
+Database "D:\ENCDB\TESTENCRYPT.FDB"
+Gstat execution time Tue Mar 16 11:45:11 2021
+
+Database header page information:
+        Flags                   0
+        Generation              10697
+        System Change Number    3
+        Page size               8192
+        ODS version             12.0
+        Oldest transaction      7053
+        Oldest active           7054
+        Oldest snapshot         7054
+        Next transaction        7054
+        Sequence number         0
+        Next attachment ID      17834
+        Implementation          HW=Intel/i386 little-endian OS=Windows CC=MSVC
+        Shadow count            0
+        Page buffers            0
+        Next header page        0
+        Database dialect        3
+        Creation date           Oct 9, 2019 6:42:31
+        Attributes              encrypted, plugin DBCRYPT
+
+    Variable header data:
+        Database backup GUID:   {866B4967-ED58-427E-A481-DB9206CEA2ED}
+        Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+        Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+        Encryption key name:    RED
+        Database GUID:  {323FE494-1771-4608-E99D-C1B69C84578B}
+        *END*
+
+Data pages: total 105, encrypted 105, non-crypted 0
+Index pages: total 95, encrypted 95, non-crypted 0
+Blob pages: total 0, encrypted 0, non-crypted 0
+Generator pages: total 1, encrypted 1, non-crypted 0
+Gstat completion time Tue Mar 16 11:45:11 2021
+----
+
+The encryption is complete when all lines show `non-crypted 0`.
+
+Note that the `gstat -e` command can take a long time: the utility reads all pages of the database.
+
+== If the encryption does not progress
+
+* Check that there is at least one connection to the database. Without connections, the encryption thread does not work.
+* Check that the connection sent the key, or that the key is available to the server.
+* Look at the messages in `firebird.log`.

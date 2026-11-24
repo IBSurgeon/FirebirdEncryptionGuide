@@ -1,0 +1,33 @@
+:sectnums!:
+
+[preface]
+= Why do we need database encryption (and when do we not need it)?
+
+Database encryption in Firebird was introduced in Firebird 3.0 (together with wire protocol encryption, which people often confuse with the topic of this article). It greatly extended the ways to protect data from unauthorized access. But it does not solve all problems. To use it correctly, you must understand its strong and weak points. In this article we look at the internal design of database encryption at a basic level. The goal is to give developers of Firebird applications a better understanding of how database encryption works.
+
+== Why do we need database encryption?
+
+. To protect databases with confidential or valuable data from "`physical`" theft. An attacker can steal a disk with a copy of an encrypted database, or get a copy of the database file in some other way. Without the correct key, it is not possible to read data from this file. It is also not possible to extract the data with recovery software such as https://ib-aid.com/en/ibsurgeon-firstaid/[FirstAID]. Of course, this depends on the encryption algorithm and on the computing power, but to break AES256 needs too much time or too many computing resources.
+
+. To protect the database from access by unauthorized applications that do not have the encryption keys. Examples:
+direct access by an unauthorized person with developer tools to change confidential information (for example, money transactions), change or theft of the business logic (the source text of stored procedures and triggers).
+
+. To protect databases with pre-filled data from export or from access by unauthorized applications.
+
+. Recently, governments introduced data protection laws (GDPR/DSGVO in Europe, LGPD in Brazil and others). Among other things, these laws require a higher level of protection for personal and other confidential data. Encryption is named as one of the adequate protection measures.
+
+== When is database encryption not the correct tool?
+
+In some cases it is better to use the security features and settings of Firebird instead of database encryption:
+
+. To protect the database from physical access over the network, configure network access. That is, close the network shared folders, because Firebird does not need network access to the database files. Also make the access rights stricter (for example, on Linux the database files must have read and write access only for the "`firebird`" user and group).
+
+. To limit access to a specific database to a specific group of users, a simpler solution is to configure a separate security database.
+
+. To limit access to database objects (tables, stored procedures), use the Firebird security mechanisms: users, roles and so on.
+
+Of course, both lists above are not complete. But they give some idea of when you need database encryption and when you do not need it.
+
+NOTE: This is a translation of the Russian original (doc/ru). If the texts differ, the Russian text is correct.
+
+:sectnums:

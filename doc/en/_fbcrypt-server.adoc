@@ -1,0 +1,262 @@
+[[fbcrypt-server]]
+= How Firebird database encryption works on the server side
+
+Let us look at the internal details of Firebird database encryption. We start with the server part.
+
+== Which part of the database is encrypted?
+
+The first thing to look at is: which part of the database is encrypted? As you probably know, a Firebird database consists of parts of the same size, called "`database pages`". There are several types of these pages. Each type has a specific purpose.
+
+The picture below shows the main page types:
+
+.Database page types
+image::1_firebird_database_data_pages.png[]
+
+Some pages store user data. Other pages store system information, for example, transaction pages and page inventory pages (more information about database pages is https://ib-aid.com/en/articles/database-physical-structure-interbase-and-firebird/[available here]).
+
+When Firebird encrypts a database, it encrypts only the pages with user data: data pages, index pages, generator pages and BLOB pages.
+
+.Encryption applies only to the database pages that contain user data
+image::2_firebird_encrypted_pages.png[]
+
+Note that the database metadata (stored procedures, tables, views, names of triggers, generators and so on) is not different from "`user data`" for the part of the engine that does the encryption. The metadata is encrypted.
+
+Why are the system pages not encrypted? Mainly for performance reasons, and because they do not contain confidential data that needs protection.
+
+The database header page is not encrypted, because it contains information that encryption needs (for example, the key name).
+
+== When are data pages encrypted?
+
+When a user runs a SELECT query on an encrypted database, the data is read from the encrypted file. But the data goes to the application in the result set in decrypted form.
+
+Let us look at the details of this process:
+
+.When are database pages encrypted?
+image::3_when_pages_encrypted.png[]
+
+Usually the process starts with a series of reads of database pages from the database file. The operating system file cache keeps these pages.
+
+You can also configure Firebird to bypass the file cache and use only its own cache. But by default Firebird uses the file cache.
+
+After this, Firebird reads the pages and puts them into the Firebird page cache (its size is set by the `DefaultDBCachePages` parameter in `firebird.conf` and/or `databases.conf`, or in the database header page).
+
+Then the pages from the cache are used to build the result set of the specific SQL query (`SELECT` in our example).
+
+The picture below shows the details:
+
+.Pages are encrypted between the Firebird cache and the operating system file cache
+image::4_pages_encrypted_between_caches.png[]
+
+Thus, the database pages are encrypted in the operating system file cache, but they come to the Firebird page cache in decrypted form, and the other way round.
+
+[IMPORTANT]
+====
+Database encryption protects the data on the disk: the database file, its copies and encrypted backups. It does not encrypt the data in the server memory and the data that goes over the network. To protect the network traffic, use wire protocol encryption (`WireCrypt` in `firebird.conf`).
+====
+
+The part of the Firebird software that does encryption/decryption is called the "`encryption plugin`". Most plugin implementations (known to the authors) are called `DbCrypt`, so we call it `DbCrypt`.
+
+The picture below shows the variants for Windows (`DbCrypt.dll`) and Linux (`libDbCrypt.so`):
+
+.The encryption plugin (DbCrypt) does encryption/decryption
+image::6_firebird_dbcrypt.png[]
+
+=== Encryption algorithm
+
+The IBSurgeon `DbCrypt` plugin encrypts pages with the AES algorithm. The key length sets the variant of the algorithm:
+
+[cols="1,1", options="header"]
+|===
+| Key length | Algorithm
+| 16 bytes | AES-128
+| 24 bytes | AES-192
+| 32 bytes | AES-256 (recommended)
+|===
+
+The `aesKeyGen` utility (see <<fbcrypt-keygen>>) creates keys with a length of 32 bytes.
+
+The plugin takes the cryptographic functions from the OpenSSL library (`libcrypto`). This library must be available both to the server and to the client utilities (see <<fbcrypt-config-openssl>>).
+
+== Key management
+
+If you look at the previous picture long enough, the next question comes quite quickly: how does `DbCrypt` get the correct key to encrypt/decrypt the database pages?
+
+The answer: there is another plugin for key management.
+
+Usually, a plugin called `KeyHolder` manages the keys. It stores and manages the keys for the encryption plugin (`DbCrypt`). `KeyHolder` implements the key management interface that `DbCrypt` uses.
+
+[NOTE]
+====
+Also (if the code of the encryption plugin is written for it), the encryption plugin can load the key itself, for example from an external USB flash drive. But this document does not discuss this variant.
+====
+
+.DbCrypt and KeyHolder
+image::7_dbcrypt_and_keyholder.png[]
+
+*What does "`key management`" mean?*
+
+In the simplest case, `KeyHolder` reads the keys from a file on the server and gives them to the `DbCrypt` plugin. In the IBSurgeon plugins this is the text file `KeyHolder.conf` in the `plugins` folder.
+
+The key file can contain several keys. For convenience, they are stored as a named list. The file can look like this (the example below is taken from the IBSurgeon encryption plugin framework):
+
+[listing]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74,
+----
+
+When the database is encrypted, its header (page zero) stays not encrypted. Among other things, it stores information about the encryption plugin and the key name. Encrypted hashes protect the header. They prevent attempts to decrypt the database by a change of its state. You can see this information with the `gstat -h databasename` command:
+
+[listing]
+----
+Database header page information:
+....
+Creation date    Jan 11, 2017 15:12:20
+Attributes       force write, encrypted, plugin DBCRYPT
+
+Variable header data:
+ Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+ Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+ Encryption key name:    RED
+ Sweep interval:         0
+*END*
+----
+
+`DbCrypt` can process the pages of several databases with several keys:
+
+.Several keys for several databases on one server (for example, in one Firebird instance)
+image::10_multi_database_keys.png[]
+
+=== Selection of the correct key
+
+Developers often ask: "`How does the plugin know which key is for which database?`" The answer is quite simple: by the key name, which is stored on the database header page.
+
+[NOTE]
+====
+The `KeyHolder` plugin compares key names without case sensitivity. The names `Red`, `RED` and `red` mean the same key. If the key name in the `ALTER DATABASE ENCRYPT` statement is written without quotes, Firebird stores it in the header in upper case (`RED`).
+====
+
+A less frequent, but still important question: what happens if the key name is the same as the name in the header, but the key value is different? Firebird protects against this with two checks:
+
+* *Key hash.* When Firebird encrypts the database, it asks the `DbCrypt` plugin to encrypt a test sequence (`0123456789ABCDEF`). It stores the hash of the result in the header. At each connection, Firebird repeats this operation with the received key and compares the hash with the stored one. If the values are different, the connection fails with an error, and no page is read with the incorrect key.
+
+* *Crypt checksum.* The header fields that relate to encryption (the "`encrypted`" and "`encryption in progress`" flags, the number of the current encryption page, the plugin name, the key name and the key hash) are encrypted with the database key and stored as a checksum. You cannot change these fields without the key and keep the checksum correct.
+
+=== Where KeyHolder gets the keys
+
+The IBSurgeon `KeyHolder` plugin can get keys from three sources:
+
+[cols="2,3,3", options="header"]
+|===
+| Source | How to configure | When to use
+| Client application (over the network)
+| The application sends the key at connection time: through `fbcrypt`, `KeySource`, `KeyHolderStdin` or a driver property. See <<fbcrypt-client-app>>.
+| Production system. There is no key on the server.
+
+| `KeySource` library on the server
+| The `KeySource.dll` / `libKeySource.so` library in the Firebird library folder. See <<fbcrypt-keysource>>.
+| The server needs the key without the clients, but the key must not be in a text file.
+
+| File `plugins/KeyHolder.conf`
+| Lines `Key=<name> <value>` or `Password=<name> <password>`. See <<fbcrypt-config-keyholder>>.
+| Debugging, testing, initial encryption.
+|===
+
+The `KeyHolder.conf` file is optional. A production server that gets the keys from the clients works without it.
+
+If a client sends a key with the same name as a key from the `KeyHolder.conf` file, the client key is used.
+
+The approach with the keys on the server is simple and convenient for debugging, performance tests and so on, because it makes encryption transparent: client applications and developer tools do not know that the database is encrypted.
+
+But in real life you must limit the access of applications to the database: only the client application that has the key must be able to connect to the encrypted database.
+
+For this purpose, the `KeyHolder` plugin can get the key from the client application (which is usually on another computer) over the Firebird network protocol.
+
+[IMPORTANT]
+====
+The IBSurgeon `KeyHolder` plugin does not share keys between connections. If there is no key on the server, *each* connection must send the correct key itself. A connection without a key gets an error, even if another connection with the key works with the database at the same time.
+
+This also applies to service connections: `gbak`, `gfix`, `nbackup`, `isql`, administration tools, replication. See <<fbcrypt-utils>>.
+====
+
+== How to protect the key transfer?
+
+We may need to protect the database in a situation when a customer decides to get direct access to the encrypted database and bypass the authorized applications (many vendors want to limit access to the data and allow access only from a special application).
+
+This is the same situation as when an attacker has access to the server, but does not have the keys.
+
+Let us look at the following attack scenarios to intercept the keys on the server side:
+
+. The attacker creates a fake encryption plugin (`DBCrypt.dll`) and puts it on the server. When `KeyHolder` gives the key, the fake `DbCrypt` dumps the key:
++
+.Attack with a fake DbCrypt.dll file
+image::11_attack_with_fake_dbcrypt.png[]
+
+. The attacker creates a fake `firebird.exe` file and uses it to make a dump:
++
+.Attack with a fake firebird.exe
+image::12_attack_with_fake_firebird.png[]
+
+To protect against such attacks, a good implementation of the encryption plugin and the key holder plugin must protect the key exchange.
+
+You can protect the key exchange with asymmetric encryption, with a pair of public/private keys.
+
+These keys are generated during the build and are embedded into a specific pair of encryption plugin and key holder plugin. For the best protection, use specially built `DbCrypt`/`KeyHolder` pairs.
+
+image::13_key_exchange.png[]
+
+In the IBSurgeon plugins, the key goes through two segments: from the client application to `KeyHolder`, and from `KeyHolder` to `DbCrypt`. Each segment uses the same protocol, but its own embedded RSA key pair. We call the sides "`receiver`" (the side that needs the database key) and "`sender`" (the side that has this key):
+
+[listing]
+----
+Receiver → Sender:
+	Request to start the exchange
+Sender → Receiver:
+	Random sequence (new for each exchange)
+Receiver:
+	Creates a one-time RSA key pair
+	Signs with the embedded private key
+		(random sequence + one-time public key)
+	Sends the one-time public key and the signature
+Sender:
+	Checks the signature with the embedded public key
+	If the signature is not correct - does not send the key
+	Encrypts the database keys with the one-time public key
+	Sends the encrypted keys (in parts, if necessary)
+Receiver:
+	Decrypts the keys with the one-time private key
+	Ready to work
+----
+
+This exchange gives the following properties:
+
+* The database key is never sent in plain form.
+* The sender gives the key only to "`its own`" receiver: a fake plugin without the embedded private key cannot create a correct signature.
+* An intercepted exchange cannot be repeated: the random sequence and the one-time RSA pair are new for each connection.
+
+The key exchange protection in the IBSurgeon plugin also protects the data during transfer over an unfriendly wide area network. This includes the cases when the key must go over a channel that is not yet ready to encrypt all data in the standard Firebird way. This situation occurs when you use a self security database.
+
+[IMPORTANT]
+====
+Note that the encryption and the correctness of the transferred keys depend on the plugin implementation. The Firebird engine gives only a basic low-level transfer service: "`send N bytes from this plugin instance to the instance of the paired plugin`".
+====
+
+[NOTE]
+====
+The `fbcrypt` client library and the `KeyHolder`, `KeyHolderStdin` and `DbCrypt` plugins must be from the same package. Libraries from different builds can have different embedded key pairs. In this case they cannot exchange the key.
+====
+
+[discrete]
+== Summary of the server part of encryption
+
+* The database encryption plugin (`DbCrypt`) does encryption/decryption page by page, during the data exchange between the operating system file cache and the Firebird page cache.
+
+* Data pages, index pages, BLOB pages and generator pages are encrypted. The header and the service pages are not encrypted.
+
+* The `KeyHolder` plugin manages the keys. It gets the keys from the client application, from the `KeySource` library or from the `KeyHolder.conf` file.
+
+* The key goes between the application, `KeyHolder` and `DbCrypt` only in encrypted form.
+
+* If there is no key on the server, each connection must send it.
+
+Now let us see how client applications work with encrypted databases.

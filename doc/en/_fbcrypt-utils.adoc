@@ -1,0 +1,359 @@
+[[fbcrypt-utils]]
+= Support in the Firebird command line utilities
+
+As described above, the main problem when you work with encrypted databases is how to store the encryption keys. In the ideal case, only the client application must know the encryption key, so that nobody can steal it. This problem is especially important for applications that use embedded connections, when the database and the client application are on the same computer. But how do you work in this case with the Firebird command line utilities that need a connection to the database, such as `gbak`, `nbackup` and others?
+
+To use the Firebird utilities and not store the key on the server, we modified the `gbak`, `nbackup`, `isql` and `gfix` utilities. The modified utilities let you specify an alternative key holder plugin (`KeyHolder`). We also made the `KeyHolderStdin` plugin, which reads the encryption key from the console input stream.
+
+The modified utilities are in the client package of the encryption plugin (`Client\32bit`, `Client\64bit`) and in HQbird.
+
+[[fbcrypt-utils-versions]]
+== Differences between Firebird versions
+
+The set of switches depends on the Firebird version and on the origin of the utility: standard ("vanilla") or from the plugin package.
+
+.Which switches the utilities have
+[cols="2,2,3,3", options="header"]
+|===
+| Utility | Version | Standard Firebird | Plugin package and HQbird
+| `gbak` | 3.0 | no | `-KEYFILE`, `-KEYNAME`, `-KEY`
+| `gbak` | 4.0, 5.0 | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT` | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT`
+| `gfix`, `isql`, `nbackup` | 3.0 | no | no (key through `firebird.conf`, see <<fbcrypt-utils-fb3>>)
+| `gfix`, `isql`, `nbackup` | 4.0, 5.0 | no | `-KEYHOLDER`
+| `gstat` | 3.0, 4.0, 5.0 | `-e` | `-e`
+|===
+
+The main conclusions from the table:
+
+* In Firebird 4.0 and 5.0 you can also make an encrypted backup with the standard `gbak`.
+* For `gfix`, `isql` and `nbackup`, the `-KEYHOLDER` switch is only in the utilities from the plugin package and HQbird, starting from version 4.0.
+* In Firebird 3.0 the utilities have different switches. The commands from the sections for 4.0 and 5.0 do not work in version 3.0.
+
+There are no differences in the switches between versions 4.0 and 5.0.
+
+== Firebird 4.0 and 5.0
+
+=== Switches
+
+[cols="1,2,4", options="header"]
+|===
+| Utility | Switch | Purpose
+| `gbak` | `-KEYHOLDER <plugin>` | The key holder plugin on the utility side. Turns on the encryption of the backup file.
+| `gbak` | `-KEYNAME <name>` | The key name for the encryption of the backup or of the restored database.
+| `gbak` | `-CRYPT <plugin>` | The name of the encryption plugin.
+| `gfix` | `-KEYHOLDER <plugin>` | The key holder plugin on the utility side.
+| `isql` | `-KEYHOLDER <plugin>` | The key holder plugin on the utility side.
+| `nbackup` | `-KEYHOLDER <plugin>` | The key holder plugin on the utility side.
+| `gstat` | `-e` | Statistics of page encryption (see <<fbcrypt-monitoring>>).
+|===
+
+The letter case in the switches is not significant. Abbreviations: `-KEYH`, `-KEYN`, `-CRY`.
+
+The `-KEYHOLDER` switch sets the `KeyHolderPlugin` parameter for the utility. The utility loads the specified plugin from its `plugins` folder and, through it, sends the key to the server over the protected protocol.
+
+[IMPORTANT]
+====
+Near the utility, there must be the `plugins` folder with the `KeyHolderStdin`, `KeyHolder` and `DbCrypt` plugins, the license file `DbCrypt.conf` and the OpenSSL library.
+
+The `gbak` utility needs the `DbCrypt` plugin and the license: it encrypts and decrypts the backup file itself. Without them, `gbak` fails with the error `Crypt plugin DbCrypt failed to load`.
+
+In the client package for Windows, the `keyholderstdin.dll` file is in the `key-plugins` folder. Copy it to the `plugins` folder. Otherwise the utility reports `Key holder plugin KeyHolderStdin failed to load`.
+====
+
+[[fbcrypt-utils-stdin]]
+=== The KeyHolderStdin plugin
+
+The `KeyHolderStdin` plugin reads the key from the standard input stream of the utility.
+
+Let us look at an example of `gbak` with the `KeyHolderStdin` plugin:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gbak -b localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb" "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fbk" -KeyHolder KeyHolderStdin
+----
+
+Here the key comes from the input stream. The format of the key is:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Here `<KeyName>` is the key name. It must be the same as the key name that was used to encrypt the database.
+
+Instead of a key, you can give a pass phrase (see <<fbcrypt-keygen-password>>):
+
+[source,cmd]
+----
+Password=<KeyName> <passphrase>
+----
+
+The key generation process is described in <<fbcrypt-keygen>>.
+
+Properties of the plugin:
+
+* The plugin accepts *one* key. The whole input stream is read as one `Key=` or `Password=` line.
+* If the input stream is empty, the utility fails with the error `No input`.
+* The key uses the input stream. Thus, give the commands for `isql` in a file with the `-i` switch, not through the input stream.
+
+==== Key from a file
+
+The `echo` command with the key stays in the command history and is visible in the process list. It is more secure to keep the line with the key in a file with limited access.
+
+Windows:
+
+[source,cmd]
+----
+type C:\Secure\dbkey.txt | gbak -b localhost:D:\DB\app.fdb E:\Backup\app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password ********
+----
+
+Linux:
+
+[source,bash]
+----
+gbak -b localhost:/data/app.fdb /backup/app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password '********' < /secure/dbkey.txt
+----
+
+The `dbkey.txt` file contains one line:
+
+[source]
+----
+Key=MyKey 0x35,0xa1,...,0x1e,
+----
+
+Recommendations for scheduled runs:
+
+* Run the job under a separate service account.
+* Give read access to the key file only to this account.
+* Regularly test the restore from the backup on a test server.
+
+==== Key from a program
+
+An application can start the utility as a child process and write the key to its input stream. Then the key is not stored in a file. An example in C for Linux:
+
+[source,c]
+----
+#include <stdio.h>
+
+int main()
+{
+	FILE* f = popen("./gbak -b -KeyHolder KeyHolderStdin /mnt/db/stdin.fdb std.fbk", "w");
+	const char* key = "Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,"
+					  "0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,";
+
+	if (f)
+	{
+		fputs(key, f);
+		int x = pclose(f);
+		if (x)
+			printf("gbak error, code %d\n", x >> 8);
+	}
+	else
+		perror("popen gbak");
+}
+----
+
+[[fbcrypt-utils-gbak]]
+=== Backup and restore (gbak)
+
+[WARNING]
+====
+The `gbak` utility encrypts the backup file only when the `-KEYHOLDER` switch is specified.
+
+If `gbak -b` runs without this switch and can connect to the database (the key is on the server in the `KeyHolder.conf` file, or the client `KeySource` library sent it), the `.fbk` file is *not encrypted*. The data in it is in plain form.
+====
+
+For a backup with the `-KEYHOLDER` switch, the utility takes the key name and the name of the encryption plugin from the database. The `-KEYNAME` and `-CRYPT` switches are necessary only if you want to specify different values.
+
+.Encrypted backup
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -b localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+.Restore to an encrypted database
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -c C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+During the restore, `gbak` reads the key name and the plugin name from the header of the backup file. The new database is encrypted immediately after it is created. To encrypt it with a different key, specify `-KEYNAME <new name>` (the key with this name must be available to the utility and to the server).
+
+If the keys are on the server in the `KeyHolder.conf` file, you can use the `KeyHolder` plugin instead of `KeyHolderStdin`. In this case `gbak` runs on the server and reads the same file. The standard `gbak` of Firebird 4.0 and 5.0 also works in this way:
+
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -crypt DbCrypt localhost:employee /backup/employee.fbk
+----
+
+==== Key from the KeySource library
+
+The `KeyHolder` plugin in the utility folder takes the key from the `KeySource` library, which is near `fbclient` (see <<fbcrypt-keysource>>). The key is not in the command and not in the input stream:
+
+[source,cmd]
+----
+gbak -b -KeyHolder KeyHolder -user SYSDBA -password masterkey localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+gbak -c -KeyHolder KeyHolder -user SYSDBA -password masterkey C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb
+----
+
+The result of `gbak -b` depends on the command and on the files in the `plugins` folder of the utility:
+
+[cols="3,3,3", options="header"]
+|===
+| In the `plugins` folder of the utility | Command | Result
+| only `keyholder.dll` | `gbak -b` | the backup is *not encrypted*
+| only `keyholder.dll` | `gbak -b -KeyHolder KeyHolder` | error `Crypt plugin DbCrypt failed to load`
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b` | the backup is *not encrypted*
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b -KeyHolder KeyHolder` | the backup is encrypted
+|===
+
+A restore of an encrypted backup without the key fails with the error `Unknown key name <name> - key can't be found`.
+
+A ready example with a test restore: the script `examples/closed-gui/deploy/50-backup.ps1` in the repository https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+==== How to make sure that the backup is encrypted
+
+* In a backup that is not encrypted, the table names are written as plain text. The command `findstr /m CUSTOMER emp-crypted.fbk` (Linux: `grep -l CUSTOMER emp-crypted.fbk`) shows the file name if it found the word in the file. For an encrypted backup, it shows nothing. Use a table name of your database.
+* A restore without the key must fail with an error.
+* Regularly restore the backup on a test server.
+
+[NOTE]
+====
+For a restore to a new file, the `KeyHolderPlugin` parameter must be set in `firebird.conf`. The setting in `databases.conf` applies only to its alias and does not apply to the new file.
+====
+
+=== nbackup
+
+The `nbackup` utility copies the database pages as they are. The copy stays encrypted with the same key as the database. The utility needs the key to connect to the database:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | nbackup -b 0 localhost:C:\db\emp-crypted.fdb C:\db\emp-nbackup.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+The `gstat -h` command for the backup file shows the `encrypted` attribute and the same key name as the database has. If the `KeySource` library gives the key, specify `-KeyHolder KeyHolder` and do not send anything to the input stream.
+
+=== gfix
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full -KeyHolder KeyHolderStdin localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+=== isql
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | isql -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey -i script.sql localhost:C:\db\emp-crypted.fdb
+----
+
+With this method, you can encrypt a database and not write the key to a file on the server. The `script.sql` file:
+
+[source,sql]
+----
+alter database encrypt with "DbCrypt" key Green;
+commit;
+show database;
+----
+
+You can run the same statement from the client folder that contains the `KeySource` library and has the line `KeyHolderPlugin = KeyHolder` in the `firebird.conf` file. Then you need neither the switch nor the input stream. This method also works in version 3.0.
+
+[[fbcrypt-utils-fb3]]
+== Firebird 3.0
+
+The standard Firebird 3.0 utilities do not have switches for keys. Use the utilities from the client package of the encryption plugin for Firebird 3.0 or from HQbird 3.
+
+=== gbak
+
+[cols="2,4", options="header"]
+|===
+| Switch | Purpose
+| `-KEYFILE <file>` | A file with keys. The line format is the same as in `KeyHolder.conf`: `Key=<name> <value>`. You can specify the `KeyHolder.conf` file itself.
+| `-KEY <value>` | The key value in the form `0x..,0x..,`. Needs `-KEYNAME`. You cannot use it together with `-KEYFILE`.
+| `-KEYNAME <name>` | The key name. Needs `-KEYFILE` or `-KEY`. If the name is not specified, for a backup it is taken from the database.
+|===
+
+Abbreviations: `-KEYF`, `-KEYN`. There are no `-KEYHOLDER` and `-CRYPT` switches in version 3.0. The name of the encryption plugin is always `DbCrypt`.
+
+If `-KEYFILE` or `-KEY` is specified, the utility sends the key to the server for the connection and encrypts the backup file.
+
+.Encrypted backup, key from a file
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red localhost:employee /backup/employee.fbk
+----
+
+.Encrypted backup, key in the command line
+[source,cmd]
+----
+gbak -b -user SYSDBA -password masterkey -key 0xec,0xa1,...,0x75, -keyname Red localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+----
+
+.Restore to an encrypted database
+[source,bash]
+----
+gbak -c -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red /backup/employee.fbk localhost:/data/employee_restored.fdb
+----
+
+[WARNING]
+====
+The key in the `-KEY` switch is visible in the process list and stays in the command history. Prefer `-KEYFILE` with a file that has limited access.
+
+If `gbak -b` runs without `-KEYFILE` and `-KEY`, and the key is on the server, the `.fbk` file is *not encrypted*.
+====
+
+On Linux, the `gbak` utility from the 3.0 client package needs a `libcrypto.so` link to OpenSSL 1.1 in its `lib` folder:
+
+[source,bash]
+----
+cp -r /root/crypt/Client /opt/fbcrypt-client
+ln -sf /usr/lib64/libcrypto.so.1.1 /opt/fbcrypt-client/lib/libcrypto.so
+----
+
+=== gfix, isql, nbackup and the KeyHolderStdin plugin
+
+In version 3.0 these utilities do not have the `-KEYHOLDER` switch. For them, the key holder plugin is set in the `firebird.conf` file in the utility folder (the folder of the client package):
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolderStdin
+----
+
+After this, the key is sent through the input stream, as in versions 4.0 and 5.0, but without the switch:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+You can also set `KeyHolderPlugin = KeyHolder`. Then the utility takes the keys from the `plugins/KeyHolder.conf` file or from the `KeySource` library in its folder.
+
+The `gbak` 3.0 utility without `-KEYFILE` and `-KEY` also uses the plugin from `firebird.conf`. If the plugin sent the key, the backup file is encrypted. With the `KeyHolder` plugin, the `KeySource` library gives the key; with the `KeyHolderStdin` plugin, the input stream gives it.
+
+For this, the `plugins` folder of the utility must contain `dbcrypt.dll` and the license `DbCrypt.conf`. Without them, `gbak` 3.0 does not create the file and fails with the error `Crypt plugin DbCrypt failed to load`.
+
+In the client package for Windows, the `keyholderstdin.dll` file is in the `key-plugins` folder. Copy it to the `plugins` folder. Otherwise the version 3.0 utility reports `Key not set`.
+
+[NOTE]
+====
+The `KeyHolderPlugin` parameter in `firebird.conf` applies to all programs that use the client library from this folder. With the `KeyHolderStdin` plugin, each of them reads the input stream at connection time. Keep the maintenance utilities in a separate folder.
+====
+
+== The decrypt utility
+
+The server package for Windows contains the `decrypt` utility. It decrypts the database file directly, without the Firebird server:
+
+[source,cmd]
+----
+decrypt <database file>
+----
+
+The utility reads the key name from the database header and takes the key from the `plugins/KeyHolder.conf` file. Before you run it:
+
+. Stop all connections to the database.
+. Make a copy of the database file. The utility changes the file in place.
+. Write the key to `KeyHolder.conf`.
+
+The usual way to decrypt is the `ALTER DATABASE DECRYPT` statement (see <<fbcrypt-usage>>). The `decrypt` utility is necessary in special cases, for example to work with a damaged database.
