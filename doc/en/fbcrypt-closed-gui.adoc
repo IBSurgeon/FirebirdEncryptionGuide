@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Firebird database encryption for a closed-source application
-1.3.3, 24.11.2026
+1.3.4, 26.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -224,7 +224,7 @@ If you have Lazarus, skip this step. The next script then builds the programs: a
 .\run-all.ps1 -Version 5
 ----
 +
-The script downloads Firebird (25 MB) and the plugin archive (35 MB), installs the server on port 30055, encrypts a copy of the `employee` database with the test key `Red` and makes the workstation folder. At the end, it writes:
+The script downloads Firebird (25 MB) and the plugin archive (37 MB), installs the server on port 30055, encrypts a copy of the `employee` database with the test key `Red` and makes the workstation folder. At the end, it writes:
 +
 [source]
 ----
@@ -1375,6 +1375,8 @@ The script takes the database key from the file `work\fb<N>\db-key.conf`. In var
 | Client files from HQbird (`ClientLibs\64`, builds 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) with the library of variant a. The file `libcrypto-1_1-x64.dll` was added to the folder of version 5.0 | passed
 | Connection kinds, versions 3.0, 4.0, 5.0. TCP/IP (`inet://`, `server/port:`): the key from `KeySource.dll` is sent. XNET: the client key is not sent, error `Key not set`. XNET with the key in a file on the server: the database opens | passed
 |===
+
+On 26.11.2026 the matrix of 24 combinations and the backup test were repeated with the plugin archives of 26.11.2026 (HQbird 3.0.15.33894, 4.0.8.3332, 5.0.5.1979): passed.
 
 Test environment: Windows 11 x64, official Firebird builds 3.0.14, 4.0.7, 5.0.4, plugin archives of 01.10.2026, Lazarus 4.8 with Free Pascal 3.2.2.
 ====

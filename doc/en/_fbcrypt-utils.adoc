@@ -304,7 +304,7 @@ The key in the `-KEY` switch is visible in the process list and stays in the com
 If `gbak -b` runs without `-KEYFILE` and `-KEY`, and the key is on the server, the `.fbk` file is *not encrypted*.
 ====
 
-On Linux, the `gbak` utility from the 3.0 client package needs a `libcrypto.so` link to OpenSSL 1.1 in its `lib` folder:
+On Linux, the `gbak` utility from the 3.0 client package loads OpenSSL by the name `libcrypto.so`, without a version number. It needs a `libcrypto.so` link to OpenSSL 1.1 in its `lib` folder. Without the link, `gbak` stops with the error `Error loading OpenSSL dynamic library libcrypto.so`. Encryption of the database and `nbackup` work without the link. In Debian and Ubuntu the library is in `/usr/lib/x86_64-linux-gnu`, not in `/usr/lib64`.
 
 [source,bash]
 ----
