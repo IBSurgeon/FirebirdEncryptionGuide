@@ -304,7 +304,7 @@ Klucz w przełączniku `-KEY` jest widoczny na liście procesów i pozostaje w h
 Jeśli `gbak -b` uruchomiono bez `-KEYFILE` i `-KEY`, a klucz jest na serwerze, plik `.fbk` będzie *niezaszyfrowany*.
 ====
 
-W systemie Linux narzędzie `gbak` z pakietu klienckiego 3.0 potrzebuje dowiązania `libcrypto.so` do OpenSSL 1.1 w swoim folderze `lib`:
+W systemie Linux narzędzie `gbak` z pakietu klienckiego 3.0 ładuje OpenSSL pod nazwą `libcrypto.so`, bez numeru wersji. Potrzebuje dowiązania `libcrypto.so` do OpenSSL 1.1 w swoim folderze `lib`. Bez dowiązania `gbak` kończy się błędem `Error loading OpenSSL dynamic library libcrypto.so`. Szyfrowanie bazy i `nbackup` działają bez dowiązania. W systemach Debian i Ubuntu biblioteka znajduje się w `/usr/lib/x86_64-linux-gnu`, a nie w `/usr/lib64`.
 
 [source,bash]
 ----

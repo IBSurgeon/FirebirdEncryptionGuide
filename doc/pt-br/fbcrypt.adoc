@@ -1,6 +1,6 @@
 [[hqbird]]
 = Firebird Encryption plugin
-1.2.2, 24.11.2026
+1.2.3, 26.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:

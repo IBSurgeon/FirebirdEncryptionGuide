@@ -127,6 +127,10 @@ Os mesmos erros aparecem no utilitário `gbak` se o arquivo `plugins/DbCrypt.con
 | A biblioteca OpenSSL da versão necessária não foi encontrada.
 | Veja <<fbcrypt-config-openssl>>. No Linux, instale o pacote com a `libcrypto.so.1.1` para Firebird 3.0 e 4.0.
 
+| `Error loading OpenSSL dynamic library libcrypto.so` (gbak 3.0, Linux)
+| O utilitário `gbak` do Firebird 3.0 carrega o OpenSSL pelo nome `libcrypto.so`, e não há arquivo com esse nome.
+| Crie um link `libcrypto.so` para `libcrypto.so.1.1` na pasta `lib` do pacote cliente. Veja <<fbcrypt-utils-fb3>>.
+
 | `Entrypoint ... not found`
 | Foi encontrada uma biblioteca OpenSSL de versão inadequada.
 | Use a `libcrypto` do pacote do plugin.

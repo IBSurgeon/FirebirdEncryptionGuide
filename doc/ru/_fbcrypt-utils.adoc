@@ -304,7 +304,7 @@ gbak -c -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolde
 Если `gbak -b` запущен без `-KEYFILE` и `-KEY`, а ключ есть на сервере, файл `.fbk` будет *не зашифрован*.
 ====
 
-На Linux утилите `gbak` из клиентского пакета 3.0 нужна ссылка `libcrypto.so` на OpenSSL 1.1 в её каталоге `lib`:
+На Linux утилита `gbak` из клиентского пакета 3.0 загружает OpenSSL по имени `libcrypto.so`, без номера версии. Ей нужна ссылка `libcrypto.so` на OpenSSL 1.1 в её каталоге `lib`. Без ссылки `gbak` завершается ошибкой `Error loading OpenSSL dynamic library libcrypto.so`. Шифрование базы и `nbackup` работают и без ссылки. В Debian и Ubuntu библиотека находится в `/usr/lib/x86_64-linux-gnu`, а не в `/usr/lib64`.
 
 [source,bash]
 ----

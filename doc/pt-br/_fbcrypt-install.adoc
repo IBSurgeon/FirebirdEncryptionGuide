@@ -263,7 +263,7 @@ FB_50_WINDOWS_64bit
         └── keyholder.dll
 ----
 
-Este é o conteúdo do arquivo compactado para Firebird 5.0 de 01.10.2026. O arquivo compactado para Firebird 3.0 tem outras bibliotecas ICU (`icu*52`) e C++ (`msvcp100.dll`, `msvcr100.dll`).
+Este é o conteúdo do arquivo compactado para Firebird 5.0 de 26.11.2026. Os arquivos compactados desta data contêm os arquivos do HQbird 3.0.15.33894, 4.0.8.3332 e 5.0.5.1979 e uma licença de teste válida até 31.12.2026. O arquivo compactado para Firebird 3.0 tem outras bibliotecas ICU (`icu*52`) e C++ (`msvcp100.dll`, `msvcr100.dll`).
 
 A pasta `Server` do arquivo compactado contém arquivos binários *SOMENTE* para a arquitetura x64. Supõe-se que a instalação do servidor tem exatamente essa arquitetura, o que quase sempre é verdade. A pasta `Client` do arquivo compactado contém arquivos binários tanto para a arquitetura x86 (32bit) quanto para x64 (64bit).
 
@@ -315,7 +315,7 @@ Depois da instalação e da configuração, você pode fazer uma série de teste
 
 [NOTE]
 ====
-Nos arquivos compactados de 01.10.2026, em vez dos arquivos `01-encrypt.bat` ... `05-gfix.bat`, há um único script `run-tests.ps1`. Ele executa os mesmos passos duas vezes: com a chave da biblioteca `KeySource.dll` e com a chave da entrada padrão (plugin `KeyHolderStdin`). Antes de cada execução, o script copia o arquivo necessário da pasta `key-plugins` e altera o parâmetro `KeyHolderPlugin` no arquivo `firebird.conf` do cliente. Os comandos que ele executa estão descritos abaixo.
+Nos arquivos compactados de 01.10.2026 e posteriores, em vez dos arquivos `01-encrypt.bat` ... `05-gfix.bat`, há um único script `run-tests.ps1`. Ele executa os mesmos passos duas vezes: com a chave da biblioteca `KeySource.dll` e com a chave da entrada padrão (plugin `KeyHolderStdin`). Antes de cada execução, o script copia o arquivo necessário da pasta `key-plugins` e altera o parâmetro `KeyHolderPlugin` no arquivo `firebird.conf` do cliente. Os comandos que ele executa estão descritos abaixo.
 ====
 
 [WARNING]
@@ -523,6 +523,8 @@ ls /usr/lib64/libcrypto.so.1.1
 ----
 
 Os plugins para Firebird 3.0 e 4.0 carregam a `libcrypto.so.1.1`. Sem essa biblioteca, o comando `ALTER DATABASE ENCRYPT` termina com o erro `Library libcrypto.so.1.1 failed to load`. No Debian e no Ubuntu, o pacote tem outro nome; instale o pacote que contém a `libcrypto.so.1.1`.
+
+O Ubuntu 22.04 e o 24.04 não têm pacote com o OpenSSL 1.1 nos repositórios padrão. No teste dos arquivos compactados de 26.11.2026 no Ubuntu 24.04, o pacote `libssl1.1` do Ubuntu 20.04 foi instalado com `dpkg -i`. Com esse pacote, o script `Client/db-crypt/run-tests.sh` passou para Firebird 3.0, 4.0 e 5.0. No Debian e no Ubuntu, a biblioteca fica na pasta `/usr/lib/x86_64-linux-gnu`.
 
 .Passo 4. Copie os arquivos do plugin
 [source,bash]

@@ -127,6 +127,10 @@
 | Не найдена библиотека OpenSSL нужной версии.
 | См. <<fbcrypt-config-openssl>>. На Linux установите пакет с `libcrypto.so.1.1` для Firebird 3.0 и 4.0.
 
+| `Error loading OpenSSL dynamic library libcrypto.so` (gbak 3.0, Linux)
+| Утилита `gbak` из Firebird 3.0 загружает OpenSSL по имени `libcrypto.so`, а файла с таким именем нет.
+| Создайте ссылку `libcrypto.so` на `libcrypto.so.1.1` в каталоге `lib` клиентского пакета. См. <<fbcrypt-utils-fb3>>.
+
 | `Entrypoint ... not found`
 | Найдена библиотека OpenSSL неподходящей версии.
 | Используйте `libcrypto` из пакета плагина.

@@ -304,7 +304,7 @@ A chave na opção `-KEY` é visível na lista de processos e fica no histórico
 Se o `gbak -b` for executado sem `-KEYFILE` e `-KEY`, e a chave estiver no servidor, o arquivo `.fbk` fica *sem criptografia*.
 ====
 
-No Linux, o utilitário `gbak` do pacote cliente 3.0 precisa de um link `libcrypto.so` para o OpenSSL 1.1 na sua pasta `lib`:
+No Linux, o utilitário `gbak` do pacote cliente 3.0 carrega o OpenSSL pelo nome `libcrypto.so`, sem número de versão. Ele precisa de um link `libcrypto.so` para o OpenSSL 1.1 na sua pasta `lib`. Sem o link, o `gbak` para com o erro `Error loading OpenSSL dynamic library libcrypto.so`. A criptografia do banco e o `nbackup` funcionam sem o link. No Debian e no Ubuntu, a biblioteca fica em `/usr/lib/x86_64-linux-gnu`, e não em `/usr/lib64`.
 
 [source,bash]
 ----

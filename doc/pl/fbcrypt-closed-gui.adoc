@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Szyfrowanie bazy danych Firebird dla aplikacji bez kodu źródłowego
-1.3.3, 24.11.2026
+1.3.4, 26.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -225,7 +225,7 @@ Jeśli masz Lazarus, pomiń ten krok. Programy zbuduje następny skrypt: dodaj d
 .\run-all.ps1 -Version 5
 ----
 +
-Skrypt pobiera Firebird (25 MB) i archiwum wtyczki (35 MB), instaluje serwer na porcie 30055, szyfruje kopię bazy `employee` kluczem testowym `Red` i tworzy folder stanowiska roboczego. Na końcu wypisuje:
+Skrypt pobiera Firebird (25 MB) i archiwum wtyczki (37 MB), instaluje serwer na porcie 30055, szyfruje kopię bazy `employee` kluczem testowym `Red` i tworzy folder stanowiska roboczego. Na końcu wypisuje:
 +
 [source]
 ----
@@ -1376,6 +1376,8 @@ Klucz bazy danych skrypt pobiera z pliku `work\fb<N>\db-key.conf`. W wariancie �
 | Pliki klienckie z HQbird (`ClientLibs\64`, kompilacje 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) z biblioteką wariantu „a”. Do folderu wersji 5.0 dodano plik `libcrypto-1_1-x64.dll` | zaliczone
 | Rodzaje połączeń, wersje 3.0, 4.0, 5.0. TCP/IP (`inet://`, `serwer/port:`): klucz z `KeySource.dll` jest przekazywany. XNET: klucz klienta nie jest przekazywany, błąd `Key not set`. XNET z kluczem w pliku na serwerze: baza danych się otwiera | zaliczone
 |===
+
+26.11.2026 macierz 24 kombinacji i test kopii zapasowej powtórzono z archiwami wtyczki z 26.11.2026 (HQbird 3.0.15.33894, 4.0.8.3332, 5.0.5.1979): zakończone powodzeniem.
 
 Środowisko sprawdzenia: Windows 11 x64, oficjalne kompilacje Firebird 3.0.14, 4.0.7, 5.0.4, archiwa wtyczki z 01.10.2026, Lazarus 4.8 z Free Pascal 3.2.2.
 ====

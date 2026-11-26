@@ -1,6 +1,6 @@
 [[closed-gui]]
 = Criptografia de banco de dados Firebird para uma aplicação sem código-fonte
-1.3.3, 24.11.2026
+1.3.4, 26.11.2026
 :doctype: book
 :sectnums:
 :sectanchors:
@@ -225,7 +225,7 @@ Se você tem o Lazarus, pule este passo. O próximo script compilará os program
 .\run-all.ps1 -Version 5
 ----
 +
-O script baixa o Firebird (25 MB) e o pacote do plugin (35 MB), instala o servidor na porta 30055, criptografa uma cópia do banco `employee` com a chave de teste `Red` e monta a pasta da estação de trabalho. No final, ele escreve:
+O script baixa o Firebird (25 MB) e o pacote do plugin (37 MB), instala o servidor na porta 30055, criptografa uma cópia do banco `employee` com a chave de teste `Red` e monta a pasta da estação de trabalho. No final, ele escreve:
 +
 [source]
 ----
@@ -1376,6 +1376,8 @@ O script obtém a chave do banco de dados do arquivo `work\fb<N>\db-key.conf`. N
 | Arquivos do cliente do HQbird (`ClientLibs\64`, compilações 3.0.15.33884, 4.0.8.3318, 5.0.5.1877) com a biblioteca da variante “a”. O arquivo `libcrypto-1_1-x64.dll` foi adicionado à pasta da versão 5.0 | aprovado
 | Tipos de conexão, versões 3.0, 4.0, 5.0. TCP/IP (`inet://`, `servidor/porta:`): a chave da `KeySource.dll` é enviada. XNET: a chave do cliente não é enviada, erro `Key not set`. XNET com a chave em um arquivo no servidor: o banco de dados abre | aprovado
 |===
+
+Em 26.11.2026, a matriz de 24 combinações e o teste de backup foram repetidos com os pacotes do plugin de 26.11.2026 (HQbird 3.0.15.33894, 4.0.8.3332, 5.0.5.1979): passou.
 
 Ambiente da verificação: Windows 11 x64, builds oficiais do Firebird 3.0.14, 4.0.7, 5.0.4, pacotes do plugin de 01.10.2026, Lazarus 4.8 com Free Pascal 3.2.2.
 ====
