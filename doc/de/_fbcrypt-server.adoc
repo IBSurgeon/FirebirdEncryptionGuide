@@ -1,0 +1,262 @@
+[[fbcrypt-server]]
+= Wie die Verschlüsselung einer Firebird-Datenbank auf der Server-Seite funktioniert
+
+Betrachten wir die internen Details der Verschlüsselung einer Firebird-Datenbank. Wir beginnen mit dem Server-Teil.
+
+== Welcher Teil der Datenbank wird verschlüsselt?
+
+Zuerst ist zu klären: Welcher Teil der Datenbank wird verschlüsselt? Wie Sie wahrscheinlich wissen, besteht eine Firebird-Datenbank aus Teilen gleicher Größe, den "`Datenbankseiten`". Es gibt mehrere Typen dieser Seiten. Jeder Typ hat einen bestimmten Zweck.
+
+Das Bild unten zeigt die wichtigsten Seitentypen:
+
+.Typen von Datenbankseiten
+image::1_firebird_database_data_pages.png[]
+
+Einige Seiten speichern Benutzerdaten. Andere Seiten speichern Systeminformationen, zum Beispiel Transaktionsseiten und Seiten des Seitenverzeichnisses (mehr Informationen über Datenbankseiten https://ib-aid.com/en/articles/database-physical-structure-interbase-and-firebird/[finden Sie hier]).
+
+Wenn Firebird eine Datenbank verschlüsselt, verschlüsselt es nur die Seiten mit Benutzerdaten: Datenseiten, Indexseiten, Generatorseiten und BLOB-Seiten.
+
+.Die Verschlüsselung betrifft nur die Datenbankseiten, die Benutzerdaten enthalten
+image::2_firebird_encrypted_pages.png[]
+
+Beachten Sie: Für den Teil der Engine, der die Verschlüsselung ausführt, unterscheiden sich die Metadaten der Datenbank (gespeicherte Prozeduren, Tabellen, Views, Namen von Triggern, Generatoren usw.) nicht von "`Benutzerdaten`". Die Metadaten werden verschlüsselt.
+
+Warum werden die Systemseiten nicht verschlüsselt? Hauptsächlich aus Gründen der Leistung und weil sie keine vertraulichen Daten enthalten, die Schutz benötigen.
+
+Die Header-Seite der Datenbank wird nicht verschlüsselt, weil sie Informationen enthält, die die Verschlüsselung benötigt (zum Beispiel den Schlüsselnamen).
+
+== Wann werden Datenseiten verschlüsselt?
+
+Wenn ein Benutzer eine SELECT-Abfrage auf einer verschlüsselten Datenbank ausführt, werden die Daten aus der verschlüsselten Datei gelesen. Die Daten gelangen aber in entschlüsselter Form in der Ergebnismenge zur Anwendung.
+
+Betrachten wir die Details dieses Ablaufs:
+
+.Wann werden Datenbankseiten verschlüsselt?
+image::3_when_pages_encrypted.png[]
+
+Meist beginnt der Ablauf mit einer Reihe von Lesevorgängen für Datenbankseiten aus der Datenbankdatei. Der Datei-Cache des Betriebssystems hält diese Seiten.
+
+Sie können Firebird auch so konfigurieren, dass es den Datei-Cache umgeht und nur den eigenen Cache verwendet. Standardmäßig verwendet Firebird aber den Datei-Cache.
+
+Danach liest Firebird die Seiten und legt sie in den Seiten-Cache von Firebird (seine Größe bestimmt der Parameter `DefaultDBCachePages` in `firebird.conf` und/oder `databases.conf` oder die Header-Seite der Datenbank).
+
+Dann werden die Seiten aus dem Cache verwendet, um die Ergebnismenge der konkreten SQL-Abfrage zu bilden (in unserem Beispiel `SELECT`).
+
+Das Bild unten zeigt die Details:
+
+.Seiten werden zwischen dem Firebird-Cache und dem Datei-Cache des Betriebssystems verschlüsselt
+image::4_pages_encrypted_between_caches.png[]
+
+Die Datenbankseiten sind also im Datei-Cache des Betriebssystems verschlüsselt, kommen aber in entschlüsselter Form in den Seiten-Cache von Firebird, und umgekehrt.
+
+[IMPORTANT]
+====
+Die Datenbankverschlüsselung schützt die Daten auf der Festplatte: die Datenbankdatei, ihre Kopien und verschlüsselte Sicherungen. Sie verschlüsselt nicht die Daten im Speicher des Servers und nicht die Daten, die über das Netzwerk gehen. Um den Netzwerkverkehr zu schützen, verwenden Sie die Verschlüsselung des Netzwerkprotokolls (`WireCrypt` in `firebird.conf`).
+====
+
+Der Teil der Firebird-Software, der die Verschlüsselung und Entschlüsselung ausführt, heißt "`Verschlüsselungs-Plugin`". Die meisten Plugin-Implementierungen (die den Autoren bekannt sind) heißen `DbCrypt`, daher nennen wir es `DbCrypt`.
+
+Das Bild unten zeigt die Varianten für Windows (`DbCrypt.dll`) und Linux (`libDbCrypt.so`):
+
+.Das Verschlüsselungs-Plugin (DbCrypt) führt die Verschlüsselung und Entschlüsselung aus
+image::6_firebird_dbcrypt.png[]
+
+=== Verschlüsselungsalgorithmus
+
+Das IBSurgeon-Plugin `DbCrypt` verschlüsselt Seiten mit dem Algorithmus AES. Die Schlüssellänge bestimmt die Variante des Algorithmus:
+
+[cols="1,1", options="header"]
+|===
+| Schlüssellänge | Algorithmus
+| 16 Bytes | AES-128
+| 24 Bytes | AES-192
+| 32 Bytes | AES-256 (empfohlen)
+|===
+
+Das Dienstprogramm `aesKeyGen` (siehe <<fbcrypt-keygen>>) erzeugt Schlüssel mit einer Länge von 32 Bytes.
+
+Das Plugin nimmt die kryptografischen Funktionen aus der Bibliothek OpenSSL (`libcrypto`). Diese Bibliothek muss sowohl für den Server als auch für die Client-Dienstprogramme verfügbar sein (siehe <<fbcrypt-config-openssl>>).
+
+== Schlüsselverwaltung
+
+Wenn Sie das vorherige Bild länger betrachten, kommt schnell die nächste Frage: Wie erhält `DbCrypt` den richtigen Schlüssel, um die Datenbankseiten zu verschlüsseln und zu entschlüsseln?
+
+Die Antwort: Es gibt ein weiteres Plugin für die Schlüsselverwaltung.
+
+Meist verwaltet ein Plugin mit dem Namen `KeyHolder` die Schlüssel. Es speichert und verwaltet die Schlüssel für das Verschlüsselungs-Plugin (`DbCrypt`). `KeyHolder` implementiert die Schnittstelle zur Schlüsselverwaltung, die `DbCrypt` verwendet.
+
+[NOTE]
+====
+Außerdem kann das Verschlüsselungs-Plugin (wenn sein Code dafür geschrieben ist) den Schlüssel selbst laden, zum Beispiel von einem externen USB-Stick. Dieses Dokument beschreibt diese Variante nicht.
+====
+
+.DbCrypt und KeyHolder
+image::7_dbcrypt_and_keyholder.png[]
+
+*Was bedeutet "`Schlüsselverwaltung`"?*
+
+Im einfachsten Fall liest `KeyHolder` die Schlüssel aus einer Datei auf dem Server und übergibt sie an das Plugin `DbCrypt`. In den IBSurgeon-Plugins ist das die Textdatei `KeyHolder.conf` im Ordner `plugins`.
+
+Die Schlüsseldatei kann mehrere Schlüssel enthalten. Zur Vereinfachung werden sie als benannte Liste gespeichert. Die Datei kann so aussehen (das Beispiel unten stammt aus dem Framework der IBSurgeon-Verschlüsselungs-Plugins):
+
+[listing]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74,
+----
+
+Wenn die Datenbank verschlüsselt ist, bleibt ihr Header (Seite null) unverschlüsselt. Er speichert unter anderem Informationen über das Verschlüsselungs-Plugin und den Schlüsselnamen. Verschlüsselte Hashes schützen den Header. Sie verhindern Versuche, die Datenbank durch eine Änderung ihres Zustands zu entschlüsseln. Sie können diese Informationen mit dem Befehl `gstat -h databasename` anzeigen:
+
+[listing]
+----
+Database header page information:
+....
+Creation date    Jan 11, 2017 15:12:20
+Attributes       force write, encrypted, plugin DBCRYPT
+
+Variable header data:
+ Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+ Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+ Encryption key name:    RED
+ Sweep interval:         0
+*END*
+----
+
+`DbCrypt` kann die Seiten mehrerer Datenbanken mit mehreren Schlüsseln verarbeiten:
+
+.Mehrere Schlüssel für mehrere Datenbanken auf einem Server (zum Beispiel in einer Firebird-Instanz)
+image::10_multi_database_keys.png[]
+
+=== Auswahl des richtigen Schlüssels
+
+Entwickler fragen oft: "`Woher weiß das Plugin, welcher Schlüssel zu welcher Datenbank gehört?`" Die Antwort ist einfach: anhand des Schlüsselnamens, der auf der Header-Seite der Datenbank gespeichert ist.
+
+[NOTE]
+====
+Das Plugin `KeyHolder` vergleicht Schlüsselnamen ohne Beachtung der Groß- und Kleinschreibung. Die Namen `Red`, `RED` und `red` bezeichnen denselben Schlüssel. Wenn der Schlüsselname in der Anweisung `ALTER DATABASE ENCRYPT` ohne Anführungszeichen geschrieben ist, speichert Firebird ihn im Header in Großbuchstaben (`RED`).
+====
+
+Eine seltenere, aber trotzdem wichtige Frage: Was geschieht, wenn der Schlüsselname mit dem Namen im Header übereinstimmt, der Schlüsselwert aber ein anderer ist? Firebird schützt sich davor mit zwei Prüfungen:
+
+* *Key hash.* Wenn Firebird die Datenbank verschlüsselt, bittet es das Plugin `DbCrypt`, eine Testfolge (`0123456789ABCDEF`) zu verschlüsseln. Es speichert den Hash des Ergebnisses im Header. Bei jeder Verbindung wiederholt Firebird diese Operation mit dem erhaltenen Schlüssel und vergleicht den Hash mit dem gespeicherten. Wenn die Werte verschieden sind, schlägt die Verbindung mit einem Fehler fehl, und keine Seite wird mit dem falschen Schlüssel gelesen.
+
+* *Crypt checksum.* Die Header-Felder, die zur Verschlüsselung gehören (die Flags "`verschlüsselt`" und "`Verschlüsselung läuft`", die Nummer der aktuellen Verschlüsselungsseite, der Plugin-Name, der Schlüsselname und der Schlüssel-Hash), werden mit dem Datenbankschlüssel verschlüsselt und als Prüfsumme gespeichert. Ohne den Schlüssel können Sie diese Felder nicht ändern und dabei die Prüfsumme korrekt halten.
+
+=== Woher KeyHolder die Schlüssel erhält
+
+Das IBSurgeon-Plugin `KeyHolder` kann Schlüssel aus drei Quellen erhalten:
+
+[cols="2,3,3", options="header"]
+|===
+| Quelle | Wie konfigurieren | Wann verwenden
+| Client-Anwendung (über das Netzwerk)
+| Die Anwendung sendet den Schlüssel beim Verbindungsaufbau: über `fbcrypt`, `KeySource`, `KeyHolderStdin` oder eine Treibereigenschaft. Siehe <<fbcrypt-client-app>>.
+| Produktionssystem. Auf dem Server liegt kein Schlüssel.
+
+| Bibliothek `KeySource` auf dem Server
+| Die Bibliothek `KeySource.dll` / `libKeySource.so` im Firebird-Bibliotheksordner. Siehe <<fbcrypt-keysource>>.
+| Der Server benötigt den Schlüssel ohne die Clients, aber der Schlüssel darf nicht in einer Textdatei liegen.
+
+| Datei `plugins/KeyHolder.conf`
+| Zeilen `Key=<Name> <Wert>` oder `Password=<Name> <Passwort>`. Siehe <<fbcrypt-config-keyholder>>.
+| Fehlersuche, Tests, erste Verschlüsselung.
+|===
+
+Die Datei `KeyHolder.conf` ist optional. Ein Produktionsserver, der die Schlüssel von den Clients erhält, arbeitet ohne sie.
+
+Wenn ein Client einen Schlüssel mit demselben Namen wie ein Schlüssel aus der Datei `KeyHolder.conf` sendet, wird der Client-Schlüssel verwendet.
+
+Der Ansatz mit den Schlüsseln auf dem Server ist einfach und praktisch für Fehlersuche, Leistungstests usw., weil die Verschlüsselung dann transparent ist: Client-Anwendungen und Entwicklerwerkzeuge wissen nicht, dass die Datenbank verschlüsselt ist.
+
+Im realen Betrieb müssen Sie aber den Zugriff von Anwendungen auf die Datenbank einschränken: Nur die Client-Anwendung, die den Schlüssel hat, darf eine Verbindung zur verschlüsselten Datenbank herstellen können.
+
+Dazu kann das Plugin `KeyHolder` den Schlüssel von der Client-Anwendung (die meist auf einem anderen Computer läuft) über das Firebird-Netzwerkprotokoll erhalten.
+
+[IMPORTANT]
+====
+Das IBSurgeon-Plugin `KeyHolder` teilt Schlüssel nicht zwischen Verbindungen. Wenn auf dem Server kein Schlüssel liegt, muss *jede* Verbindung den richtigen Schlüssel selbst senden. Eine Verbindung ohne Schlüssel erhält einen Fehler, auch wenn gleichzeitig eine andere Verbindung mit dem Schlüssel mit der Datenbank arbeitet.
+
+Das gilt auch für Dienstverbindungen: `gbak`, `gfix`, `nbackup`, `isql`, Administrationswerkzeuge, Replikation. Siehe <<fbcrypt-utils>>.
+====
+
+== Wie schützt man die Schlüsselübergabe?
+
+Ein Schutz der Datenbank kann nötig sein, wenn ein Kunde beschließt, direkt auf die verschlüsselte Datenbank zuzugreifen und dabei die autorisierten Anwendungen zu umgehen (viele Hersteller möchten den Zugriff auf die Daten einschränken und nur den Zugriff aus einer speziellen Anwendung erlauben).
+
+Das ist dieselbe Situation wie bei einem Angreifer, der Zugriff auf den Server hat, aber keine Schlüssel.
+
+Betrachten wir die folgenden Angriffsszenarien, mit denen die Schlüssel auf der Server-Seite abgefangen werden sollen:
+
+. Der Angreifer erstellt ein gefälschtes Verschlüsselungs-Plugin (`DBCrypt.dll`) und legt es auf den Server. Wenn `KeyHolder` den Schlüssel übergibt, schreibt das gefälschte `DbCrypt` den Schlüssel in einen Dump:
++
+.Angriff mit einer gefälschten Datei DbCrypt.dll
+image::11_attack_with_fake_dbcrypt.png[]
+
+. Der Angreifer erstellt eine gefälschte Datei `firebird.exe` und erstellt damit einen Dump:
++
+.Angriff mit einer gefälschten firebird.exe
+image::12_attack_with_fake_firebird.png[]
+
+Zum Schutz vor solchen Angriffen muss eine gute Implementierung des Verschlüsselungs-Plugins und des Schlüsselhalter-Plugins den Schlüsselaustausch schützen.
+
+Sie können den Schlüsselaustausch mit asymmetrischer Verschlüsselung schützen, mit einem Paar aus öffentlichem und privatem Schlüssel.
+
+Diese Schlüssel werden beim Build erzeugt und in ein bestimmtes Paar aus Verschlüsselungs-Plugin und Schlüsselhalter-Plugin eingebettet. Für den besten Schutz verwenden Sie speziell erstellte Paare `DbCrypt`/`KeyHolder`.
+
+image::13_key_exchange.png[]
+
+In den IBSurgeon-Plugins durchläuft der Schlüssel zwei Abschnitte: von der Client-Anwendung zu `KeyHolder` und von `KeyHolder` zu `DbCrypt`. Jeder Abschnitt verwendet dasselbe Protokoll, aber ein eigenes eingebettetes RSA-Schlüsselpaar. Wir nennen die Seiten "`Empfänger`" (die Seite, die den Datenbankschlüssel benötigt) und "`Sender`" (die Seite, die diesen Schlüssel hat):
+
+[listing]
+----
+Empfänger → Sender:
+	Anfrage zum Start des Austauschs
+Sender → Empfänger:
+	Zufallsfolge (neu für jeden Austausch)
+Empfänger:
+	Erzeugt ein einmaliges RSA-Schlüsselpaar
+	Signiert mit dem eingebetteten privaten Schlüssel
+		(Zufallsfolge + einmaliger öffentlicher Schlüssel)
+	Sendet den einmaligen öffentlichen Schlüssel und die Signatur
+Sender:
+	Prüft die Signatur mit dem eingebetteten öffentlichen Schlüssel
+	Wenn die Signatur nicht korrekt ist - sendet den Schlüssel nicht
+	Verschlüsselt die Datenbankschlüssel mit dem einmaligen öffentlichen Schlüssel
+	Sendet die verschlüsselten Schlüssel (bei Bedarf in Teilen)
+Empfänger:
+	Entschlüsselt die Schlüssel mit dem einmaligen privaten Schlüssel
+	Bereit zur Arbeit
+----
+
+Dieser Austausch hat folgende Eigenschaften:
+
+* Der Datenbankschlüssel wird nie im Klartext gesendet.
+* Der Sender übergibt den Schlüssel nur an "`seinen eigenen`" Empfänger: Ein gefälschtes Plugin ohne den eingebetteten privaten Schlüssel kann keine korrekte Signatur erzeugen.
+* Ein abgefangener Austausch lässt sich nicht wiederholen: Die Zufallsfolge und das einmalige RSA-Paar sind für jede Verbindung neu.
+
+Der Schutz des Schlüsselaustauschs im IBSurgeon-Plugin schützt auch die Daten bei der Übertragung über ein unsicheres Weitverkehrsnetz. Das gilt auch für die Fälle, in denen der Schlüssel über einen Kanal gehen muss, der noch nicht bereit ist, alle Daten auf die Standardweise von Firebird zu verschlüsseln. Diese Situation tritt auf, wenn Sie eine self security database verwenden.
+
+[IMPORTANT]
+====
+Beachten Sie, dass die Verschlüsselung und die Korrektheit der übertragenen Schlüssel von der Implementierung des Plugins abhängen. Die Firebird-Engine bietet nur einen einfachen Übertragungsdienst auf niedriger Ebene: "`sende N Bytes von dieser Plugin-Instanz an die Instanz des gepaarten Plugins`".
+====
+
+[NOTE]
+====
+Die Client-Bibliothek `fbcrypt` und die Plugins `KeyHolder`, `KeyHolderStdin` und `DbCrypt` müssen aus demselben Paket stammen. Bibliotheken aus verschiedenen Builds können verschiedene eingebettete Schlüsselpaare haben. In diesem Fall können sie den Schlüssel nicht austauschen.
+====
+
+[discrete]
+== Zusammenfassung des Server-Teils der Verschlüsselung
+
+* Das Plugin für die Datenbankverschlüsselung (`DbCrypt`) verschlüsselt und entschlüsselt Seite für Seite, beim Datenaustausch zwischen dem Datei-Cache des Betriebssystems und dem Seiten-Cache von Firebird.
+
+* Datenseiten, Indexseiten, BLOB-Seiten und Generatorseiten werden verschlüsselt. Der Header und die Dienstseiten werden nicht verschlüsselt.
+
+* Das Plugin `KeyHolder` verwaltet die Schlüssel. Es erhält die Schlüssel von der Client-Anwendung, aus der Bibliothek `KeySource` oder aus der Datei `KeyHolder.conf`.
+
+* Der Schlüssel geht zwischen der Anwendung, `KeyHolder` und `DbCrypt` nur in verschlüsselter Form.
+
+* Wenn auf dem Server kein Schlüssel liegt, muss jede Verbindung ihn senden.
+
+Sehen wir uns nun an, wie Client-Anwendungen mit verschlüsselten Datenbanken arbeiten.

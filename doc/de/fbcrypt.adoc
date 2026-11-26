@@ -1,0 +1,56 @@
+[[hqbird]]
+= Firebird Encryption plugin
+1.2.3, 26.11.2026
+:doctype: book
+:sectnums:
+:sectanchors:
+:toc: left
+:toclevels: 3
+:outlinelevels: 6:0
+:icons: font
+:experimental:
+:imagesdir: images
+include::../../attributes-de.adoc[opts=optional]
+
+toc::[]
+
+include::_fbcrypt-preface.adoc[leveloffset=1]
+
+include::_fbcrypt-server.adoc[leveloffset=1]
+
+include::_fbcrypt-client-app.adoc[leveloffset=1]
+
+include::_fbcrypt-keygen.adoc[leveloffset=1]
+
+include::_fbcrypt-install.adoc[leveloffset=1]
+
+include::_fbcrypt-usage.adoc[leveloffset=1]
+
+include::_fbcrypt-utils.adoc[leveloffset=1]
+
+include::_fbcrypt-monitoring.adoc[leveloffset=1]
+
+include::_fbcrypt-config.adoc[leveloffset=1]
+
+include::_fbcrypt-troubleshooting.adoc[leveloffset=1]
+
+== Zusammenfassung
+
+. Die Verschlüsselung von Firebird-Datenbanken ist eine wirksame Funktion. Sie schützt die Daten in Datenbanken vor unberechtigtem Zugriff.
+. Der Verschlüsselungsprozess braucht eine dynamische Bibliothek auf dem Server: das Verschlüsselungs-Plugin (meist `DbCrypt` genannt). In fast allen Fällen braucht er auch ein Schlüsselhalter-Plugin (meist `KeyHolder` genannt).
+. Eine sichere und zuverlässige Implementierung der Plugins `DbCrypt` und `KeyHolder` muss die häufigsten Angriffsarten berücksichtigen.
+. Für die Arbeit mit einer verschlüsselten Datenbank müssen Client-Anwendungen den Verschlüsselungsschlüssel senden. Jede Verbindung muss den Schlüssel senden.
+. Die Installation und Konfiguration des Verschlüsselungs-Plugins auf dem Server ist einfach. Sie braucht 1 Parameter in `firebird.conf`/`databases.conf` und einige Dateien.
+. Der Verschlüsselungsprozess kann lange dauern. Er läuft in einem eigenen Hintergrund-Thread. Sie können den Fortschritt mit der Tabelle `MON$DATABASE` oder mit dem Dienstprogramm `gstat` verfolgen.
+. Eine `gbak`-Sicherung ist nur dann verschlüsselt, wenn Sie dem Dienstprogramm das Schlüsselhalter-Plugin angeben (`-KeyHolder`; in Firebird 3.0 -- `-KeyFile` oder `-Key`). Die Schalter der Dienstprogramme in Version 3.0 unterscheiden sich von den Versionen 4.0 und 5.0. Das Dienstprogramm braucht das Plugin `DbCrypt` und die Lizenz in seinem Ordner `plugins`.
+. Einen verlorenen Schlüssel können Sie nicht wiederherstellen. Bewahren Sie eine Kopie des Schlüssels getrennt vom Server und von den Sicherungen auf.
+
+[discrete]
+=== Wie geht es weiter?
+
+Wir arbeiten an detaillierten Leistungstests der Verschlüsselung von Firebird-Datenbanken. Im Allgemeinen sinkt die Leistung um 4-8%, aber das hängt von der Hardware und von den Firebird-Einstellungen ab. Achten Sie auf Aktualisierungen!
+
+[appendix]
+== Kontakt
+
+Bitte senden Sie Ihre Vorschläge, Korrekturen von Tippfehlern, Fehlern usw. und auch alle Fragen per E-Mail: mailto:support@ib-aid.com[support@ib-aid.com]

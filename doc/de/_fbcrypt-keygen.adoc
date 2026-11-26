@@ -1,0 +1,285 @@
+[[fbcrypt-keygen]]
+= Schlüsselerzeugung
+
+Für die Erzeugung von Schlüsseln für die Verschlüsselung haben wir das Dienstprogramm `aesKeyGen` entwickelt. Es erzeugt Schlüssel für den Verschlüsselungsalgorithmus AES256. Die Verwendung des Dienstprogramms ist einfach
+
+[source,cmd]
+----
+aesKeyGen.exe
+----
+
+unter Linux lautet der Befehl:
+
+[source,bash]
+----
+./aesKeyGen
+----
+
+Die Ausgabe des Dienstprogramms ist:
+
+[listing]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+};
+----
+
+Das Dienstprogramm holt 32 Zufallsbytes aus dem kryptografischen Generator der OpenSSL-Bibliothek. Jeder Aufruf ergibt einen neuen Schlüssel.
+
+Wenn Sie das Dienstprogramm `aesKeyGen` nicht haben, können Sie einen Schlüssel im selben Format mit `openssl` erhalten:
+
+[source,bash]
+----
+openssl rand -hex 32 | sed 's/../0x&,/g'
+----
+
+[IMPORTANT]
+====
+Bewahren Sie eine Kopie des Schlüssels an einem sicheren Ort *außerhalb* des Datenbankservers auf. Einen verlorenen Schlüssel können Sie nicht wiederherstellen: Die Daten in der Datenbank und in den verschlüsselten Sicherungen sind dann nicht mehr zugänglich.
+====
+
+[[fbcrypt-keygen-format]]
+== Schlüsselformat
+
+Die Textform des Schlüssels wird in der Datei `KeyHolder.conf`, in der Bibliothek `KeySource`, im Eingabestrom des Plugins `KeyHolderStdin` und in den Verbindungseigenschaften für Java und .NET verwendet.
+
+[source]
+----
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Regeln:
+
+* Jedes Byte wird mit genau fünf Zeichen geschrieben: `0x`, zwei Hexadezimalziffern und ein Komma.
+* Leerzeichen zwischen den Bytes sind nicht erlaubt.
+* Ein Komma nach dem letzten Byte ist erlaubt. Das Dienstprogramm `aesKeyGen` schreibt den Schlüssel mit diesem Komma. Sie müssen es nicht entfernen.
+* Die Schlüssellänge beträgt 16, 24 oder 32 Bytes (AES-128, AES-192, AES-256). Ein Schlüssel mit einer anderen Länge führt zum Fehler `Invalid key length`.
+* Der Schlüsselname enthält keine Leerzeichen. Die Groß- und Kleinschreibung des Namens spielt keine Rolle.
+
+== Wie verwenden Sie diesen Schlüssel?
+
+=== In der Datei `KeyHolder.conf`
+
+Verwenden Sie diese Datei nur zur Fehlersuche.
+
+Das Format zum Speichern des Schlüssels ist:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Jeder Schlüssel hat einen Namen, der nach `Key=` steht. Nach einem Leerzeichen folgt der Schlüssel selbst. Die Datei kann mehrere Zeilen `Key=` enthalten.
+
+Beispiel:
+
+[source,conf]
+----
+Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+----
+
+Beschränken Sie unter Linux den Zugriff auf die Datei:
+
+[source,bash]
+----
+chown root:firebird /opt/firebird/plugins/KeyHolder.conf
+chmod 640 /opt/firebird/plugins/KeyHolder.conf
+----
+
+[[fbcrypt-keygen-password]]
+=== Passphrase statt eines Schlüssels
+
+Statt eines binären Schlüssels können Sie eine Passphrase angeben. Verwenden Sie dafür den Parameter `Password`:
+
+[source,conf]
+----
+Password=<KeyName> <passphrase>
+----
+
+Das Plugin berechnet aus der Passphrase einen Schlüssel mit einer Länge von 32 Bytes mit der Funktion PBKDF2 (HMAC-SHA256, 10000 Iterationen). Dieselbe Passphrase ergibt immer denselben Schlüssel.
+
+Sie können die Zeile `Password=` an denselben Stellen verwenden wie die Zeile `Key=`: in der Datei `KeyHolder.conf`, in der Bibliothek `KeySource` und im Eingabestrom des Plugins `KeyHolderStdin`.
+
+Das Plugin liest die Zeile wie eine Firebird-Konfigurationsdatei. Deshalb sind nicht alle Zeichen in der Passphrase erlaubt:
+
+[cols="2,5", options="header"]
+|===
+| Zeichen | Was geschieht
+| `"` | Die Zeile wird nicht ausgewertet. Fehler `illegal line`.
+| `#` | Das Plugin erhält eine andere Passphrase. Der Schlüssel passt nicht: `Invalid crypt key`.
+| `{` und `}` | Das Plugin erhält den Schlüssel nicht. Aus der Bibliothek `KeySource`: Fehler `Invalid crypt key`. Aus der Datei `KeyHolder.conf`: Die Anweisung `ALTER DATABASE ENCRYPT` endet ohne Fehler, aber die Datenbank bleibt unverschlüsselt.
+| `$(` | Beginn einer Ersetzung. Das Plugin erhält eine andere Passphrase oder wertet die Zeile nicht aus.
+| Leerzeichen am Anfang und am Ende | Werden entfernt.
+|===
+
+Ohne Änderungen werden übernommen: Buchstaben, Ziffern, Leerzeichen innerhalb der Passphrase, die Zeichen `'`, `;`, `=`, `\` und Buchstaben nationaler Alphabete. Speichern Sie eine Datei mit einer solchen Passphrase in der Kodierung UTF-8 ohne BOM.
+
+[NOTE]
+====
+Die Stärke eines solchen Schlüssels ist gleich der Stärke der Passphrase. Ein zufälliger Schlüssel mit 32 Bytes ist sicherer. Verwenden Sie eine lange Passphrase, wenn Sie diese Methode wählen.
+====
+
+=== In Befehlszeilen-Dienstprogrammen mit dem Plugin KeyHolderStdin
+
+Das allgemeine Format für den Aufruf von Befehlszeilen-Dienstprogrammen mit dem Plugin `KeyHolderStdin` ist (Firebird 4.0 und 5.0; für Version 3.0 siehe <<fbcrypt-utils-fb3>>):
+
+[source,cmd]
+----
+echo Key=<KeyName> <key_value> | <utils> -KeyHolder KeyHolderStdin ...
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Weitere Informationen finden Sie unter <<fbcrypt-utils>>.
+
+=== In einer C/C++-Anwendung
+
+Sie können den erzeugten Schlüssel unverändert übernehmen. Entfernen Sie das letzte Komma.
+
+[source,cpp]
+----
+const unsigned char aes256[] = {
+0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1
+};
+----
+
+=== In einer Delphi- und Lazarus-Anwendung
+
+Das ist ganz einfach: Ersetzen Sie alle Zeichen `0x` des Schlüssels durch `$` und entfernen Sie das letzte Komma.
+
+[source,delphi]
+----
+const keyRed: array [0..31] of byte  = ($d6,$d8,$8d,$07,$09,$70,$fe,$8c,$2e,$fd,$a2,$ee,$cd,$84,$ab,$d3,$89,$48,$29,$a1,$2b,$f0,$b9,$81,$65,$2c,$b2,$92,$ad,$22,$b6,$e1);
+----
+
+=== In einer Java- und .NET-Anwendung
+
+Die Treiber Jaybird und Firebird .NET erhalten den Schlüssel in Textform. Schlüsselname und Wert werden durch einen Doppelpunkt getrennt:
+
+[source]
+----
+MyKey:0xd6,0xd8,0x8d,0x07,0x09,0x70,0xfe,0x8c,0x2e,0xfd,0xa2,0xee,0xcd,0x84,0xab,0xd3,0x89,0x48,0x29,0xa1,0x2b,0xf0,0xb9,0x81,0x65,0x2c,0xb2,0x92,0xad,0x22,0xb6,0xe1,
+----
+
+Weitere Informationen finden Sie unter <<fbcrypt-client-java>> und <<fbcrypt-client-net>>.
+
+[[fbcrypt-keygen-clientkeys]]
+== Individuelle Client-Schlüssel
+
+In manchen Systemen erhalten viele Clients (Filialen, Arbeitsplatzrechner, Partner) denselben Datenbankschlüssel. Mit dem Dienstprogramm `ClientKeygen` können Sie jedem Client einen eigenen Schlüssel geben und im Serverprotokoll sehen, mit welchem Schlüssel die Verbindung hergestellt wurde.
+
+[NOTE]
+====
+Nur das Plugin für Firebird 5.0 (HQbird 5) unterstützt individuelle Client-Schlüssel. Die Versionen für Firebird 3.0 und 4.0 haben diese Funktion nicht. Das Dienstprogramm `ClientKeygen` ist nicht in allen Paketen enthalten. Wenn es nicht in Ihrem Paket ist, wenden Sie sich an den IBSurgeon-Support.
+====
+
+=== Funktionsweise
+
+. Das Dienstprogramm `ClientKeygen` nimmt den Datenbankschlüssel und erzeugt einen Client-Schlüssel mit einer Länge von 64 Bytes. Der Client-Schlüssel enthält Zufallsdaten, die Schlüsselnummer und den Datenbankschlüssel. Das Dienstprogramm verschlüsselt ihn mit dem Wert des Parameters `License` aus der Datei `DbCrypt.conf`.
+. Der Client sendet dem Server den Client-Schlüssel statt des Datenbankschlüssels. Der Schlüsselname bleibt gleich.
+. Das Plugin `DbCrypt` auf dem Server entschlüsselt den Client-Schlüssel mit seiner Lizenz. Es erhält den Datenbankschlüssel und die Nummer des Client-Schlüssels.
+
+Daraus folgt:
+
+* Sie müssen die Datenbank nicht erneut verschlüsseln. Alle Client-Schlüssel öffnen dieselbe Datenbank.
+* Ein Client-Schlüssel funktioniert nur auf einem Server mit demselben Wert `License`, den das Dienstprogramm `ClientKeygen` hatte.
+* Der Datenbankschlüssel muss eine Länge von 32 Bytes haben.
+* Der normale Datenbankschlüssel funktioniert weiterhin. Bewahren Sie ihn nur beim Administrator auf.
+
+=== Erzeugung der Schlüssel
+
+Syntax:
+
+[source]
+----
+ClientKeygen {keyname} {keycount} [starting]
+----
+
+[cols="1,3", options="header"]
+|===
+| Parameter | Bedeutung
+| `keyname` | der Name des Datenbankschlüssels in der Datei `KeyHolder.conf`
+| `keycount` | wie viele Client-Schlüssel erzeugt werden
+| `starting` | die Nummer des ersten Schlüssels (Standard `1`)
+|===
+
+Das Dienstprogramm liest den Datenbankschlüssel aus der Datei `KeyHolder.conf` und die Lizenz aus der Datei `DbCrypt.conf`. Beide Dateien müssen im aktuellen Ordner oder im Ordner `../plugins` liegen. Das Dienstprogramm schreibt das Ergebnis in den aktuellen Ordner.
+
+Vorgehensweise:
+
+. Erstellen Sie auf dem Rechner des Administrators einen leeren Ordner.
+. Kopieren Sie die Datei `DbCrypt.conf` des Servers in diesen Ordner.
+. Erstellen Sie darin eine Datei `KeyHolder.conf` mit der Zeile `Key=<Name> <Wert>` für den Datenbankschlüssel.
+. Starten Sie das Dienstprogramm in diesem Ordner:
++
+[source,bash]
+----
+ClientKeygen Red 20 1
+----
++
+Das Dienstprogramm erzeugt 20 Dateien: `KeyHolder.conf.1`, `KeyHolder.conf.2`, ... `KeyHolder.conf.20`. Jede Datei enthält eine Zeile `Key=Red <key_value>` mit einem Wert mit einer Länge von 64 Bytes.
+. Geben Sie jedem Client seine Datei über einen geschützten Kanal. Notieren Sie, welche Schlüsselnummer jeder Client erhalten hat.
+. Löschen Sie den Ordner. Er enthält den Datenbankschlüssel.
+
+Um später Clients hinzuzufügen, starten Sie das Dienstprogramm mit dem dritten Parameter. Zum Beispiel erzeugt `ClientKeygen Red 5 21` Schlüssel mit den Nummern 21 bis 25.
+
+=== Verwendung auf dem Client
+
+Verwenden Sie einen Client-Schlüssel genauso wie einen normalen Schlüssel. Der Schlüsselname ist derselbe, die Länge des Werts beträgt 64 Bytes.
+
+[cols="2,4", options="header"]
+|===
+| Methode zur Übergabe des Schlüssels | Was zu tun ist
+| Bibliothek `fbcrypt`
+| Übergeben Sie den Wert an `fbcrypt_key` mit der Länge 64.
+
+| Client-Plugin `KeyHolder`
+| Speichern Sie die Datei `KeyHolder.conf.<Nummer>` unter dem Namen `plugins/KeyHolder.conf` im Ordner der Client-Bibliothek. Setzen Sie in der Client-Datei `firebird.conf` den Wert `KeyHolderPlugin = KeyHolder`.
+
+| Bibliothek `KeySource`
+| Geben Sie die Zeile aus der Datei in der Funktion `MakeKeys` zurück.
+
+| Plugin `KeyHolderStdin`
+| Übergeben Sie die Zeile aus der Datei an den Eingabestrom des Dienstprogramms.
+
+| Treibereigenschaft (Jaybird, .NET)
+| Verwenden Sie den Wert in der Form `<Name>:0x..,0x..,`. Der Parameter `UnsafeClient = true` ist erforderlich.
+|===
+
+=== Verbindungsprotokoll
+
+Damit der Server in `firebird.log` schreibt, welcher Client-Schlüssel verwendet wurde, fügen Sie den Parameter in die Datei `plugins/DbCrypt.conf` des Servers ein und starten Sie Firebird neu:
+
+[source,conf]
+----
+Logger = true
+----
+
+Die Meldung im Protokoll sieht so aus:
+
+[listing]
+----
+DbCrypt login from 192.168.1.15/54907 using key 7
+----
+
+Hier ist `192.168.1.15/54907` die Adresse und der Port des Clients, `7` ist die Nummer des Client-Schlüssels.
+
+Eigenschaften des Protokolls:
+
+* Für jede Verbindung mit einem Client-Schlüssel wird ein Eintrag erstellt.
+* Verbindungen mit dem normalen Datenbankschlüssel werden nicht protokolliert.
+* Der Eintrag wird vor der Schlüsselprüfung erstellt. Auch ein Verbindungsversuch mit einem beschädigten Client-Schlüssel wird protokolliert.
+
+=== Austausch eines Client-Schlüssels
+
+Das Plugin hat keine Liste gesperrter Schlüssel. Sie können einen einzelnen Client-Schlüssel nicht deaktivieren.
+
+So sperren Sie den Zugriff für einen Client, der einen Schlüssel hat:
+
+. Entschlüsseln Sie die Datenbank und verschlüsseln Sie sie mit einem neuen Schlüssel (siehe <<fbcrypt-usage>>).
+. Erzeugen Sie neue Client-Schlüssel für den neuen Datenbankschlüssel.
+. Geben Sie die neuen Schlüssel den anderen Clients.
+
+Ein Beispiel für die Arbeit mit Client-Schlüsseln finden Sie im Ordner `examples/clientkeygen` des Repositorys https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

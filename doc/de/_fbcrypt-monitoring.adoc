@@ -1,0 +1,104 @@
+[[fbcrypt-monitoring]]
+= Wie Sie den Fortschritt der Verschlüsselung verfolgen
+
+Firebird verschlüsselt die Datenbank nur, wenn sie aktive Verbindungen hat. Der Verschlüsselungsprozess läuft in einem eigenen parallelen Thread. Bei großen Datenbanken kann die vollständige Verschlüsselung lange dauern.
+
+== Die Tabelle MON$DATABASE
+
+Um den Verschlüsselungsprozess zu verfolgen, führen Sie eine SQL-Abfrage auf die Monitoring-Tabelle `MON$DATABASE` aus:
+
+[source,sql]
+----
+select mon$crypt_page * 100.0 / mon$pages as Percent from mon$database;
+commit;
+----
+
+Das Feld `MON$CRYPT_PAGE` enthält die Nummer der Seite, die der Verschlüsselungs-Thread erreicht hat. Wenn die Verschlüsselung abgeschlossen ist, ist der Wert des Feldes `0`.
+
+Die Monitoring-Tabellen zeigen den Stand zum Zeitpunkt des ersten Zugriffs in der Transaktion. Um einen neuen Wert zu sehen, beenden Sie die Transaktion (`commit`) und führen Sie die Abfrage erneut aus.
+
+In Firebird 4.0 und 5.0 gibt es auch das Feld `MON$CRYPT_STATE`:
+
+[source,sql]
+----
+select mon$crypt_state from mon$database;
+----
+
+[cols="1,3", options="header"]
+|===
+| Wert | Zustand
+| `0` | die Datenbank ist nicht verschlüsselt
+| `1` | die Datenbank ist verschlüsselt
+| `2` | die Entschlüsselung läuft
+| `3` | die Verschlüsselung läuft
+|===
+
+== isql
+
+Der Befehl `show database` zeigt eine dieser Zeilen:
+
+[cols="2,3", options="header"]
+|===
+| Zeile | Zustand
+| `Database not encrypted` | die Datenbank ist nicht verschlüsselt
+| `Database encrypted, crypt thread not complete` | die Verschlüsselung ist gestartet, aber nicht abgeschlossen
+| `Database encrypted` | die Verschlüsselung ist abgeschlossen
+|===
+
+== gstat
+
+Der Befehl `gstat -h` zeigt die Attribute des Headers: das Kennzeichen `encrypted`, den Plugin-Namen und den Schlüsselnamen. Er arbeitet schnell.
+
+Der Befehl `gstat -e` zählt zusätzlich die verschlüsselten und die nicht verschlüsselten Seiten:
+
+[listing]
+----
+gstat -e dbname
+
+Database "D:\ENCDB\TESTENCRYPT.FDB"
+Gstat execution time Tue Mar 16 11:45:11 2021
+
+Database header page information:
+        Flags                   0
+        Generation              10697
+        System Change Number    3
+        Page size               8192
+        ODS version             12.0
+        Oldest transaction      7053
+        Oldest active           7054
+        Oldest snapshot         7054
+        Next transaction        7054
+        Sequence number         0
+        Next attachment ID      17834
+        Implementation          HW=Intel/i386 little-endian OS=Windows CC=MSVC
+        Shadow count            0
+        Page buffers            0
+        Next header page        0
+        Database dialect        3
+        Creation date           Oct 9, 2019 6:42:31
+        Attributes              encrypted, plugin DBCRYPT
+
+    Variable header data:
+        Database backup GUID:   {866B4967-ED58-427E-A481-DB9206CEA2ED}
+        Crypt checksum: MUB2NTJqchh9RshmP6xFAiIc2iI=
+        Key hash:       ask88tfWbinvC6b1JvS9Mfuh47c=
+        Encryption key name:    RED
+        Database GUID:  {323FE494-1771-4608-E99D-C1B69C84578B}
+        *END*
+
+Data pages: total 105, encrypted 105, non-crypted 0
+Index pages: total 95, encrypted 95, non-crypted 0
+Blob pages: total 0, encrypted 0, non-crypted 0
+Generator pages: total 1, encrypted 1, non-crypted 0
+Gstat completion time Tue Mar 16 11:45:11 2021
+----
+
+Die Verschlüsselung ist abgeschlossen, wenn alle Zeilen `non-crypted 0` zeigen.
+
+Beachten Sie, dass der Befehl `gstat -e` lange dauern kann: Das Dienstprogramm liest alle Seiten der Datenbank.
+
+== Wenn die Verschlüsselung nicht fortschreitet
+
+* Prüfen Sie, dass es mindestens eine Verbindung zur Datenbank gibt. Ohne Verbindungen arbeitet der Verschlüsselungs-Thread nicht.
+* Prüfen Sie, dass die Verbindung den Schlüssel gesendet hat oder dass der Schlüssel für den Server verfügbar ist.
+* Sehen Sie sich die Meldungen in `firebird.log` an.

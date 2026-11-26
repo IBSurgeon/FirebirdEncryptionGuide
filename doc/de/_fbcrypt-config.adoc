@@ -1,0 +1,175 @@
+[[fbcrypt-config]]
+= Parameterreferenz
+
+Dieses Kapitel sammelt alle Parameter und Dateien, die das Verschlüsselungs-Plugin von IBSurgeon verwendet.
+
+== Dateien des Plugins
+
+[cols="2,2,3", options="header"]
+|===
+| Datei (Windows / Linux) | Ort | Zweck
+| `dbcrypt.dll` / `libDbCrypt.so` | `plugins` | Das Plugin für die Verschlüsselung der Seiten (`DbCrypt`).
+| `DbCrypt.conf` | `plugins` | Die Lizenz und die Parameter des Plugins `DbCrypt`.
+| `keyholder.dll` / `libKeyHolder.so` | `plugins` | Das Schlüsselhalter-Plugin (`KeyHolder`).
+| `KeyHolder.conf` | `plugins` | Die Parameter des Plugins `KeyHolder`. Die Datei ist optional. Sie kann Schlüssel enthalten (nur für Tests).
+| `keyholderstdin.dll` / `libKeyHolderStdin.so` | `plugins` des Clients | Das Plugin, das den Schlüssel aus dem Eingabestrom des Dienstprogramms liest. Im Paket für Windows liegt die Datei im Ordner `key-plugins`: Kopieren Sie sie nach `plugins`.
+| `fbcrypt.dll` / `libfbcrypt.so` | neben der Anwendung / `lib` | Die Bibliothek, mit der die Anwendung den Schlüssel sendet.
+| `KeySource.dll` / `libKeySource.so` | neben `fbclient` / `lib` | Ihre Bibliothek mit den Schlüsseln (optional).
+| `libcrypto-*.dll` / `libcrypto.so.*` | neben `fbclient` / Systembibliothek | Die Bibliothek OpenSSL.
+|===
+
+== firebird.conf und databases.conf
+
+[cols="2,4", options="header"]
+|===
+| Parameter | Beschreibung
+| `KeyHolderPlugin`
+| Die Liste der Schlüsselhalter-Plugins. Für das Plugin von IBSurgeon: `KeyHolderPlugin = KeyHolder`. Sie können den Parameter für den ganzen Server (`firebird.conf`) oder für eine Datenbank (`databases.conf`) setzen. Der Parameter ist auch auf dem Client nötig, wenn Sie die Bibliothek `KeySource` verwenden.
+
+| `Providers`
+| Die Liste der Client-Provider. Der Standardwert: `Remote,Engine13,Loopback` (in Version 3.0 `Engine12`). Die Zeile `Providers = Remote` auf einem Arbeitsplatzrechner lässt nur die Netzwerkverbindung übrig: Der Client lädt die eingebettete Engine mit ihren Plugins nicht und sucht keinen lokalen Server. Die Zeile `Providers = Engine13` lässt nur den Embedded-Modus übrig.
+
+| `WireCrypt`
+| Verschlüsselung des Netzwerkprotokolls. Sie hat nichts mit der Datenbankverschlüsselung zu tun, ist aber Pflicht (`Required`), wenn Java- oder .NET-Anwendungen den Schlüssel senden.
+|===
+
+[[fbcrypt-config-dbcrypt]]
+== DbCrypt.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Parameter | Typ | Beschreibung
+| `License` | Zeichenkette | Der Lizenzschlüssel. Pflicht.
+| `RegName` | Zeichenkette | Der Name des Lizenzinhabers. Pflicht.
+| `RegEmail` | Zeichenkette | Die E-Mail-Adresse des Lizenzinhabers. Pflicht.
+| `ExpireDate` | Zahl | Das Enddatum der Testlizenz (Unix-Zeit in Sekunden). Fehlt in einer unbefristeten Lizenz.
+| `Logger` | logisch | Wenn `true`, schreibt das Plugin die Verbindungen mit individuellen Client-Schlüsseln in `firebird.log` (siehe <<fbcrypt-keygen-clientkeys>>). Der Standardwert ist `false`. Nur im Plugin für Firebird 5.0.
+|===
+
+Der Wert `License` ist mit den Werten `RegName`, `RegEmail` und `ExpireDate` verbunden. Ändern Sie diese Parameter nicht: Sonst wird die Lizenz ungültig.
+
+Beispiel:
+
+[source,conf]
+----
+License = 0123456789abcdef0123456789abcdef
+RegName = My Company
+RegEmail = admin@example.com
+----
+
+[[fbcrypt-config-keyholder]]
+== KeyHolder.conf
+
+[cols="2,1,4", options="header"]
+|===
+| Parameter | Typ | Beschreibung
+| `Key` | Zeichenkette | Ein benannter Schlüssel: `Key = <Name> <Wert>`. Sie können den Parameter wiederholen. Das Format des Werts beschreibt <<fbcrypt-keygen-format>>.
+| `Password` | Zeichenkette | Ein benannter Schlüssel, der mit einer Passphrase gesetzt ist: `Password = <Name> <Passphrase>`. Sie können den Parameter wiederholen. Siehe <<fbcrypt-keygen-password>>.
+| `UnsafeClient` | logisch | Wenn `true`, nimmt das Plugin Schlüssel an, die der Client ohne den geschützten Austausch gesendet hat (Jaybird, Firebird .NET). Der Standardwert ist `false`. Siehe <<fbcrypt-client-unsafe>>.
+| `Prompt` | Zeichenkette | Der Aufforderungstext für die Eingabe des Schlüssels durch den Benutzer auf der Client-Seite. Siehe <<fbcrypt-client-prompt>>.
+|===
+
+Die Datei ist optional. Ohne sie arbeitet das Plugin mit den Standardwerten. Ein Server, der die Schlüssel von den Clients erhält, braucht die Datei nur für den Parameter `UnsafeClient`.
+
+Eine Beispieldatei für einen Testserver:
+
+[source,conf]
+----
+Key = Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,
+Password = Blue my long secret phrase
+----
+
+Eine Beispieldatei für einen Produktionsserver, mit dem sich Java-Anwendungen verbinden:
+
+[source,conf]
+----
+UnsafeClient = true
+----
+
+[WARNING]
+====
+In einem Produktionssystem darf die Datei `KeyHolder.conf` auf dem Server keine Zeilen `Key` und `Password` enthalten. Sonst erhält jeder, der Zugriff auf den Server bekommt, auch den Schlüssel.
+====
+
+[[fbcrypt-config-openssl]]
+== Die Bibliothek OpenSSL
+
+Die Plugins und die Bibliothek `fbcrypt` laden die Bibliothek `libcrypto` von OpenSSL. Der Name der Bibliothek hängt von der Version des Plugin-Pakets ab:
+
+[cols="1,2,2", options="header"]
+|===
+| Plattform | OpenSSL 3 | OpenSSL 1.1
+| Windows 64 Bit | `libcrypto-3-x64.dll` | `libcrypto-1_1-x64.dll`
+| Windows 32 Bit | `libcrypto-3.dll` | `libcrypto-1_1.dll`
+| Linux | `libcrypto.so.3` | `libcrypto.so.1.1`
+|===
+
+Die Plugins aus HQbird 5 suchen zuerst OpenSSL 3, dann OpenSSL 1.1. Die Plugins für Firebird 3.0 und 4.0 brauchen OpenSSL 1.1.
+
+Unter Windows ist die Bibliothek im Plugin-Paket enthalten. Unter Linux wird die Systembibliothek verwendet. Installieren Sie bei Bedarf das Kompatibilitätspaket (siehe <<fbcrypt-install>>).
+
+== Zusätzliche Bibliotheken
+
+Beim Start sucht das Plugin `KeyHolder` im Bibliotheksordner von Firebird nach zwei optionalen Bibliotheken.
+
+[cols="1,2,4", options="header"]
+|===
+| Bibliothek | Funktion | Zweck
+| `KeySource` | `MakeKeys` | Gibt eine Liste von Schlüsseln zurück. Siehe <<fbcrypt-keysource>>.
+| `KeyChecker` | `CheckKey` | Erhält jeden Schlüssel, den das Plugin geladen hat. Siehe <<fbcrypt-config-keychecker>>.
+|===
+
+Der Bibliotheksordner: Unter Windows ist es der Ordner, der `firebird.exe` oder `fbclient.dll` enthält; unter Linux -- der Ordner `lib`.
+
+[[fbcrypt-config-keychecker]]
+=== Die Bibliothek KeyChecker
+
+Dateiname: `KeyChecker.dll` (Windows) oder `libKeyChecker.so` (Linux). Die Bibliothek exportiert die Funktion `CheckKey`:
+
+[source,cpp]
+----
+void CheckKey(const char* keyName, const char* exeName, unsigned keyLen, void* keyValue);
+----
+
+[cols="1,4", options="header"]
+|===
+| Parameter | Wert
+| `keyName` | der Schlüsselname
+| `exeName` | der vollständige Pfad zur ausführbaren Datei des aktuellen Prozesses
+| `keyLen` | die Schlüssellänge in Bytes
+| `keyValue` | ein Zeiger auf den Schlüsselwert
+|===
+
+Was die Funktion tun kann:
+
+* Informationen über den Schlüssel in ein eigenes Protokoll schreiben: den Schlüsselnamen, die Länge, den Programmnamen.
+* Den Schlüsselwert an Ort und Stelle ändern. Die Länge kann sie nicht ändern.
+
+Die Funktion gibt nichts zurück. Sie kann keinen Schlüssel ablehnen.
+
+Das Plugin ruft `CheckKey` nicht für alle Schlüssel auf:
+
+[cols="2,3,1", options="header"]
+|===
+| Wo das Plugin arbeitet | Quelle des Schlüssels | Aufruf
+| Server, `KeyHolder` | die Datei `KeyHolder.conf` oder die Bibliothek `KeySource` | ja
+| Server, `KeyHolder` | der Client hat einen statischen Wert gesendet (`UnsafeClient = true`) | ja
+| Server, `KeyHolder` | der Client hat den geschützten Schlüsselaustausch ausgeführt (`fbcrypt`, Client-`KeyHolder`, `KeyHolderStdin`) | nein
+| Client, `KeyHolder` | die Datei `KeyHolder.conf` oder die Bibliothek `KeySource` auf dem Client | ja
+| Dienstprogramm, `KeyHolderStdin` | der Eingabestrom des Dienstprogramms | ja
+| Anwendung, `fbcrypt` | die Funktion `fbcrypt_key` | nein
+|===
+
+Das Client-Plugin `KeyHolder` ruft die Funktion für jeden seiner Schlüssel bei jeder Verbindung auf.
+
+[WARNING]
+====
+Schreiben Sie den Schlüsselwert nicht in das Protokoll.
+====
+
+[NOTE]
+====
+Die Bibliothek `KeyChecker` ist ein Erweiterungspunkt für besondere Verfahren der Schlüsselbehandlung. Eine normale Installation braucht sie nicht. Bevor Sie sie verwenden, wenden Sie sich an den Support von IBSurgeon.
+====
+
+Beispiele der Bibliothek in C++ und Free Pascal liegen im Ordner `examples/keychecker` des Repositorys https://github.com/IBSurgeon/FirebirdEncryptionGuide[FirebirdEncryptionGuide].

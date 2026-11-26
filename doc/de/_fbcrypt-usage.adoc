@@ -1,0 +1,123 @@
+[[fbcrypt-usage]]
+= Verschlüsselung, Entschlüsselung und Schlüsselwechsel
+
+Dieses Kapitel beschreibt die wichtigsten Operationen mit einer verschlüsselten Datenbank.
+
+== Bevor Sie beginnen
+
+Prüfen Sie Folgendes:
+
+. Sie haben eine Sicherung der Datenbank erstellt. Machen Sie die ersten Tests nur mit einer Kopie.
+. Das Plugin ist installiert, die Lizenzdatei `DbCrypt.conf` liegt im Ordner `plugins` (siehe <<fbcrypt-install>>).
+. Der Parameter `KeyHolderPlugin = KeyHolder` ist in `firebird.conf` oder in `databases.conf` gesetzt.
+. Der Schlüssel ist erstellt, und eine Kopie liegt außerhalb des Servers (siehe <<fbcrypt-keygen>>).
+. Der Schlüssel ist für den Server verfügbar. Es gibt drei Wege:
+** den Schlüssel vorübergehend in die Datei `plugins/KeyHolder.conf` schreiben;
+** den Schlüssel vom Client mit dem Dienstprogramm `isql` und dem Plugin `KeyHolderStdin` senden (siehe <<fbcrypt-utils>>);
+** die Anweisung mit dem Dienstprogramm `isql` aus dem Client-Ordner ausführen, der die Bibliothek `KeySource` enthält (siehe <<fbcrypt-keysource>>). Das Client-Plugin `KeyHolder` sendet den Schlüssel an den Server, eine Datei auf dem Server ist nicht nötig.
+
+Wenn der Client den Schlüssel sendet, verbinden Sie sich über TCP/IP (`localhost:` oder `inet://`), nicht mit einem lokalen Pfad ohne Servernamen und nicht über XNET. Siehe <<fbcrypt-connection-kinds>>.
+
+[[fbcrypt-connection-kinds]]
+== Verbindungsarten
+
+Der Firebird-Server fordert den Schlüssel vom Client nur bei einer TCP/IP-Verbindung an. Bei einer XNET-Verbindung muss der Schlüssel auf dem Server sein.
+
+[cols="3,2,2", options="header"]
+|===
+| Verbindung | Schlüssel in der Datei `KeyHolder.conf` auf dem Server | Der Client sendet den Schlüssel
+| TCP/IP: `Server:Datenbank`, `Server/Port:Datenbank`, `inet://Server:Port/Datenbank`
+| funktioniert
+| funktioniert
+
+| XNET: `xnet://Datenbank`. Nur Windows, Client und Server sind auf demselben Computer
+| funktioniert
+| funktioniert nicht, Fehler `Key not set`
+|===
+
+Der Client sendet den Schlüssel bei jeder dieser Methoden: `fbcrypt`, `KeySource`, `KeyHolderStdin`, der Schalter `-KeyHolder` der Dienstprogramme. Der Firebird-Server legt diese Regel fest, deshalb ist sie für alle Methoden gleich.
+
+* *Lokaler Pfad ohne Servernamen (Windows).* Das Ergebnis hängt vom Client-Parameter `Providers` ab. Der Provider `Engine13` (in 3.0: `Engine12`) öffnet die Datei im Client-Prozess: Das ist der Embedded-Modus, es gibt kein Netzwerk, und das Plugin `KeyHolder` dieses Prozesses erhält den Schlüssel. Der Provider `Loopback` versucht unter Windows zuerst XNET, und der Client-Schlüssel wird nicht gesendet. Wenn in `Providers` nur `Remote` steht, schlägt die Verbindung mit dem Fehler `unavailable database` fehl. Schreiben Sie den Servernamen, dann hängt das Ergebnis nicht von den Einstellungen ab.
+* *Verschlüsselung der Übertragung.* Bei XNET gehen die Daten durch den gemeinsamen Speicher des Computers. Die `WireCrypt`-Plugins verschlüsseln sie nicht: `WIRE_ENCRYPTED = FALSE`. Das ist das Standardverhalten von Firebird.
+* *WNET (Named Pipes).* Es gibt WNET nur in Firebird 3.0 und 4.0. Nicht getestet. Nach dem Quellcode des Servers gilt dieselbe Regel wie für XNET.
+* *XNET-Name.* Wenn der Server den Parameter `IpcName` hat, braucht die Client-Datei `firebird.conf` denselben Wert.
+
+Getestet am 24.11.2026 mit Firebird 3.0.14, 4.0.7 und 5.0.4 für Windows: `isql` mit der Bibliothek `KeySource` und `gbak` (in 4.0 und 5.0 mit dem Schalter `-KeyHolder KeyHolder`).
+
+== Verschlüsselung der Datenbank
+
+[source,sql]
+----
+ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY Red;
+COMMIT;
+----
+
+[cols="1,3", options="header"]
+|===
+| Element | Kommentar
+| `"DbCrypt"`
+| Der Name des Verschlüsselungs-Plugins. Unter Linux unterscheidet der Name Groß- und Kleinschreibung, deshalb schreiben Sie ihn in doppelten Anführungszeichen. Unter Windows sind die Anführungszeichen optional.
+
+| `Red`
+| Der Schlüsselname. Ohne Anführungszeichen wird der Name in Großbuchstaben gespeichert (`RED`). Das Plugin `KeyHolder` vergleicht Namen ohne Unterscheidung von Groß- und Kleinschreibung.
+|===
+
+Die Anweisung startet die Verschlüsselung nur. Ein Hintergrund-Thread des Servers verschlüsselt die Seiten:
+
+* Die Verschlüsselung läuft, solange es mindestens eine Verbindung zur Datenbank gibt. Halten Sie bei einer großen Datenbank eine Verbindung offen, bis die Verschlüsselung abgeschlossen ist.
+* Sie können während der Verschlüsselung mit der Datenbank arbeiten.
+* Wenn der Server gestoppt wurde, setzt sich die Verschlüsselung bei der nächsten Verbindung mit dem Schlüssel fort.
+
+Wie Sie prüfen, ob die Verschlüsselung abgeschlossen ist, beschreibt <<fbcrypt-monitoring>>.
+
+[WARNING]
+====
+Führen Sie nach der Verschlüsselung `gstat -h` aus: Die Zeile `Attributes` muss das Wort `encrypted` enthalten.
+
+Die Anweisung `ALTER DATABASE ENCRYPT` kann ohne Fehler enden und die Datenbank trotzdem nicht verschlüsseln. Das passiert in Firebird 3.0, 4.0 und 5.0, wenn der Schlüssel in der Datei `KeyHolder.conf` als Passphrase mit geschweiften Klammern gesetzt ist. Die erlaubten Zeichen der Passphrase stehen in <<fbcrypt-keygen-password>>.
+====
+
+Nach Abschluss der Verschlüsselung:
+
+. Wenn der Schlüssel nur für die Verschlüsselung in `plugins/KeyHolder.conf` geschrieben wurde, löschen oder benennen Sie diese Datei um und starten Sie Firebird neu. Der Server arbeitet ohne die Datei `KeyHolder.conf`: Sie ist nur für die Plugin-Parameter nötig (siehe <<fbcrypt-config-keyholder>>).
+. Prüfen Sie, dass eine Verbindung ohne den Schlüssel nicht möglich ist.
+. Prüfen Sie, dass die Anwendungen und die Sicherung funktionieren.
+
+== Entschlüsselung der Datenbank
+
+[source,sql]
+----
+ALTER DATABASE DECRYPT;
+COMMIT;
+----
+
+Die Entschlüsselung läuft ebenfalls in einem Hintergrund-Thread. Löschen Sie den Schlüssel und den Parameter `KeyHolderPlugin` nicht, solange `gstat -h` das Attribut `encrypted` zeigt.
+
+== Schlüsselwechsel
+
+Firebird kann den Schlüssel einer verschlüsselten Datenbank nicht mit einem Befehl ersetzen. Ein Versuch, `ALTER DATABASE ENCRYPT` für eine bereits verschlüsselte Datenbank auszuführen, endet mit einem Fehler. Es gibt zwei Wege, den Schlüssel zu wechseln.
+
+*Methode 1. Entschlüsseln und erneut verschlüsseln.*
+
+. Führen Sie `ALTER DATABASE DECRYPT` aus und warten Sie, bis der Vorgang abgeschlossen ist.
+. Führen Sie `ALTER DATABASE ENCRYPT WITH "DbCrypt" KEY <neuer Name>` aus.
+
+Zwischen den Schritten liegt die Datenbank unverschlüsselt auf der Festplatte. Beide Operationen lesen und schreiben alle Seiten.
+
+*Methode 2. Sicherung und Wiederherstellung.*
+
+. Erstellen Sie eine Sicherung mit dem Dienstprogramm `gbak`.
+. Stellen Sie sie in eine neue Datenbank mit dem Parameter `-KEYNAME <neuer Name>` wieder her.
+
+Siehe <<fbcrypt-utils-gbak>>.
+
+[TIP]
+====
+Geben Sie dem neuen Schlüssel einen neuen Namen. Dann zeigt der Schlüsselname im Header (`gstat -h`) immer, welcher Schlüssel die Datenbank oder ihre Kopie verschlüsselt hat.
+====
+
+== Wer die Datenbank verschlüsseln darf
+
+Die Anweisungen `ALTER DATABASE ENCRYPT` und `ALTER DATABASE DECRYPT` darf der Eigentümer der Datenbank ausführen, ein Administrator (`SYSDBA`, die Rolle `RDB$ADMIN`) oder ein Benutzer mit dem Recht `ALTER DATABASE`.
+
+Die Verschlüsselung ersetzt nicht die Zugriffskontrolle. Ein Benutzer, der sich mit dem richtigen Schlüssel verbunden hat, sieht die Daten gemäß seinen SQL-Rechten.

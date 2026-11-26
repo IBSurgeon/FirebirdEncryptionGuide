@@ -1,0 +1,359 @@
+[[fbcrypt-utils]]
+= Unterstützung in den Kommandozeilen-Dienstprogrammen von Firebird
+
+Wie oben beschrieben, ist das Hauptproblem bei der Arbeit mit verschlüsselten Datenbanken die Speicherung der Schlüssel. Im Idealfall kennt nur die Client-Anwendung den Schlüssel, damit niemand ihn stehlen kann. Dieses Problem ist besonders wichtig für Anwendungen mit Embedded-Verbindungen, bei denen die Datenbank und die Client-Anwendung auf demselben Computer liegen. Aber wie arbeiten Sie in diesem Fall mit den Kommandozeilen-Dienstprogrammen von Firebird, die eine Verbindung zur Datenbank brauchen, zum Beispiel `gbak`, `nbackup` und andere?
+
+Damit Sie die Dienstprogramme von Firebird verwenden können und den Schlüssel nicht auf dem Server speichern müssen, haben wir die Dienstprogramme `gbak`, `nbackup`, `isql` und `gfix` geändert. Mit den geänderten Dienstprogrammen können Sie ein alternatives Plugin für die Schlüsselhaltung (`KeyHolder`) angeben. Außerdem gibt es das Plugin `KeyHolderStdin`. Es liest den Schlüssel aus dem Eingabestrom der Konsole.
+
+Die geänderten Dienstprogramme sind im Client-Paket des Verschlüsselungs-Plugins (`Client\32bit`, `Client\64bit`) und in HQbird enthalten.
+
+[[fbcrypt-utils-versions]]
+== Unterschiede zwischen den Firebird-Versionen
+
+Die verfügbaren Schalter hängen von der Firebird-Version und von der Herkunft des Dienstprogramms ab: Standard ("vanilla") oder aus dem Plugin-Paket.
+
+.Welche Schalter die Dienstprogramme haben
+[cols="2,2,3,3", options="header"]
+|===
+| Dienstprogramm | Version | Standard-Firebird | Plugin-Paket und HQbird
+| `gbak` | 3.0 | keine | `-KEYFILE`, `-KEYNAME`, `-KEY`
+| `gbak` | 4.0, 5.0 | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT` | `-KEYHOLDER`, `-KEYNAME`, `-CRYPT`
+| `gfix`, `isql`, `nbackup` | 3.0 | keine | keine (Schlüssel über `firebird.conf`, siehe <<fbcrypt-utils-fb3>>)
+| `gfix`, `isql`, `nbackup` | 4.0, 5.0 | keine | `-KEYHOLDER`
+| `gstat` | 3.0, 4.0, 5.0 | `-e` | `-e`
+|===
+
+Die wichtigsten Ergebnisse aus der Tabelle:
+
+* In Firebird 4.0 und 5.0 können Sie eine verschlüsselte Sicherung auch mit dem Standard-`gbak` erstellen.
+* Für `gfix`, `isql` und `nbackup` gibt es den Schalter `-KEYHOLDER` nur in den Dienstprogrammen aus dem Plugin-Paket und in HQbird, ab Version 4.0.
+* In Firebird 3.0 haben die Dienstprogramme andere Schalter. Die Befehle aus den Abschnitten für 4.0 und 5.0 funktionieren in Version 3.0 nicht.
+
+Zwischen den Versionen 4.0 und 5.0 gibt es keine Unterschiede bei den Schaltern.
+
+== Firebird 4.0 und 5.0
+
+=== Schalter
+
+[cols="1,2,4", options="header"]
+|===
+| Dienstprogramm | Schalter | Zweck
+| `gbak` | `-KEYHOLDER <Plugin>` | Das Plugin für die Schlüsselhaltung auf der Seite des Dienstprogramms. Schaltet die Verschlüsselung der Sicherungsdatei ein.
+| `gbak` | `-KEYNAME <Name>` | Der Schlüsselname für die Verschlüsselung der Sicherung oder der wiederhergestellten Datenbank.
+| `gbak` | `-CRYPT <Plugin>` | Der Name des Verschlüsselungs-Plugins.
+| `gfix` | `-KEYHOLDER <Plugin>` | Das Plugin für die Schlüsselhaltung auf der Seite des Dienstprogramms.
+| `isql` | `-KEYHOLDER <Plugin>` | Das Plugin für die Schlüsselhaltung auf der Seite des Dienstprogramms.
+| `nbackup` | `-KEYHOLDER <Plugin>` | Das Plugin für die Schlüsselhaltung auf der Seite des Dienstprogramms.
+| `gstat` | `-e` | Statistik der Seitenverschlüsselung (siehe <<fbcrypt-monitoring>>).
+|===
+
+Groß- und Kleinschreibung spielt bei den Schaltern keine Rolle. Abkürzungen: `-KEYH`, `-KEYN`, `-CRY`.
+
+Der Schalter `-KEYHOLDER` setzt für das Dienstprogramm den Parameter `KeyHolderPlugin`. Das Dienstprogramm lädt das angegebene Plugin aus seinem Ordner `plugins` und sendet über dieses Plugin den Schlüssel über das geschützte Protokoll an den Server.
+
+[IMPORTANT]
+====
+Neben dem Dienstprogramm muss der Ordner `plugins` mit den Plugins `KeyHolderStdin`, `KeyHolder` und `DbCrypt`, die Lizenzdatei `DbCrypt.conf` und die OpenSSL-Bibliothek liegen.
+
+Das Dienstprogramm `gbak` braucht das Plugin `DbCrypt` und die Lizenz: Es verschlüsselt und entschlüsselt die Sicherungsdatei selbst. Ohne diese Dateien bricht `gbak` mit dem Fehler `Crypt plugin DbCrypt failed to load` ab.
+
+Im Client-Paket für Windows liegt die Datei `keyholderstdin.dll` im Ordner `key-plugins`. Kopieren Sie sie in den Ordner `plugins`. Sonst meldet das Dienstprogramm `Key holder plugin KeyHolderStdin failed to load`. In HQbird liegt diese Datei schon im Ordner `plugins`: Sie müssen sie nicht kopieren.
+====
+
+[[fbcrypt-utils-stdin]]
+=== Das Plugin KeyHolderStdin
+
+Das Plugin `KeyHolderStdin` liest den Schlüssel aus dem Standard-Eingabestrom des Dienstprogramms.
+
+Ein Beispiel für `gbak` mit dem Plugin `KeyHolderStdin`:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,0x34,0x63,0xae,0x19,0x52,0x00,0xb8,0x84,0xa3,0x44,0xbd,0x11,0x9f,0x72,0xe0,0x04,0x68,0x4f,0xc4,0x89,0x3b,0x20,0x8d,0x2a,0xa7,0x07,0x32,0x3b,0x5e,0x74, | gbak -b localhost:"C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fdb" "C:\Firebird\crypt-plugin\CryptClient\db-crypt\emp-crypted.fbk" -KeyHolder KeyHolderStdin
+----
+
+Hier kommt der Schlüssel aus dem Eingabestrom. Das Format des Schlüssels ist:
+
+[source,cmd]
+----
+Key=<KeyName> <key_value>
+
+<key_value> ::= 0x<hex-pair>,[0x<hex-pair>,...]
+----
+
+Dabei ist `<KeyName>` der Schlüsselname. Er muss mit dem Namen des Schlüssels übereinstimmen, mit dem die Datenbank verschlüsselt wurde.
+
+Statt eines Schlüssels können Sie eine Passphrase angeben (siehe <<fbcrypt-keygen-password>>):
+
+[source,cmd]
+----
+Password=<KeyName> <passphrase>
+----
+
+Die Erzeugung von Schlüsseln ist in <<fbcrypt-keygen>> beschrieben.
+
+Eigenschaften des Plugins:
+
+* Das Plugin nimmt *einen* Schlüssel an. Der ganze Eingabestrom wird als eine Zeile `Key=` oder `Password=` gelesen.
+* Wenn der Eingabestrom leer ist, bricht das Dienstprogramm mit dem Fehler `No input` ab.
+* Der Schlüssel belegt den Eingabestrom. Geben Sie deshalb die Befehle für `isql` in einer Datei mit dem Schalter `-i` an, nicht über den Eingabestrom.
+
+==== Schlüssel aus einer Datei
+
+Der Befehl `echo` mit dem Schlüssel bleibt in der Befehlshistorie und ist in der Prozessliste sichtbar. Sicherer ist es, die Zeile mit dem Schlüssel in einer Datei mit beschränktem Zugriff zu speichern.
+
+Windows:
+
+[source,cmd]
+----
+type C:\Secure\dbkey.txt | gbak -b localhost:D:\DB\app.fdb E:\Backup\app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password ********
+----
+
+Linux:
+
+[source,bash]
+----
+gbak -b localhost:/data/app.fdb /backup/app.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password '********' < /secure/dbkey.txt
+----
+
+Die Datei `dbkey.txt` enthält eine Zeile:
+
+[source]
+----
+Key=MyKey 0x35,0xa1,...,0x1e,
+----
+
+Empfehlungen für geplante Ausführungen:
+
+* Führen Sie den Auftrag unter einem eigenen Dienstkonto aus.
+* Geben Sie nur diesem Konto Lesezugriff auf die Schlüsseldatei.
+* Testen Sie regelmäßig die Wiederherstellung aus der Sicherung auf einem Testserver.
+
+==== Schlüssel aus einem Programm
+
+Eine Anwendung kann das Dienstprogramm als Kindprozess starten und den Schlüssel in dessen Eingabestrom schreiben. Dann wird der Schlüssel nicht in einer Datei gespeichert. Ein Beispiel in C für Linux:
+
+[source,c]
+----
+#include <stdio.h>
+
+int main()
+{
+	FILE* f = popen("./gbak -b -KeyHolder KeyHolderStdin /mnt/db/stdin.fdb std.fbk", "w");
+	const char* key = "Key=Red 0xec,0xa1,0x52,0xf6,0x4d,0x27,0xda,0x93,0x53,0xe5,0x48,0x86,0xb9,"
+					  "0x7d,0xe2,0x8f,0x3b,0xfa,0xb7,0x91,0x22,0x5b,0x59,0x15,0x82,0x35,0xf5,0x30,0x1f,0x04,0xdc,0x75,";
+
+	if (f)
+	{
+		fputs(key, f);
+		int x = pclose(f);
+		if (x)
+			printf("gbak error, code %d\n", x >> 8);
+	}
+	else
+		perror("popen gbak");
+}
+----
+
+[[fbcrypt-utils-gbak]]
+=== Sicherung und Wiederherstellung (gbak)
+
+[WARNING]
+====
+Das Dienstprogramm `gbak` verschlüsselt die Sicherungsdatei nur, wenn der Schalter `-KEYHOLDER` angegeben ist.
+
+Wenn `gbak -b` ohne diesen Schalter läuft und sich mit der Datenbank verbinden kann (der Schlüssel liegt auf dem Server in der Datei `KeyHolder.conf`, oder die Client-Bibliothek `KeySource` hat ihn gesendet), ist die Datei `.fbk` *nicht verschlüsselt*. Die Daten liegen darin im Klartext.
+====
+
+Bei einer Sicherung mit dem Schalter `-KEYHOLDER` nimmt das Dienstprogramm den Schlüsselnamen und den Namen des Verschlüsselungs-Plugins aus der Datenbank. Die Schalter `-KEYNAME` und `-CRYPT` brauchen Sie nur, wenn Sie andere Werte angeben möchten.
+
+.Verschlüsselte Sicherung
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -b localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+.Wiederherstellung in eine verschlüsselte Datenbank
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gbak -c C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+Bei der Wiederherstellung liest `gbak` den Schlüsselnamen und den Plugin-Namen aus dem Kopf der Sicherungsdatei. Die neue Datenbank wird direkt nach dem Anlegen verschlüsselt. Um sie mit einem anderen Schlüssel zu verschlüsseln, geben Sie `-KEYNAME <neuer Name>` an (der Schlüssel mit diesem Namen muss für das Dienstprogramm und für den Server verfügbar sein).
+
+Wenn die Schlüssel auf dem Server in der Datei `KeyHolder.conf` liegen, können Sie statt `KeyHolderStdin` das Plugin `KeyHolder` verwenden. In diesem Fall läuft `gbak` auf dem Server und liest dieselbe Datei. Das Standard-`gbak` von Firebird 4.0 und 5.0 arbeitet ebenfalls so:
+
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyholder KeyHolder -keyname Red -crypt DbCrypt localhost:employee /backup/employee.fbk
+----
+
+==== Schlüssel aus der Bibliothek KeySource
+
+Das Plugin `KeyHolder` im Ordner des Dienstprogramms nimmt den Schlüssel aus der Bibliothek `KeySource`, die neben `fbclient` liegt (siehe <<fbcrypt-keysource>>). Der Schlüssel steht weder im Befehl noch im Eingabestrom:
+
+[source,cmd]
+----
+gbak -b -KeyHolder KeyHolder -user SYSDBA -password masterkey localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+gbak -c -KeyHolder KeyHolder -user SYSDBA -password masterkey C:\db\emp-crypted.fbk localhost:C:\db\emp-restore.fdb
+----
+
+Das Ergebnis von `gbak -b` hängt vom Befehl und von den Dateien im Ordner `plugins` des Dienstprogramms ab:
+
+[cols="3,3,3", options="header"]
+|===
+| Im Ordner `plugins` des Dienstprogramms | Befehl | Ergebnis
+| nur `keyholder.dll` | `gbak -b` | die Sicherung ist *nicht verschlüsselt*
+| nur `keyholder.dll` | `gbak -b -KeyHolder KeyHolder` | Fehler `Crypt plugin DbCrypt failed to load`
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b` | die Sicherung ist *nicht verschlüsselt*
+| `keyholder.dll`, `dbcrypt.dll`, `DbCrypt.conf` | `gbak -b -KeyHolder KeyHolder` | die Sicherung ist verschlüsselt
+|===
+
+Die Wiederherstellung einer verschlüsselten Sicherung ohne den Schlüssel bricht mit dem Fehler `Unknown key name <Name> - key can't be found` ab.
+
+Ein fertiges Beispiel mit einer Test-Wiederherstellung: das Skript `examples/closed-gui/deploy/50-backup.ps1` im Repository https://github.com/IBSurgeon/FirebirdEncryptionGuide.
+
+==== So prüfen Sie, ob die Sicherung verschlüsselt ist
+
+* In einer nicht verschlüsselten Sicherung stehen die Tabellennamen im Klartext. Der Befehl `findstr /m CUSTOMER emp-crypted.fbk` (Linux: `grep -l CUSTOMER emp-crypted.fbk`) zeigt den Dateinamen, wenn er das Wort in der Datei gefunden hat. Bei einer verschlüsselten Sicherung zeigt er nichts. Verwenden Sie einen Tabellennamen aus Ihrer Datenbank.
+* Eine Wiederherstellung ohne den Schlüssel muss mit einem Fehler abbrechen.
+* Stellen Sie die Sicherung regelmäßig auf einem Testserver wieder her.
+
+[NOTE]
+====
+Für eine Wiederherstellung in eine neue Datei muss der Parameter `KeyHolderPlugin` in `firebird.conf` gesetzt sein. Die Einstellung in `databases.conf` gilt nur für ihren Alias und nicht für die neue Datei.
+====
+
+=== nbackup
+
+Das Dienstprogramm `nbackup` kopiert die Seiten der Datenbank unverändert. Die Kopie bleibt mit demselben Schlüssel verschlüsselt wie die Datenbank. Das Dienstprogramm braucht den Schlüssel für die Verbindung zur Datenbank:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | nbackup -b 0 localhost:C:\db\emp-crypted.fdb C:\db\emp-nbackup.fdb -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey
+----
+
+Der Befehl `gstat -h` für die Sicherungsdatei zeigt das Attribut `encrypted` und denselben Schlüsselnamen wie bei der Datenbank. Wenn die Bibliothek `KeySource` den Schlüssel liefert, geben Sie `-KeyHolder KeyHolder` an und senden Sie nichts in den Eingabestrom.
+
+=== gfix
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full -KeyHolder KeyHolderStdin localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+=== isql
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | isql -KeyHolder KeyHolderStdin -user SYSDBA -password masterkey -i script.sql localhost:C:\db\emp-crypted.fdb
+----
+
+Mit dieser Methode können Sie eine Datenbank verschlüsseln, ohne den Schlüssel in eine Datei auf dem Server zu schreiben. Die Datei `script.sql`:
+
+[source,sql]
+----
+alter database encrypt with "DbCrypt" key Green;
+commit;
+show database;
+----
+
+Sie können dieselbe Anweisung aus dem Client-Ordner ausführen, der die Bibliothek `KeySource` enthält und in dessen Datei `firebird.conf` die Zeile `KeyHolderPlugin = KeyHolder` steht. Dann brauchen Sie weder den Schalter noch den Eingabestrom. Diese Methode funktioniert auch in Version 3.0.
+
+[[fbcrypt-utils-fb3]]
+== Firebird 3.0
+
+Die Standard-Dienstprogramme von Firebird 3.0 haben keine Schalter für Schlüssel. Verwenden Sie die Dienstprogramme aus dem Client-Paket des Verschlüsselungs-Plugins für Firebird 3.0 oder aus HQbird 3.
+
+=== gbak
+
+[cols="2,4", options="header"]
+|===
+| Schalter | Zweck
+| `-KEYFILE <Datei>` | Eine Datei mit Schlüsseln. Das Zeilenformat ist dasselbe wie in `KeyHolder.conf`: `Key=<Name> <Wert>`. Sie können die Datei `KeyHolder.conf` selbst angeben.
+| `-KEY <Wert>` | Der Wert des Schlüssels in der Form `0x..,0x..,`. Erfordert `-KEYNAME`. Sie können ihn nicht zusammen mit `-KEYFILE` verwenden.
+| `-KEYNAME <Name>` | Der Schlüsselname. Erfordert `-KEYFILE` oder `-KEY`. Wenn der Name nicht angegeben ist, wird er bei einer Sicherung aus der Datenbank genommen.
+|===
+
+Abkürzungen: `-KEYF`, `-KEYN`. In Version 3.0 gibt es die Schalter `-KEYHOLDER` und `-CRYPT` nicht. Der Name des Verschlüsselungs-Plugins ist immer `DbCrypt`.
+
+Wenn `-KEYFILE` oder `-KEY` angegeben ist, sendet das Dienstprogramm den Schlüssel für die Verbindung an den Server und verschlüsselt die Sicherungsdatei.
+
+.Verschlüsselte Sicherung, Schlüssel aus einer Datei
+[source,bash]
+----
+gbak -b -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red localhost:employee /backup/employee.fbk
+----
+
+.Verschlüsselte Sicherung, Schlüssel in der Befehlszeile
+[source,cmd]
+----
+gbak -b -user SYSDBA -password masterkey -key 0xec,0xa1,...,0x75, -keyname Red localhost:C:\db\emp-crypted.fdb C:\db\emp-crypted.fbk
+----
+
+.Wiederherstellung in eine verschlüsselte Datenbank
+[source,bash]
+----
+gbak -c -user SYSDBA -password masterkey -keyfile /opt/firebird/plugins/KeyHolder.conf -keyname Red /backup/employee.fbk localhost:/data/employee_restored.fdb
+----
+
+[WARNING]
+====
+Der Schlüssel im Schalter `-KEY` ist in der Prozessliste sichtbar und bleibt in der Befehlshistorie. Verwenden Sie besser `-KEYFILE` mit einer Datei mit beschränktem Zugriff.
+
+Wenn `gbak -b` ohne `-KEYFILE` und `-KEY` läuft und der Schlüssel auf dem Server liegt, ist die Datei `.fbk` *nicht verschlüsselt*.
+====
+
+Unter Linux lädt das Dienstprogramm `gbak` aus dem Client-Paket 3.0 OpenSSL unter dem Namen `libcrypto.so`, ohne Versionsnummer. Es braucht in seinem Ordner `lib` einen Link `libcrypto.so` auf OpenSSL 1.1. Ohne den Link bricht `gbak` mit dem Fehler `Error loading OpenSSL dynamic library libcrypto.so` ab. Die Verschlüsselung der Datenbank und `nbackup` funktionieren ohne den Link. In Debian und Ubuntu liegt die Bibliothek in `/usr/lib/x86_64-linux-gnu`, nicht in `/usr/lib64`.
+
+[source,bash]
+----
+cp -r /root/crypt/Client /opt/fbcrypt-client
+ln -sf /usr/lib64/libcrypto.so.1.1 /opt/fbcrypt-client/lib/libcrypto.so
+----
+
+=== gfix, isql, nbackup und das Plugin KeyHolderStdin
+
+In Version 3.0 haben diese Dienstprogramme keinen Schalter `-KEYHOLDER`. Für sie setzen Sie das Plugin für die Schlüsselhaltung in der Datei `firebird.conf` im Ordner des Dienstprogramms (dem Ordner des Client-Pakets):
+
+[source,conf]
+----
+KeyHolderPlugin = KeyHolderStdin
+----
+
+Danach senden Sie den Schlüssel über den Eingabestrom, wie in den Versionen 4.0 und 5.0, aber ohne den Schalter:
+
+[source,cmd]
+----
+echo Key=Green 0xab,0xd7,...,0x74, | gfix -v -full localhost:C:\db\emp-crypted.fdb -user SYSDBA -password masterkey
+----
+
+Sie können auch `KeyHolderPlugin = KeyHolder` setzen. Dann nimmt das Dienstprogramm die Schlüssel aus der Datei `plugins/KeyHolder.conf` oder aus der Bibliothek `KeySource` in seinem Ordner.
+
+Das Dienstprogramm `gbak` 3.0 ohne `-KEYFILE` und `-KEY` verwendet ebenfalls das Plugin aus `firebird.conf`. Wenn das Plugin den Schlüssel gesendet hat, ist die Sicherungsdatei verschlüsselt. Mit dem Plugin `KeyHolder` liefert die Bibliothek `KeySource` den Schlüssel, mit dem Plugin `KeyHolderStdin` liefert ihn der Eingabestrom.
+
+Dazu muss der Ordner `plugins` des Dienstprogramms die Datei `dbcrypt.dll` und die Lizenz `DbCrypt.conf` enthalten. Ohne diese Dateien erstellt `gbak` 3.0 die Datei nicht und bricht mit dem Fehler `Crypt plugin DbCrypt failed to load` ab.
+
+Im Client-Paket für Windows liegt die Datei `keyholderstdin.dll` im Ordner `key-plugins`. Kopieren Sie sie in den Ordner `plugins`. Sonst meldet das Dienstprogramm der Version 3.0 `Key not set`.
+
+[NOTE]
+====
+Der Parameter `KeyHolderPlugin` in `firebird.conf` gilt für alle Programme, die die Client-Bibliothek aus diesem Ordner verwenden. Mit dem Plugin `KeyHolderStdin` liest jedes dieser Programme beim Verbindungsaufbau den Eingabestrom. Legen Sie die Wartungs-Dienstprogramme in einen eigenen Ordner.
+====
+
+== Das Dienstprogramm decrypt
+
+Das Server-Paket für Windows enthält das Dienstprogramm `decrypt`. Es entschlüsselt die Datenbankdatei direkt, ohne den Firebird-Server:
+
+[source,cmd]
+----
+decrypt <Datenbankdatei>
+----
+
+Das Dienstprogramm liest den Schlüsselnamen aus dem Kopf der Datenbank und nimmt den Schlüssel aus der Datei `plugins/KeyHolder.conf`. Bevor Sie es starten:
+
+. Beenden Sie alle Verbindungen zur Datenbank.
+. Erstellen Sie eine Kopie der Datenbankdatei. Das Dienstprogramm ändert die Datei direkt.
+. Schreiben Sie den Schlüssel in `KeyHolder.conf`.
+
+Der übliche Weg zum Entschlüsseln ist die Anweisung `ALTER DATABASE DECRYPT` (siehe <<fbcrypt-usage>>). Das Dienstprogramm `decrypt` brauchen Sie in Sonderfällen, zum Beispiel für die Arbeit mit einer beschädigten Datenbank.

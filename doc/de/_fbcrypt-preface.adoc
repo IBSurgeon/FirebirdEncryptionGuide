@@ -1,0 +1,31 @@
+:sectnums!:
+
+[preface]
+= Wozu braucht man Datenbankverschlüsselung (und wann braucht man sie nicht)?
+
+Die Datenbankverschlüsselung kam mit Firebird 3.0 (zusammen mit der Verschlüsselung des Netzwerkprotokolls, die man oft mit dem Thema dieses Artikels verwechselt). Sie hat die Möglichkeiten zum Schutz von Daten vor unberechtigtem Zugriff stark erweitert. Aber sie löst nicht alle Probleme. Um sie richtig zu verwenden, müssen Sie ihre Stärken und Schwächen kennen. In diesem Artikel betrachten wir den inneren Aufbau der Datenbankverschlüsselung auf einer grundlegenden Ebene. Das Ziel ist, dass Entwickler von Firebird-Anwendungen besser verstehen, wie die Datenbankverschlüsselung funktioniert.
+
+== Wozu braucht man Datenbankverschlüsselung?
+
+. Zum Schutz von Datenbanken mit vertraulichen oder wertvollen Daten vor "`physischem`" Diebstahl. Ein Angreifer kann eine Festplatte mit einer Kopie einer verschlüsselten Datenbank stehlen oder auf andere Weise eine Kopie der Datenbankdatei erhalten. Ohne den richtigen Schlüssel kann er keine Daten aus dieser Datei lesen. Er kann die Daten auch nicht mit Wiederherstellungssoftware wie https://ib-aid.com/en/ibsurgeon-firstaid/[FirstAID] extrahieren. Natürlich hängt das vom Verschlüsselungsalgorithmus und von der Rechenleistung ab. Aber um AES256 zu brechen, braucht man zu viel Zeit oder zu viele Rechenressourcen.
+
+. Zum Schutz der Datenbank vor dem Zugriff durch nicht berechtigte Anwendungen, die die Verschlüsselungsschlüssel nicht haben. Beispiele:
+direkter Zugriff durch eine nicht berechtigte Person mit Entwicklerwerkzeugen, um vertrauliche Informationen zu ändern (zum Beispiel Geldtransaktionen), Änderung oder Diebstahl der Geschäftslogik (der Quelltext von gespeicherten Prozeduren und Triggern).
+
+. Zum Schutz von Datenbanken mit vorab gefüllten Daten vor Export oder vor dem Zugriff durch nicht berechtigte Anwendungen.
+
+. In letzter Zeit haben Regierungen Datenschutzgesetze eingeführt (GDPR/DSGVO in Europa, LGPD in Brasilien und andere). Diese Gesetze fordern unter anderem einen höheren Schutz für personenbezogene und andere vertrauliche Daten. Die Verschlüsselung wird als eine der angemessenen Schutzmaßnahmen genannt.
+
+== Wann ist Datenbankverschlüsselung nicht das richtige Werkzeug?
+
+In manchen Fällen ist es besser, die Sicherheitsfunktionen und Einstellungen von Firebird statt der Datenbankverschlüsselung zu verwenden:
+
+. Um die Datenbank vor physischem Zugriff über das Netzwerk zu schützen, konfigurieren Sie den Netzwerkzugriff. Das heißt: Schließen Sie die freigegebenen Netzwerkordner, denn Firebird braucht keinen Netzwerkzugriff auf die Datenbankdateien. Machen Sie außerdem die Zugriffsrechte strenger (zum Beispiel müssen unter Linux die Datenbankdateien Lese- und Schreibrechte nur für den Benutzer und die Gruppe "`firebird`" haben).
+
+. Um den Zugriff auf eine bestimmte Datenbank auf eine bestimmte Gruppe von Benutzern zu begrenzen, ist eine separate Sicherheitsdatenbank die einfachere Lösung.
+
+. Um den Zugriff auf Datenbankobjekte (Tabellen, gespeicherte Prozeduren) zu begrenzen, verwenden Sie die Sicherheitsmechanismen von Firebird: Benutzer, Rollen usw.
+
+Natürlich sind beide Listen oben nicht vollständig. Aber sie geben eine Vorstellung davon, wann Sie Datenbankverschlüsselung brauchen und wann nicht.
+
+:sectnums:
