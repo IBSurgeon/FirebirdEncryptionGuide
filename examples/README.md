@@ -41,6 +41,10 @@
 | [lazarus/console-sqldb](lazarus/console-sqldb) | Free Pascal, SQLdb | подключение, ошибки ключа, несколько ключей | A |
 | [lazarus/gbak-stdin](lazarus/gbak-stdin) | Free Pascal | резервная копия и восстановление из программы | — |
 | [lazarus/threads-sqldb](lazarus/threads-sqldb) | Free Pascal, SQLdb | потоки | A |
+| [delphi/console-firedac](delphi/console-firedac) | Delphi, FireDAC | подключение, ошибки ключа, несколько ключей | A |
+| [delphi/gbak-stdin](delphi/gbak-stdin) | Delphi | резервная копия и восстановление из программы | — |
+| [delphi/threads-firedac](delphi/threads-firedac) | Delphi, FireDAC | потоки и пул подключений | A |
+| [delphi/vcl-firedac](delphi/vcl-firedac) | Delphi, VCL, FireDAC | окно: шифрование, смена ключа, ключ из файла | A |
 | [keysource](keysource) | C++, Delphi, Lazarus | библиотека `KeySource` | C |
 | [closed-gui](closed-gui) | Lazarus, Free Pascal, PowerShell | полный пример для приложения без исходных кодов: приложение, четыре варианта `KeySource`, поставщик ключа, служба REST, скрипты развёртывания; Firebird 3.0, 4.0, 5.0 | C |
 | [clientkeygen](clientkeygen) | Python | индивидуальные ключи клиентов, журнал сервера (только Firebird 5.0) | B |
@@ -48,6 +52,7 @@
 | [app/Example_ForLazarus_IBX](app/Example_ForLazarus_IBX) | Lazarus, IBX | подключение, шифрование, мониторинг | A |
 
 Примеры Python, Java, PHP, .NET и Free Pascal проверены на Firebird 4.0 и 5.0 (Windows x64). У каждого есть скрипт `run-test.ps1`.
+Примеры Delphi проверены на Firebird 3.0, 4.0 и 5.0 (Windows x64), `console-firedac` — также в 32 битах.
 Способы B, C и E проверены и при `UnsafeClient = false` (Firebird 4.0).
 
 ## Как запустить
